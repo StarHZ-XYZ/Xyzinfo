@@ -30,7 +30,7 @@ class ScreenInfoActivity : AppCompatActivity() {
         tvResolution.text = "屏幕分辨率：${info.widthPx} × ${info.heightPx}"
         tvScreenSize.text = "屏幕尺寸：${sizeInches(info.diagonalInches)}"
         tvDensity.text =
-            "屏幕密度：${info.densityDpi} dpi / ${Formats.decimal(info.density)}x / ${info.densityBucket}"
+            "屏幕密度：${info.densityDpi} dpi / ${Formats.decimal(info.density.toDouble())}x / ${info.densityBucket}"
         tvOrientation.text = "当前方向：${if (info.landscape) "横屏" else "竖屏"}"
 
         tvCurrentRefreshRate.text = "当前刷新率：${Formats.hertz(info.currentRefreshRateHz)}"

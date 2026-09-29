@@ -57,7 +57,9 @@ class FormatsTest {
     fun `电池相关单位换算`() {
         assertEquals("36.5 ℃", Formats.temperatureFromTenths(365))
         assertEquals("3.850 V", Formats.volts(3850))
-        assertEquals("1234 mA", Formats.milliamps(-1234))
+        // 系统节点单位为微安，展示时换算成整数毫安（与原版文案一致）
+        assertEquals("1 mA", Formats.milliamps(-1234))
+        assertEquals("450 mA", Formats.milliamps(-450_000))
         assertEquals("4500", Formats.microAmpHoursAsMilliAmpHours(4_500_000))
     }
 

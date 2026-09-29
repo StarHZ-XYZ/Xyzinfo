@@ -33,3 +33,4 @@
 
 - JVM 单元测试：`FormatsTest`、`SocSpecRepositoryTest`、`ThermalKindTest`。
 - 版本号 0.1 → 0.2（versionCode 1 → 2）。
+- `gradle.properties` 增加 `android.overridePathCheck=true`：Windows 上工程路径含中文时 AGP 会默认中断构建，本项目目录即含中文，故显式放行（换到纯英文路径后可删除）。
