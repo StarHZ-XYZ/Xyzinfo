@@ -103,6 +103,15 @@
                     android:text="Android —（API —）" />
 
                 <TextView
+                    android:id="@+id/tvDeviceRawModel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="原始型号：— ｜ 设备代号：—"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp" />
+
+                <TextView
                     android:id="@+id/tvRomName"
                     style="@style/Text.Row"
                     android:layout_width="match_parent"

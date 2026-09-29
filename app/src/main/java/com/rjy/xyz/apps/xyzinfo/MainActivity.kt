@@ -57,6 +57,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderOverview(overview: DeviceOverview) = with(binding) {
         tvDeviceName.text = overview.displayName
+        tvDeviceRawModel.text =
+            "原始型号：${overview.rawModel} ｜ 设备代号：${overview.deviceCode}"
         tvAndroidVersion.setInfoRow("Android 版本：${overview.androidRelease}（API ${overview.apiLevel}）")
         tvRomName.setInfoRow("系统 UI：${overview.romName ?: Labels.NOT_PUBLIC}")
         tvKernelVersion.setInfoRow("Linux 内核：${overview.kernelRelease}")

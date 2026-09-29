@@ -11,6 +11,7 @@ object DeviceOverviewProvider {
 
     fun load(): DeviceOverview = DeviceOverview(
         displayName = DeviceFacts.friendlyDeviceName(),
+        rawModel = DeviceFacts.orUnknown(Build.MODEL),
         androidRelease = DeviceFacts.orUnknown(Build.VERSION.RELEASE),
         apiLevel = Build.VERSION.SDK_INT,
         romName = romLabel(),

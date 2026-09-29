@@ -5,6 +5,8 @@ package com.rjy.xyz.apps.xyzinfo.model
  */
 data class DeviceOverview(
     val displayName: String,
+    /** 系统原始型号字符串（Build.MODEL），小字展示。 */
+    val rawModel: String,
     val androidRelease: String,
     val apiLevel: Int,
     /** 系统 UI 名称，例如「澎湃OS（HyperOS） V816」。 */
