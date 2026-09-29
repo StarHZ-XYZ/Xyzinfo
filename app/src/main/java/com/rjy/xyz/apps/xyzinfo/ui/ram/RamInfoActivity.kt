@@ -42,10 +42,13 @@ class RamInfoActivity : AppCompatActivity() {
 
         tvRamType.setInfoRow("RAM 类型：${info.typeName}")
         tvRamBrand.setInfoRow("RAM 品牌：${info.brandName ?: Labels.NOT_PUBLIC}")
+        tvRamTypeInferred.setInfoRow(
+            "内存世代（按芯片推断）：${info.inferredMemoryType ?: Labels.NOT_PUBLIC}"
+        )
         tvFreqCurrent.setInfoRow("当前频率：${megaHertz(info.currentFrequencyMHz)}")
         tvFreqMax.setInfoRow("最高频率：${megaHertz(info.maxFrequencyMHz)}")
         tvFreqMin.setInfoRow("最低频率：${megaHertz(info.minFrequencyMHz)}")
-        tvFreqSource.setInfoRow("读取节点：${freqSource(info)}")
+        tvFreqSource.setInfoRow(frequencyDetail(info))
 
         tvJavaHeapMax.setInfoRow("Java 堆上限：${Formats.bytes(info.javaHeapMaxBytes)}")
         tvNativeHeapSize.setInfoRow("Native Heap 总大小：${Formats.bytes(info.nativeHeapTotalBytes)}")
@@ -78,6 +81,10 @@ class RamInfoActivity : AppCompatActivity() {
     private fun megaHertz(value: Int?): String =
         value?.let { "$it MHz" } ?: Labels.NOT_PUBLIC
 
-    private fun freqSource(info: RamInfo): String =
-        info.frequencySource ?: Labels.NOT_PUBLIC
+    /** 频率读到了就显示来源节点，读不到就说明原因（例如系统限制）。 */
+    private fun frequencyDetail(info: RamInfo): String = when {
+        info.frequencySource != null -> "读取节点：${info.frequencySource}"
+        info.frequencyNote != null -> "频率说明：${info.frequencyNote}"
+        else -> "频率说明：${Labels.NOT_PUBLIC}"
+    }
 }

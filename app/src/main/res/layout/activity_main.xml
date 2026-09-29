@@ -102,6 +102,14 @@
                     android:layout_marginTop="6dp"
                     android:text="Android —（API —）" />
 
+                <TextView
+                    android:id="@+id/tvRomName"
+                    style="@style/Text.Row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="系统 UI：—" />
+
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
@@ -552,7 +560,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="26dp"
             android:gravity="center"
-            android:text="后续会继续增加更详细的硬件检测能力\n星幻终 · v0.3"
+            android:text="后续会继续增加更详细的硬件检测能力\n星幻终 · v0.4"
             android:textColor="@color/text_tertiary"
             android:textSize="11sp" />
     </LinearLayout>

@@ -75,8 +75,9 @@ object DeviceFacts {
             .lowercase(Locale.ROOT)
 
         return when {
-            "aarch64" in text || "arm64-v8a" in text || "armv9" in text || "armv8" in text ->
-                "AArch64 / ARMv8-v9"
+            // 先判 ARMv9（明确写着 armv9 才认），否则按 ARMv8 处理
+            "armv9" in text -> "AArch64 / ARMv9"
+            "aarch64" in text || "arm64-v8a" in text || "armv8" in text -> "AArch64 / ARMv8-A"
             "armeabi-v7a" in text || "armv7" in text -> "ARMv7"
             "armv6" in text -> "ARMv6"
             "x86_64" in text -> "x86_64"

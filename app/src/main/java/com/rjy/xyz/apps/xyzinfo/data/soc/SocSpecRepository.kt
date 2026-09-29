@@ -281,7 +281,7 @@ object SocSpecRepository {
             brandName = "联发科",
             badgeText = "联发科",
             performanceLevel = "中端",
-            aliases = listOf("MT6877", "MT6877V", "DIMENSITY7050", "DIMENSITY6100"),
+            aliases = listOf("DIMENSITY7050", "DIMENSITY6100"),
             cpuClusters = "2+6",
             cpuArchitecture = "ARMv8 / AArch64",
             gpuName = "Mali-G68",
@@ -581,6 +581,50 @@ object SocSpecRepository {
             cpuClusters = "1+3+4",
             cpuArchitecture = "ARMv9 / AArch64",
             gpuName = "Adreno 825",
+            graphicsApi = "OpenGL ES / Vulkan"
+        ),
+        SocSpec(
+            displayName = "骁龙 778G / 778G+",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "中端",
+            aliases = listOf("SM7325", "SM7350", "SNAPDRAGON778G", "SNAPDRAGON778GPLUS"),
+            cpuClusters = "1+3+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 642L",
+            graphicsApi = "OpenGL ES / Vulkan"
+        ),
+        SocSpec(
+            displayName = "骁龙 780G",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "中端",
+            aliases = listOf("SNAPDRAGON780G"),
+            cpuClusters = "1+3+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 642",
+            graphicsApi = "OpenGL ES / Vulkan"
+        ),
+        SocSpec(
+            displayName = "骁龙 7+ Gen 2",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "中高端",
+            aliases = listOf("SM7475", "SNAPDRAGON7PLUSGEN2"),
+            cpuClusters = "1+3+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 725",
+            graphicsApi = "OpenGL ES / Vulkan"
+        ),
+        SocSpec(
+            displayName = "骁龙 7 Gen 1",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "中端",
+            aliases = listOf("SM7450", "SNAPDRAGON7GEN1"),
+            cpuClusters = "1+3+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 644",
             graphicsApi = "OpenGL ES / Vulkan"
         ),
         SocSpec(
@@ -1095,6 +1139,500 @@ object SocSpecRepository {
             cpuArchitecture = "ARMv9 / AArch64",
             gpuName = "未公开",
             graphicsApi = "OpenGL ES / Vulkan"
+        ),
+
+        // =========================================================
+        // 全量补齐：按厂商列出世代更完整的型号，尽量覆盖老机型
+        // 说明：GPU 名称/频率来自公开规格，个别新芯片以“未公开”占位，
+        //      后续如果实测不符，直接改这里的对应条目即可。
+        // =========================================================
+
+        // ---------- 骁龙：最新世代 ----------
+        SocSpec(
+            displayName = "骁龙 8 Gen 5",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "顶级旗舰",
+            aliases = listOf("SM8845", "SNAPDRAGON8GEN5"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv9 / AArch64",
+            gpuName = "Adreno 830 级别"
+        ),
+        SocSpec(
+            displayName = "骁龙 888+",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "旗舰",
+            aliases = listOf("SM8350AC", "SM8350-AC", "SNAPDRAGON888PLUS"),
+            cpuClusters = "1+3+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 660"
+        ),
+        SocSpec(
+            displayName = "骁龙 8 Gen 3 for Galaxy",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "顶级旗舰",
+            aliases = listOf("SM8650AC", "SNAPDRAGON8GEN3FORGALAXY"),
+            cpuClusters = "1+3+2+2",
+            cpuArchitecture = "ARMv9 / AArch64",
+            gpuName = "Adreno 750",
+            gpuMaxFreqMHz = 1000
+        ),
+
+        // ---------- 骁龙 7 / 6 / 4 系补齐 ----------
+        SocSpec(
+            displayName = "骁龙 7 Gen 4",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "中高端",
+            aliases = listOf("SNAPDRAGON7GEN4"),
+            cpuClusters = "1+4+3",
+            cpuArchitecture = "ARMv9 / AArch64",
+            gpuName = "Adreno 722"
+        ),
+        SocSpec(
+            displayName = "骁龙 7s Gen 4",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "中端",
+            aliases = listOf("SNAPDRAGON7SGEN4"),
+            cpuClusters = "1+3+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 810"
+        ),
+        SocSpec(
+            displayName = "骁龙 6 Gen 4",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "中端",
+            aliases = listOf("SNAPDRAGON6GEN4"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 710"
+        ),
+        SocSpec(
+            displayName = "骁龙 6s Gen 3",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "中端",
+            aliases = listOf("SM6375AC", "SM6375-AC", "SNAPDRAGON6SGEN3"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 619"
+        ),
+        SocSpec(
+            displayName = "骁龙 4s Gen 2",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "入门",
+            aliases = listOf("SM4635", "SNAPDRAGON4SGEN2"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 613"
+        ),
+        SocSpec(
+            displayName = "骁龙 4 Gen 3",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "入门",
+            aliases = listOf("SNAPDRAGON4GEN3"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 613"
+        ),
+
+        // ---------- 骁龙：中端老将（7/6 系） ----------
+        SocSpec(
+            displayName = "骁龙 768G",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "中端",
+            aliases = listOf("SM7250AC", "SM7250-AC", "SNAPDRAGON768G"),
+            cpuClusters = "1+1+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 620"
+        ),
+        SocSpec(
+            displayName = "骁龙 710",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "入门",
+            aliases = listOf("SDM710", "SNAPDRAGON710"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 616"
+        ),
+        SocSpec(
+            displayName = "骁龙 670",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "入门",
+            aliases = listOf("SDM670", "SNAPDRAGON670"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 615"
+        ),
+        SocSpec(
+            displayName = "骁龙 630",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "入门",
+            aliases = listOf("SDM630", "SNAPDRAGON630"),
+            cpuClusters = "8 核同频",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 508"
+        ),
+        SocSpec(
+            displayName = "骁龙 625 / 626",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "入门",
+            aliases = listOf("MSM8953", "MSM8953PRO", "SNAPDRAGON625", "SNAPDRAGON626"),
+            cpuClusters = "8 核同频",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 506"
+        ),
+        SocSpec(
+            displayName = "骁龙 450",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "入门",
+            aliases = listOf("SDM450", "SNAPDRAGON450"),
+            cpuClusters = "8 核同频",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 506"
+        ),
+        SocSpec(
+            displayName = "骁龙 439 / 429",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "入门",
+            aliases = listOf("MSM8940", "MSM8937", "SNAPDRAGON439", "SNAPDRAGON429"),
+            cpuClusters = "8 核同频",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 505 / 504"
+        ),
+
+        // ---------- 骁龙：旗舰老将（8 系） ----------
+        SocSpec(
+            displayName = "骁龙 821 / 820",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "中高端",
+            aliases = listOf("MSM8996", "MSM8996PRO", "SNAPDRAGON821", "SNAPDRAGON820"),
+            cpuClusters = "2+2",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 530"
+        ),
+        SocSpec(
+            displayName = "骁龙 810",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "中端",
+            aliases = listOf("MSM8994", "SNAPDRAGON810"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Adreno 430"
+        ),
+        SocSpec(
+            displayName = "骁龙 801",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "入门",
+            aliases = listOf("MSM8974", "MSM8974AC", "SNAPDRAGON801"),
+            cpuClusters = "4 核同频",
+            cpuArchitecture = "ARMv7",
+            gpuName = "Adreno 330"
+        ),
+
+        // ---------- 天玑补齐 ----------
+        SocSpec(
+            displayName = "天玑 920",
+            brandName = "联发科",
+            badgeText = "联发科",
+            performanceLevel = "中端",
+            aliases = listOf("MT6877", "MT6877V", "MT6877VZA", "DIMENSITY920"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G68",
+            gpuCores = "4 核"
+        ),
+        SocSpec(
+            displayName = "天玑 900 / 820",
+            brandName = "联发科",
+            badgeText = "联发科",
+            performanceLevel = "中端",
+            aliases = listOf("MT6875", "DIMENSITY900", "DIMENSITY820"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G68"
+        ),
+        SocSpec(
+            displayName = "天玑 720",
+            brandName = "联发科",
+            badgeText = "联发科",
+            performanceLevel = "中端",
+            aliases = listOf("MT6853", "DIMENSITY720"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G57"
+        ),
+        SocSpec(
+            displayName = "天玑 7025 / 8020",
+            brandName = "联发科",
+            badgeText = "联发科",
+            performanceLevel = "中端",
+            aliases = listOf("MT6878", "DIMENSITY7025", "DIMENSITY8020"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G610"
+        ),
+        SocSpec(
+            displayName = "天玑 6300 / 6080",
+            brandName = "联发科",
+            badgeText = "联发科",
+            performanceLevel = "入门",
+            aliases = listOf("MT6835", "DIMENSITY6300", "DIMENSITY6080"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G57"
+        ),
+        SocSpec(
+            displayName = "天玑 6020 / 6100+",
+            brandName = "联发科",
+            badgeText = "联发科",
+            performanceLevel = "入门",
+            aliases = listOf("DIMENSITY6020"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G57"
+        ),
+        SocSpec(
+            displayName = "天玑 1050 / 1300",
+            brandName = "联发科",
+            badgeText = "联发科",
+            performanceLevel = "中高端",
+            aliases = listOf("DIMENSITY1050", "DIMENSITY1300"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G77"
+        ),
+        SocSpec(
+            displayName = "Helio G96 / G100",
+            brandName = "联发科",
+            badgeText = "联发科",
+            performanceLevel = "中端",
+            aliases = listOf("MT6781", "HELIOG96", "HELIOG100"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G57"
+        ),
+        SocSpec(
+            displayName = "Helio G70 / G50 / G35",
+            brandName = "联发科",
+            badgeText = "联发科",
+            performanceLevel = "入门",
+            aliases = listOf("MT6769V", "MT6765", "HELIOG70", "HELIOG50", "HELIOG35"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G52"
+        ),
+        SocSpec(
+            displayName = "Helio P60 / P70 / P90",
+            brandName = "联发科",
+            badgeText = "联发科",
+            performanceLevel = "入门",
+            aliases = listOf("MT6771", "MT6779", "HELIOP60", "HELIOP70", "HELIOP90"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G72"
+        ),
+        SocSpec(
+            displayName = "Helio P22 / P35 / A22",
+            brandName = "联发科",
+            badgeText = "联发科",
+            performanceLevel = "入门",
+            aliases = listOf("MT6762", "MT6763", "MT6761", "MT6739", "HELIOP22", "HELIOP35", "HELIOA22"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "PowerVR GE8320"
+        ),
+
+        // ---------- 猎户座（Exynos）补齐 ----------
+        SocSpec(
+            displayName = "Exynos 1580",
+            brandName = "三星 Exynos",
+            badgeText = "猎户座",
+            performanceLevel = "中高端",
+            aliases = listOf("S5E8865", "EXYNOS1580"),
+            cpuClusters = "1+3+4",
+            cpuArchitecture = "ARMv9 / AArch64",
+            gpuName = "Xclipse 540"
+        ),
+        SocSpec(
+            displayName = "Exynos 1480",
+            brandName = "三星 Exynos",
+            badgeText = "猎户座",
+            performanceLevel = "中高端",
+            aliases = listOf("S5E8885", "EXYNOS1480"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv9 / AArch64",
+            gpuName = "Xclipse 530"
+        ),
+        SocSpec(
+            displayName = "Exynos 1380",
+            brandName = "三星 Exynos",
+            badgeText = "猎户座",
+            performanceLevel = "中端",
+            aliases = listOf("S5E8835", "EXYNOS1380"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G68"
+        ),
+        SocSpec(
+            displayName = "Exynos 1280",
+            brandName = "三星 Exynos",
+            badgeText = "猎户座",
+            performanceLevel = "中端",
+            aliases = listOf("S5E8825", "EXYNOS1280"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G68"
+        ),
+        SocSpec(
+            displayName = "Exynos 1080",
+            brandName = "三星 Exynos",
+            badgeText = "猎户座",
+            performanceLevel = "中高端",
+            aliases = listOf("EXYNOS1080"),
+            cpuClusters = "1+3+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G78"
+        ),
+        SocSpec(
+            displayName = "Exynos 990",
+            brandName = "三星 Exynos",
+            badgeText = "猎户座",
+            performanceLevel = "旗舰",
+            aliases = listOf("S5E9830", "EXYNOS990"),
+            cpuClusters = "2+2+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G77"
+        ),
+        SocSpec(
+            displayName = "Exynos 9825 / 9820",
+            brandName = "三星 Exynos",
+            badgeText = "猎户座",
+            performanceLevel = "旗舰",
+            aliases = listOf("S5E9825", "S5E9820", "EXYNOS9825", "EXYNOS9820"),
+            cpuClusters = "2+2+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G76"
+        ),
+        SocSpec(
+            displayName = "Exynos 9810",
+            brandName = "三星 Exynos",
+            badgeText = "猎户座",
+            performanceLevel = "中高端",
+            aliases = listOf("S5E9810", "EXYNOS9810"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G72"
+        ),
+        SocSpec(
+            displayName = "Exynos 9611 / 9610",
+            brandName = "三星 Exynos",
+            badgeText = "猎户座",
+            performanceLevel = "中端",
+            aliases = listOf("S5E9611", "S5E9610", "EXYNOS9611", "EXYNOS9610"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G72"
+        ),
+        SocSpec(
+            displayName = "Exynos 8895 / 8890",
+            brandName = "三星 Exynos",
+            badgeText = "猎户座",
+            performanceLevel = "中高端",
+            aliases = listOf("S5E8895", "S5E8890", "EXYNOS8895", "EXYNOS8890"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G71"
+        ),
+        SocSpec(
+            displayName = "Exynos 7885 / 7904",
+            brandName = "三星 Exynos",
+            badgeText = "猎户座",
+            performanceLevel = "入门",
+            aliases = listOf("S5E7885", "S5E7904", "EXYNOS7885", "EXYNOS7904"),
+            cpuClusters = "2+6",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G71"
+        ),
+
+        // ---------- 麒麟补齐 ----------
+        SocSpec(
+            displayName = "麒麟 990 5G / 990E",
+            brandName = "华为麒麟",
+            badgeText = "麒麟",
+            performanceLevel = "中高端",
+            aliases = listOf("KIRIN990E", "KIRIN9905G", "HI6245"),
+            cpuClusters = "2+2+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G76"
+        ),
+        SocSpec(
+            displayName = "麒麟 655 / 659 / 650",
+            brandName = "华为麒麟",
+            badgeText = "麒麟",
+            performanceLevel = "入门",
+            aliases = listOf("HI6250", "HI6250M", "KIRIN655", "KIRIN659", "KIRIN650"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-T830"
+        ),
+        SocSpec(
+            displayName = "麒麟 710A / 710F",
+            brandName = "华为麒麟",
+            badgeText = "麒麟",
+            performanceLevel = "入门",
+            aliases = listOf("KIRIN710A", "KIRIN710F"),
+            cpuClusters = "4+4",
+            cpuArchitecture = "ARMv8 / AArch64",
+            gpuName = "Mali-G51"
+        ),
+
+        // ---------- 紫光展锐补齐 ----------
+        SocSpec(
+            displayName = "紫光展锐 T310 / SC9863A 系列",
+            brandName = "紫光展锐 / 展讯",
+            badgeText = "展锐",
+            performanceLevel = "入门",
+            aliases = listOf("UMS312", "T310", "SC9863A1", "SC9863A2"),
+            cpuClusters = "4 核同频",
+            cpuArchitecture = "ARM64",
+            gpuName = "PowerVR GE8322"
+        ),
+        SocSpec(
+            displayName = "紫光展锐 SC9820E / SC7731E",
+            brandName = "紫光展锐 / 展讯",
+            badgeText = "展锐",
+            performanceLevel = "入门",
+            aliases = listOf("SC9820E", "SC7731E", "SPRD9820E"),
+            cpuClusters = "4 核同频",
+            cpuArchitecture = "ARM64",
+            gpuName = "Mali-T820"
+        ),
+        SocSpec(
+            displayName = "紫光展锐 T9100",
+            brandName = "紫光展锐 / 展讯",
+            badgeText = "展锐",
+            performanceLevel = "中高端",
+            aliases = listOf("T9100", "UMS9620A"),
+            cpuClusters = "1+3+4",
+            cpuArchitecture = "ARMv9 / AArch64",
+            gpuName = "未公开"
         )
     )
 
@@ -1135,10 +1673,12 @@ object SocSpecRepository {
                 val nAlias = normalize(alias)
                 for (candidate in normalizedCandidates) {
                     when {
-                        candidate == nAlias -> score += 100
+                        // 完全相等时按别名长度加权：越具体的别名（例如 DIMENSITY7050）越优先于共用代号（MT6877）
+                        candidate == nAlias -> score += EXACT_MATCH_SCORE + nAlias.length
                         // 极短别名（例如玄戒的 "O1"）只认精确相等，避免误匹配到别的型号
                         nAlias.length >= MIN_PARTIAL_MATCH_LENGTH &&
-                            (candidate.contains(nAlias) || nAlias.contains(candidate)) -> score += 45
+                            (candidate.contains(nAlias) || nAlias.contains(candidate)) ->
+                            score += PARTIAL_MATCH_SCORE + nAlias.length
                     }
                 }
             }
@@ -1167,6 +1707,10 @@ object SocSpecRepository {
 
     /** 部分匹配要求别名至少有 4 个字符。 */
     private const val MIN_PARTIAL_MATCH_LENGTH = 4
+
+    private const val EXACT_MATCH_SCORE = 100
+
+    private const val PARTIAL_MATCH_SCORE = 45
 
     /** 达到该分数才认为匹配成功。 */
     private const val MATCH_THRESHOLD = 45

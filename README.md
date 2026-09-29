@@ -4,7 +4,7 @@
 
 ## 当前版本
 
-v0.3（界面重构 + 深色模式 + 内存/芯片识别增强，详见 [CHANGELOG.md](CHANGELOG.md)）
+v0.4（芯片库全量补齐 + 系统识别，详见 [CHANGELOG.md](CHANGELOG.md)）
 
 ## 已实现功能
 
@@ -14,6 +14,8 @@ v0.3（界面重构 + 深色模式 + 内存/芯片识别增强，详见 [CHANGEL
 - 电池信息：电量 / 容量 / 电流 / 电压 / 温度 / 循环次数（每秒刷新）
 - 传感器信息：热区温度 + 硬件传感器清单
 - 系统信息：版本 / 安全补丁 / Build 标识 / 存储 / Root / Treble
+- 系统识别：澎湃OS、MIUI、ColorOS、realme UI、OxygenOS、OriginOS / Funtouch、One UI、
+  鸿蒙 / EMUI、Flyme、MagicOS、类原生等
 - 深色模式：跟随系统自动切换，全部页面使用同一套语义化配色
 
 ## 界面与配色

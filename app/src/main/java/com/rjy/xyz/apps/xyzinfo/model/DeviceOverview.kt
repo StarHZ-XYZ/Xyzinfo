@@ -7,6 +7,8 @@ data class DeviceOverview(
     val displayName: String,
     val androidRelease: String,
     val apiLevel: Int,
+    /** 系统 UI 名称，例如「澎湃OS（HyperOS） V816」。 */
+    val romName: String?,
     val kernelRelease: String,
     val brand: String,
     val manufacturer: String,

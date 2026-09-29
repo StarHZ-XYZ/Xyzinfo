@@ -15,6 +15,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.soc.SocInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.system.SystemInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
+import com.rjy.xyz.apps.xyzinfo.util.Labels
 
 /**
  * 首页：展示设备概要，并作为各检测页面的入口。
@@ -36,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private fun renderOverview(overview: DeviceOverview) = with(binding) {
         tvDeviceName.text = overview.displayName
         tvAndroidVersion.setInfoRow("Android 版本：${overview.androidRelease}（API ${overview.apiLevel}）")
+        tvRomName.setInfoRow("系统 UI：${overview.romName ?: Labels.NOT_PUBLIC}")
         tvKernelVersion.setInfoRow("Linux 内核：${overview.kernelRelease}")
         tvBrandManufacturer.setInfoRow("品牌：${overview.brand} / ${overview.manufacturer}")
         tvDeviceCode.setInfoRow("设备代号：${overview.deviceCode} / ${overview.product}")

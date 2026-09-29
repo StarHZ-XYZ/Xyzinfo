@@ -3,7 +3,9 @@ package com.rjy.xyz.apps.xyzinfo.ui.system
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.rjy.xyz.apps.xyzinfo.data.SystemInfoProvider
+import com.rjy.xyz.apps.xyzinfo.data.RomInfoProvider
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivitySystemInfoBinding
+import com.rjy.xyz.apps.xyzinfo.model.RomInfo
 import com.rjy.xyz.apps.xyzinfo.model.SystemInfo
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
@@ -28,6 +30,15 @@ class SystemInfoActivity : AppCompatActivity() {
         binding.root.applySystemBarPadding()
 
         render(SystemInfoProvider.load(this))
+        renderRom(RomInfoProvider.load())
+    }
+
+    private fun renderRom(rom: RomInfo) = with(binding) {
+        tvRomName.setInfoRow("系统类型：${rom.name}")
+        tvRomVersion.setInfoRow("系统版本号：${rom.version ?: Labels.NOT_PUBLIC}")
+        tvDisplayId.setInfoRow("Build 显示 ID：${rom.displayId ?: Labels.NOT_PUBLIC}")
+        tvBuildType.setInfoRow("构建类型：${rom.buildType ?: Labels.NOT_PUBLIC}")
+        tvRomSource.setInfoRow("识别依据：${rom.source ?: Labels.NOT_PUBLIC}")
     }
 
     private fun render(info: SystemInfo) = with(binding) {

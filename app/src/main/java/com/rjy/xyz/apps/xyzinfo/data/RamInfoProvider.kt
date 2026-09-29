@@ -8,6 +8,7 @@ import com.rjy.xyz.apps.xyzinfo.model.RamInfo
 import com.rjy.xyz.apps.xyzinfo.util.DeviceFacts
 import com.rjy.xyz.apps.xyzinfo.util.Labels
 import com.rjy.xyz.apps.xyzinfo.util.ProcFs
+import java.io.File
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -19,7 +20,10 @@ object RamInfoProvider {
 
     private const val MEM_INFO_PATH = "/proc/meminfo"
 
-    private const val DEVFREQ_DIR = "/sys/class/devfreq"
+    private const val DEVFREQ_CLASS_DIR = "/sys/class/devfreq"
+
+    /** 部分平台（如高通）把 devfreq 节点挂在 /sys/devices/platform/soc/<设备>/devfreq/<节点>。 */
+    private const val SOC_PLATFORM_DIR = "/sys/devices/platform/soc"
 
     /** 常见容量档位，用于把实测可用内存吸附回标称容量。 */
     private val NOMINAL_CAPACITY_GIGABYTES = listOf(2, 3, 4, 6, 8, 12, 16, 18, 24, 32)
@@ -41,6 +45,30 @@ object RamInfoProvider {
         "/sys/kernel/debug/clk/bimc_clk/clk_rate",
         "/sys/kernel/debug/clk/mccc_clk/clk_rate",
         "/sys/kernel/debug/clk/gcc_ddrss_gpu_axi_clk/clk_rate"
+    )
+
+    /** 按芯片型号推断内存世代的关键字（保守列举，界面会标注“按芯片推断”）。 */
+    private val LPDDR5X_CHIPS = listOf(
+        "8 Elite", "8 Gen 3", "9400", "9500", "9300", "Tensor G5", "玄戒 O3"
+    )
+
+    private val LPDDR5_CHIPS = listOf(
+        "8 Gen 2", "8 Gen 1", "8+ Gen 1", "888", "865", "870", "8s Gen", "7+ Gen 3", "7 Gen 3",
+        "9200", "9000", "1200", "8200", "8300", "8400", "8350",
+        "Tensor G1", "Tensor G2", "Tensor G3", "Tensor G4",
+        "麒麟 9000", "麒麟 9010", "麒麟 9020", "玄戒 O1"
+    )
+
+    private val LPDDR4X_CHIPS = listOf(
+        "778G", "780G", "765G", "750G", "730G", "732G", "720G", "7 Gen 1", "7s Gen",
+        "695", "690", "680", "685", "675", "662", "665", "660", "636",
+        "835", "845", "855", "860",
+        "麒麟 990", "麒麟 985", "麒麟 980", "麒麟 970", "麒麟 960", "麒麟 950",
+        "麒麟 820", "麒麟 810", "麒麟 710",
+        "T820", "T770", "T760", "T730", "T618", "T616", "T610", "T612", "T606",
+        "SC9863A", "SC9832E",
+        "7050", "7200", "6100", "天玑 930", "1080", "天玑 900", "天玑 800",
+        "Helio G99", "Helio G95", "Helio G88", "Helio G85", "Helio G80"
     )
 
     fun load(context: Context): RamInfo {
@@ -66,6 +94,7 @@ object RamInfoProvider {
             null
         }
         val frequency = readMemoryFrequency()
+        val reading = frequency.reading
 
         return RamInfo(
             measuredTotalBytes = totalBytes,
@@ -82,10 +111,12 @@ object RamInfoProvider {
             swapUsedBytes = swapUsedKb?.times(1024),
             typeName = detectType(memInfoRaw),
             brandName = detectBrand(),
-            currentFrequencyMHz = frequency?.currentMHz,
-            minFrequencyMHz = frequency?.minMHz,
-            maxFrequencyMHz = frequency?.maxMHz,
-            frequencySource = frequency?.source,
+            currentFrequencyMHz = reading?.currentMHz,
+            minFrequencyMHz = reading?.minMHz,
+            maxFrequencyMHz = reading?.maxMHz,
+            frequencySource = reading?.source,
+            frequencyNote = if (reading == null) frequency.note else null,
+            inferredMemoryType = inferMemoryType(),
             memInfoPreview = ProcFs.preview(memInfoRaw, "原始 /proc/meminfo")
         )
     }
@@ -140,46 +171,99 @@ object RamInfoProvider {
     /**
      * 读取内存频率。
      *
-     * 先扫描 /sys/class/devfreq 下与 DDR 相关的调频节点（覆盖高通、联发科、三星、麒麟等平台），
-     * 扫不到再退回老平台的固定节点列表。
+     * 依次尝试：标准 devfreq 目录、平台目录下挂载的 devfreq 节点、老平台固定节点。
+     * 部分机型（尤其高通新平台）节点存在但被 SELinux 限制，普通应用读不到，
+     * 这种情况会返回原因说明，界面直接展示，便于用户判断是不是权限问题。
      */
-    private fun readMemoryFrequency(): MemoryFrequency? {
-        val candidates = ProcFs.listFiles(DEVFREQ_DIR)
-            .filter { it.isDirectory }
-            .map { dir ->
-                val name = dir.name.lowercase(Locale.ROOT)
-                val priority = when {
-                    DDR_NODE_KEYWORDS.any { it in name } -> 0
-                    INTERCONNECT_NODE_KEYWORDS.any { it in name } -> 1
-                    else -> 2
-                }
-                dir to priority
-            }
-            .filter { it.second < 2 }
-            .sortedBy { it.second }
+    private fun readMemoryFrequency(): FrequencyProbe {
+        val nodes = collectMemoryDevfreqNodes()
 
-        for ((dir, _) in candidates) {
-            val base = dir.absolutePath
-            val currentMHz = toMegaHertz(ProcFs.readLong("$base/cur_freq")) ?: continue
-            return MemoryFrequency(
-                currentMHz = currentMHz,
-                minMHz = toMegaHertz(ProcFs.readLong("$base/min_freq")),
-                maxMHz = toMegaHertz(ProcFs.readLong("$base/max_freq")),
-                source = dir.name
+        for (node in nodes) {
+            val base = node.absolutePath
+            val currentMHz = toMegaHertz(ProcFs.readLong("$base/cur_freq"))
+            if (currentMHz == null) continue
+            return FrequencyProbe(
+                reading = MemoryFrequency(
+                    currentMHz = currentMHz,
+                    minMHz = toMegaHertz(ProcFs.readLong("$base/min_freq")),
+                    maxMHz = toMegaHertz(ProcFs.readLong("$base/max_freq")),
+                    source = node.name
+                ),
+                note = null
             )
         }
 
         for (path in FALLBACK_FREQUENCY_PATHS) {
             val currentMHz = toMegaHertz(ProcFs.readLong(path)) ?: continue
-            return MemoryFrequency(
-                currentMHz = currentMHz,
-                minMHz = null,
-                maxMHz = null,
-                source = path.substringAfterLast('/')
+            return FrequencyProbe(
+                reading = MemoryFrequency(
+                    currentMHz = currentMHz,
+                    minMHz = null,
+                    maxMHz = null,
+                    source = path.substringAfterLast('/')
+                ),
+                note = null
             )
         }
-        return null
+
+        return FrequencyProbe(reading = null, note = unavailableReason(nodes))
     }
+
+    /** 收集与内存相关的 devfreq 节点，DDR 直连节点优先于内存互联节点。 */
+    private fun collectMemoryDevfreqNodes(): List<File> {
+        val nodes = mutableListOf<File>()
+
+        ProcFs.listFiles(DEVFREQ_CLASS_DIR)
+            .filter { it.isDirectory && it.isMemoryRelated() }
+            .forEach { nodes += it }
+
+        for (deviceDir in ProcFs.listFiles(SOC_PLATFORM_DIR)) {
+            val devfreqDir = File(deviceDir, "devfreq")
+            ProcFs.listFiles(devfreqDir.absolutePath)
+                .filter { it.isDirectory && it.isMemoryRelated() }
+                .forEach { nodes += it }
+        }
+
+        return nodes.distinct().sortedBy { nodePriority(it.name) }
+    }
+
+    private fun File.isMemoryRelated(): Boolean =
+        name.isDdrNode() || name.isInterconnectNode()
+
+    private fun String.isDdrNode(): Boolean {
+        val lower = lowercase(Locale.ROOT)
+        return DDR_NODE_KEYWORDS.any { it in lower }
+    }
+
+    private fun String.isInterconnectNode(): Boolean {
+        val lower = lowercase(Locale.ROOT)
+        return INTERCONNECT_NODE_KEYWORDS.any { it in lower }
+    }
+
+    private fun nodePriority(name: String): Int = if (name.isDdrNode()) 0 else 1
+
+    private fun unavailableReason(nodes: List<File>): String = when {
+        nodes.isEmpty() -> "系统中未找到可读的 DDR 调频节点"
+        else -> "找到节点 ${nodes.first().name} 但无读取权限（系统限制，部分机型需 root）"
+    }
+
+    /**
+     * 系统不公开内存颗粒型号，这里按匹配到的芯片型号保守推断世代，
+     * 结果显示时会明确标注“按芯片推断”。
+     */
+    private fun inferMemoryType(): String? {
+        val chipName = SocInfoProvider.findSpec()?.displayName ?: return null
+
+        return when {
+            chipName.matchesAny(LPDDR5X_CHIPS) -> "LPDDR5X 级别"
+            chipName.matchesAny(LPDDR5_CHIPS) -> "LPDDR5 级别"
+            chipName.matchesAny(LPDDR4X_CHIPS) -> "LPDDR4X 级别"
+            else -> null
+        }
+    }
+
+    private fun String.matchesAny(keywords: List<String>): Boolean =
+        keywords.any { it in this }
 
     /**
      * 把节点原始值统一成 MHz。
@@ -201,6 +285,11 @@ object RamInfoProvider {
         val minMHz: Int?,
         val maxMHz: Int?,
         val source: String
+    )
+
+    private data class FrequencyProbe(
+        val reading: MemoryFrequency?,
+        val note: String?
     )
 
     private fun extractKiloBytes(memInfoRaw: String, key: String): Long? {

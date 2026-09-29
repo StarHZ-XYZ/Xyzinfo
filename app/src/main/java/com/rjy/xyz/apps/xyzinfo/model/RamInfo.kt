@@ -26,5 +26,9 @@ data class RamInfo(
     val maxFrequencyMHz: Int?,
     /** 频率读自哪个系统节点，便于机型适配排查。 */
     val frequencySource: String?,
+    /** 读不到频率时的原因说明（例如找到了节点但无权限）。 */
+    val frequencyNote: String?,
+    /** 系统不公开内存颗粒时，按芯片型号推断的世代，例如 LPDDR4X。 */
+    val inferredMemoryType: String?,
     val memInfoPreview: String
 )

@@ -74,6 +74,35 @@ class SocSpecRepositoryTest {
     }
 
     @Test
+    fun `共用代号按更具体的别名归属`() {
+        // MT6877 同时出现在天玑 920 与天玑 7050 的公开资料里，应归到天玑 920
+        assertEquals(
+            "天玑 920",
+            SocSpecRepository.findBestSpec(listOf("MT6877"), emptyList(), null)?.displayName
+        )
+        assertEquals(
+            "天玑 7050 / 6100+",
+            SocSpecRepository.findBestSpec(listOf("DIMENSITY7050"), emptyList(), null)?.displayName
+        )
+    }
+
+    @Test
+    fun `新收录的老机型也能识别`() {
+        assertEquals(
+            "骁龙 778G / 778G+",
+            SocSpecRepository.findBestSpec(listOf("SM7325"), emptyList(), null)?.displayName
+        )
+        assertEquals(
+            "Exynos 9825 / 9820",
+            SocSpecRepository.findBestSpec(listOf("S5E9820"), emptyList(), null)?.displayName
+        )
+        assertEquals(
+            "天玑 920",
+            SocSpecRepository.findBestSpec(listOf("Dimensity 920"), emptyList(), null)?.displayName
+        )
+    }
+
+    @Test
     fun `无法识别时返回 null`() {
         assertNull(SocSpecRepository.findBestSpec(listOf("完全未知的芯片"), emptyList(), null))
         assertNull(SocSpecRepository.findBestSpec(emptyList(), emptyList(), null))

@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import com.rjy.xyz.apps.xyzinfo.data.soc.SocSpecRepository
+import com.rjy.xyz.apps.xyzinfo.data.soc.SocSpec
+import com.rjy.xyz.apps.xyzinfo.data.soc.SocCodeNaming
 import com.rjy.xyz.apps.xyzinfo.model.SocBrand
 import com.rjy.xyz.apps.xyzinfo.model.SocInfo
 import com.rjy.xyz.apps.xyzinfo.util.DeviceFacts
@@ -67,9 +69,12 @@ object SocInfoProvider {
         val spec = SocSpecRepository.findBestSpec(candidates, deviceHints(), gpuMaxFreqMHz)
         val graphics = readGraphicsSupport(context)
         val brandName = spec?.brandName ?: detectBrandFallback(cpuInfoRaw)
+        val modelCode = collectBestCode(candidates)
 
         return SocInfo(
-            displayName = spec?.displayName ?: collectBestCode(candidates),
+            displayName = spec?.displayName
+                ?: SocCodeNaming.friendlyName(modelCode)
+                ?: modelCode,
             brandName = brandName,
             brand = spec?.let { SocBrand.ofBadge(it.badgeText) } ?: SocBrand.ofBrandName(brandName),
             badge = spec?.badgeText ?: DEFAULT_BADGE,
@@ -79,7 +84,7 @@ object SocInfoProvider {
             coreCount = coreCount,
             clusters = spec?.cpuClusters ?: detectCpuClusters(),
             manufacturer = socManufacturer(),
-            modelCode = collectBestCode(candidates),
+            modelCode = modelCode,
             hardware = DeviceFacts.orUnknown(Build.HARDWARE),
             gpuName = spec?.gpuName ?: Labels.UNKNOWN,
             gpuCores = spec?.gpuCores ?: Labels.NOT_PUBLIC,
@@ -92,6 +97,15 @@ object SocInfoProvider {
             perCoreMaxFreqKHz = readPerCoreMaxFreq(coreCount),
             cpuInfoPreview = ProcFs.preview(cpuInfoRaw, "原始 /proc/cpuinfo")
         )
+    }
+
+    /**
+     * 只做「识别芯片规格」这一步，供其它模块复用（例如内存页推断 LPDDR 世代）。
+     */
+    fun findSpec(): SocSpec? {
+        val cpuInfoRaw = ProcFs.readText(DeviceFacts.CPU_INFO_PATH)
+        val gpuMaxFreqMHz = readFrequencyMHz(GPU_MAX_FREQ_PATHS)
+        return SocSpecRepository.findBestSpec(buildCandidates(cpuInfoRaw), deviceHints(), gpuMaxFreqMHz)
     }
 
     /** 从 Build 字段与 /proc/cpuinfo 里收集可能的 SoC 型号。 */
