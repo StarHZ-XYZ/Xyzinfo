@@ -25,7 +25,7 @@
             style="@style/Text.PageTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="手机参数检测" />
+            android:text="XYZ-Devinfo 设备检测" />
 
         <TextView
             android:id="@+id/tvSubTitle"
@@ -33,7 +33,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="设备信息，一眼收拢" />
+            android:text="作者：星幻终（RJYZ）" />
 
         <!-- 当前设备 -->
         <com.google.android.material.card.MaterialCardView
@@ -694,13 +694,61 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 机型库更新 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="机型库更新"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvUpdateStatus"
+                    style="@style/Text.Row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="数据来源：内置资源" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnUpdateDeviceNames"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:backgroundTint="@color/accent"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="检查更新"
+                    android:textColor="@color/text_on_accent"
+                    android:textSize="14sp"
+                    app:cornerRadius="12dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <TextView
             android:id="@+id/tvFooterInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="26dp"
             android:gravity="center"
-            android:text="后续会继续增加更详细的硬件检测能力\n星幻终 · v0.5"
+            android:text="XYZ-Devinfo · 星幻终（RJYZ）"
             android:textColor="@color/text_tertiary"
             android:textSize="11sp" />
     </LinearLayout>

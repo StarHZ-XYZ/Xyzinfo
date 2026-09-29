@@ -1,6 +1,7 @@
 package com.rjy.xyz.apps.xyzinfo.data
 
 import android.content.Context
+import java.io.File
 import java.util.zip.GZIPInputStream
 
 /**
@@ -36,6 +37,19 @@ object DeviceNameRepository {
     @Volatile
     private var modelNames: Map<String, String>? = null
 
+    /** 更新后的数据存放目录（放在应用私有目录，卸载即清除）。 */
+    fun updatedDir(context: Context): File = File(context.filesDir, "devicenames")
+
+    /** 数据来源说明，用于界面展示。 */
+    fun dataSource(context: Context): String =
+        if (File(updatedDir(context), "$DEVICE_FILE.gz").exists()) "已更新（下载数据）" else "内置资源"
+
+    fun reload(context: Context) {
+        deviceNames = null
+        modelNames = null
+        load(context)
+    }
+
     /** 加载映射库；耗时约百毫秒级，建议在后台线程调用。 */
     fun load(context: Context) {
         if (deviceNames == null) deviceNames = read(context, "device_names")
@@ -70,9 +84,16 @@ object DeviceNameRepository {
      */
     private fun read(context: Context, baseName: String): Map<String, String> = runCatching {
         val map = HashMap<String, String>(32768)
-        val plainStream = runCatching { context.assets.open("$baseName.tsv") }.getOrNull()
-        val raw = plainStream ?: context.assets.open("$baseName.tsv.gz")
-        val reader = if (plainStream != null) raw.bufferedReader() else GZIPInputStream(raw).bufferedReader()
+        val updated = File(updatedDir(context), "$baseName.tsv.gz")
+
+        val reader = if (updated.exists()) {
+            GZIPInputStream(updated.inputStream()).bufferedReader()
+        } else {
+            // 注意：AAPT 会把 .gz 资源自动解压并去掉扩展名，先按 .tsv 读，读不到再退回 .tsv.gz
+            val plainStream = runCatching { context.assets.open("$baseName.tsv") }.getOrNull()
+            val raw = plainStream ?: context.assets.open("$baseName.tsv.gz")
+            if (plainStream != null) raw.bufferedReader() else GZIPInputStream(raw).bufferedReader()
+        }
 
         reader.useLines { lines ->
                 lines.forEach { line ->
@@ -82,7 +103,9 @@ object DeviceNameRepository {
                     }
                 }
             }
-        raw.close()
         map
     }.getOrDefault(emptyMap())
+
+    const val DEVICE_FILE = "device_names"
+    const val MODEL_FILE = "model_names"
 }

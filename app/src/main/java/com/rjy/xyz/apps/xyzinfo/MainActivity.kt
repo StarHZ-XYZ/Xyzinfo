@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.rjy.xyz.apps.xyzinfo.data.DeviceOverviewProvider
 import com.rjy.xyz.apps.xyzinfo.data.DeviceNameRepository
+import com.rjy.xyz.apps.xyzinfo.data.DeviceNameUpdater
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityMainBinding
 import com.rjy.xyz.apps.xyzinfo.model.DeviceOverview
 import com.rjy.xyz.apps.xyzinfo.ui.battery.BatteryInfoActivity
@@ -37,6 +38,41 @@ class MainActivity : AppCompatActivity() {
         renderOverview(DeviceOverviewProvider.load())
         setupNavigation()
         loadDeviceName()
+        setupUpdate()
+    }
+
+    /** 机型库更新入口：显示当前数据来源与条目数，点按钮从项目仓库拉取最新名单。 */
+    private fun setupUpdate() {
+        showUpdateStatus()
+        binding.btnUpdateDeviceNames.setOnClickListener {
+            binding.btnUpdateDeviceNames.isEnabled = false
+            binding.tvUpdateStatus.setInfoRow("更新状态：正在检查…")
+
+            Thread({
+                val result = DeviceNameUpdater.update(this)
+                runOnUiThread {
+                    if (isFinishing) return@runOnUiThread
+                    binding.btnUpdateDeviceNames.isEnabled = true
+                    binding.tvUpdateStatus.setInfoRow("更新状态：${result.message}")
+                }
+            }, "device-name-update").start()
+        }
+    }
+
+    private fun showUpdateStatus() {
+        Thread({
+            val source = DeviceNameRepository.dataSource(this)
+            DeviceNameRepository.load(this)
+            val entries = DeviceNameRepository.entryCount()
+            val version = DeviceNameUpdater.localVersion(this)
+            runOnUiThread {
+                if (!isFinishing) {
+                    binding.tvUpdateStatus.setInfoRow(
+                        "数据来源：$source ｜ 版本：$version ｜ 已收录：$entries 条"
+                    )
+                }
+            }
+        }, "device-name-status").start()
     }
 
     /**
