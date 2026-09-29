@@ -2,9 +2,11 @@ package com.rjy.xyz.apps.xyzinfo
 
 import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.rjy.xyz.apps.xyzinfo.data.DeviceOverviewProvider
+import com.rjy.xyz.apps.xyzinfo.data.DeviceNameRepository
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityMainBinding
 import com.rjy.xyz.apps.xyzinfo.model.DeviceOverview
 import com.rjy.xyz.apps.xyzinfo.ui.battery.BatteryInfoActivity
@@ -34,6 +36,23 @@ class MainActivity : AppCompatActivity() {
 
         renderOverview(DeviceOverviewProvider.load())
         setupNavigation()
+        loadDeviceName()
+    }
+
+    /**
+     * 用内置机型库把设备代号 / 型号翻译成上市机型名（如「小米 Civi 1S」）。
+     *
+     * 映射库约 420KB 压缩数据，解析放在后台线程，读完再刷新标题。
+     */
+    private fun loadDeviceName() {
+        Thread({
+            val name = DeviceNameRepository.lookup(this, Build.DEVICE, Build.MODEL)
+            if (name != null) {
+                runOnUiThread {
+                    if (!isFinishing) binding.tvDeviceName.text = name
+                }
+            }
+        }, "device-name-lookup").start()
     }
 
     private fun renderOverview(overview: DeviceOverview) = with(binding) {
