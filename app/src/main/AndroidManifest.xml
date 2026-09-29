@@ -20,11 +20,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".SocInfoActivity" />
-        <activity android:name=".RamInfoActivity" />
-        <activity android:name=".ScreenInfoActivity" />
-        <activity android:name=".BatteryInfoActivity" />
-        <activity android:name=".SensorInfoActivity" />
-        <activity android:name=".SystemInfoActivity" />
+        <!-- 各硬件检测页面：统一放在 ui 包下，按功能分子包组织 -->
+        <activity android:name=".ui.soc.SocInfoActivity" />
+        <activity android:name=".ui.ram.RamInfoActivity" />
+        <activity android:name=".ui.screen.ScreenInfoActivity" />
+        <activity android:name=".ui.battery.BatteryInfoActivity" />
+        <activity android:name=".ui.sensor.SensorInfoActivity" />
+        <activity android:name=".ui.system.SystemInfoActivity" />
     </application>
 </manifest>
