@@ -22,3 +22,10 @@ data class BenchmarkResult(
     val cpuMultiDetail: String,
     val gpuDetail: String?
 )
+
+/** GPU 跑分结果。 */
+data class GpuResult(
+    val score: Int,
+    val framesPerSecond: Double,
+    val renderer: String
+)

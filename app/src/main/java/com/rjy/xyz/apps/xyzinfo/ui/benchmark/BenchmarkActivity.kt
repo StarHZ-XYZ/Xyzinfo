@@ -9,13 +9,12 @@ import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
 import com.rjy.xyz.apps.xyzinfo.data.SocInfoProvider
 import com.rjy.xyz.apps.xyzinfo.data.benchmark.CpuBenchmark
-import com.rjy.xyz.apps.xyzinfo.data.benchmark.GpuResult
-import com.rjy.xyz.apps.xyzinfo.data.benchmark.GpuStressRenderer
 import com.rjy.xyz.apps.xyzinfo.data.benchmark.ReferenceScores
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityBenchmarkBinding
 import com.rjy.xyz.apps.xyzinfo.databinding.ItemBenchmarkRowBinding
 import com.rjy.xyz.apps.xyzinfo.model.BenchmarkResult
 import com.rjy.xyz.apps.xyzinfo.model.ChipReference
+import com.rjy.xyz.apps.xyzinfo.model.GpuResult
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
@@ -24,6 +23,7 @@ import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * 性能测试页：CPU（整数/浮点/压缩/多核）与 GPU 跑分，并与内置参考机型对比。
@@ -82,7 +82,7 @@ class BenchmarkActivity : AppCompatActivity() {
 
         Thread({
             val cpu = CpuBenchmark.run { step -> postStatus(step) }
-            val gpu = if (ENABLE_GPU_STRESS_TEST) runGpuStress() else null
+            val gpu = runGpuStress()
 
             val result = BenchmarkResult(
                 cpuSingleScore = cpu.singleScore,
@@ -111,34 +111,39 @@ class BenchmarkActivity : AppCompatActivity() {
     }
 
     /**
-     * GPU 测试必须显示在屏幕上（离屏 pbuffer 在部分高通机型上渲染不落盘），
-     * 所以这里让出主线程：显示 GLSurfaceView → 等渲染器报回帧率 → 收起。
+     * GPU 测试走硬件加速 2D 管线：显示压力视图 → 等它报回帧率 → 收起。
+     *
+     * 不用 OpenGL 着色器是因为部分机型（HyperOS + Adreno 6xx）驱动在编译着色器时
+     * 会原生崩溃，直接把 App 杀掉。
      */
     private fun runGpuStress(): GpuResult? {
         val latch = CountDownLatch(1)
-        var measured: GpuResult? = null
-        val renderer = GpuStressRenderer { result ->
-            measured = result
-            latch.countDown()
-        }
+        var framesPerSecond: Double? = null
 
         postStatus("GPU 渲染测速")
         runOnUiThread {
             if (isFinishing) return@runOnUiThread
-            binding.glSurface.visibility = View.VISIBLE
-            binding.glSurface.setRenderer(renderer)
-            binding.glSurface.onResume()
-            binding.glSurface.queueEvent { renderer.startMeasure() }
+            binding.gpuStressView.visibility = View.VISIBLE
+            binding.gpuStressView.startMeasure { value ->
+                framesPerSecond = value
+                latch.countDown()
+            }
         }
 
         latch.await(GPU_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 
         runOnUiThread {
             if (isFinishing) return@runOnUiThread
-            binding.glSurface.onPause()
-            binding.glSurface.visibility = View.GONE
+            binding.gpuStressView.stopMeasure()
+            binding.gpuStressView.visibility = View.GONE
         }
-        return measured
+
+        val fps = framesPerSecond ?: return null
+        return GpuResult(
+            score = (fps * GPU_SCORE_PER_FPS).roundToInt(),
+            framesPerSecond = fps,
+            renderer = deviceGpuName ?: "硬件加速 2D 渲染"
+        )
     }
 
     private fun postStatus(step: String) {
@@ -220,14 +225,7 @@ class BenchmarkActivity : AppCompatActivity() {
         const val NEARBY_REFERENCE_COUNT = 15
         const val GPU_TIMEOUT_SECONDS = 20L
 
-        /**
-         * GPU 压力渲染测试默认关闭。
-         *
-         * 实测（Xiaomi Civi / HyperOS 14 + Adreno 6xx）：无论着色器复杂与否，
-         * GLSurfaceView 的着色器编译都会触发驱动级 SIGSEGV，直接把 App 杀掉，
-         * 而原生崩溃无法 try/catch。要重新启用，需要把它放到独立进程
-         * （android:process=":gpu"）里跑，让崩溃只影响子进程。
-         */
-        const val ENABLE_GPU_STRESS_TEST = false
+        /** GPU 分数换算：中端机（骁龙 778G）约 25 帧 → 900 分左右，后续按真机校准。 */
+        const val GPU_SCORE_PER_FPS = 27.0
     }
 }
