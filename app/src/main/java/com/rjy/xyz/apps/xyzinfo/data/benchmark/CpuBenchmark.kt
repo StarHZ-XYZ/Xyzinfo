@@ -11,14 +11,15 @@ import kotlin.math.roundToInt
  */
 object CpuBenchmark {
 
-    // 每项负载都调到 0.3~0.5 秒量级，避免测得太短导致分数抖动
-    private const val INTEGER_ITERATIONS = 240_000_000
-    private const val FLOAT_MATRIX_SIZE = 320
-    private const val FLOAT_ROUNDS = 2
-    private const val COMPRESS_ROUNDS = 8
+    // 每项负载都拉到 0.5~2 秒量级：压得更狠，同时分数抖动更小
+    private const val INTEGER_ITERATIONS = 720_000_000
+    private const val FLOAT_MATRIX_SIZE = 384
+    private const val FLOAT_ROUNDS = 4
+    private const val COMPRESS_ROUNDS = 200
     private const val COMPRESS_BYTES = 2 * 1024 * 1024
     private const val MULTI_THREAD_ITERATIONS = 2_000_000_000
-    private const val WARMUP_ITERATIONS = 20_000_000
+    private const val MULTI_THREAD_ROUNDS = 3
+    private const val WARMUP_ITERATIONS = 60_000_000
 
     // 归一化基准：按真机实测校准（Xiaomi Civi / 骁龙 778G），
     // 使该机单核 ≈ 1000、多核 ≈ 2500，与内置参考指数表对齐。
@@ -154,16 +155,16 @@ object CpuBenchmark {
     private fun measureMultiThreadRate(): Double {
         val threads = Runtime.getRuntime().availableProcessors().coerceIn(1, 8)
         val iterationsPerThread = (MULTI_THREAD_ITERATIONS / threads).coerceAtLeast(1)
-        val workers = (0 until threads).map {
-            Thread { integerWork(iterationsPerThread) }
-        }
 
         val start = System.nanoTime()
-        workers.forEach { it.start() }
-        workers.forEach { it.join() }
+        repeat(MULTI_THREAD_ROUNDS) {
+            val workers = (0 until threads).map { Thread { integerWork(iterationsPerThread) } }
+            workers.forEach { it.start() }
+            workers.forEach { it.join() }
+        }
         val seconds = (System.nanoTime() - start) / 1_000_000_000.0
 
-        val totalOperations = iterationsPerThread.toDouble() * threads
+        val totalOperations = iterationsPerThread.toDouble() * threads * MULTI_THREAD_ROUNDS
         return if (seconds > 0) totalOperations / seconds else 0.0
     }
 }

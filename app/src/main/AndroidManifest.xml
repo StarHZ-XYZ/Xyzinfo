@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 通信参数：网络类型 / 信号强度 / 小区信息需要电话状态；小区信息在 Android 10+ 还需要位置权限 -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -28,5 +33,6 @@
         <activity android:name=".ui.sensor.SensorInfoActivity" />
         <activity android:name=".ui.system.SystemInfoActivity" />
         <activity android:name=".ui.benchmark.BenchmarkActivity" />
+        <activity android:name=".ui.telephony.TelephonyInfoActivity" />
     </application>
 </manifest>

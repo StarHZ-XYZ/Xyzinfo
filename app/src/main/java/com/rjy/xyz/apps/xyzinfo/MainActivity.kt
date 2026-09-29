@@ -14,6 +14,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.sensor.SensorInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.soc.SocInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.system.SystemInfoActivity
+import com.rjy.xyz.apps.xyzinfo.ui.telephony.TelephonyInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import com.rjy.xyz.apps.xyzinfo.util.Labels
@@ -52,6 +53,7 @@ class MainActivity : AppCompatActivity() {
         cardScreen.setOnClickListener { open(ScreenInfoActivity::class.java) }
         cardBattery.setOnClickListener { open(BatteryInfoActivity::class.java) }
         cardSensor.setOnClickListener { open(SensorInfoActivity::class.java) }
+        cardTelephony.setOnClickListener { open(TelephonyInfoActivity::class.java) }
         cardSystem.setOnClickListener { open(SystemInfoActivity::class.java) }
         cardBenchmark.setOnClickListener { open(BenchmarkActivity::class.java) }
     }

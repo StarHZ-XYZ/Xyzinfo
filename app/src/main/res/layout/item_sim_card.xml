@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 单张 SIM 卡的信息卡片（按订阅动态添加） -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="14dp"
+    app:cardBackgroundColor="@color/surface"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/stroke"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="18dp">
+
+        <TextView
+            android:id="@+id/tvSimCardTitle"
+            style="@style/Text.SectionTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SIM" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_row_panel"
+            android:orientation="vertical"
+            android:paddingStart="14dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                android:id="@+id/tvSimCarrier"
+                style="@style/Text.Row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="11dp"
+                android:paddingBottom="11dp"
+                android:text="运营商：—" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider" />
+
+            <TextView
+                android:id="@+id/tvSimNumber"
+                style="@style/Text.Row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="11dp"
+                android:paddingBottom="11dp"
+                android:text="卡号：—" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider" />
+
+            <TextView
+                android:id="@+id/tvSimMccMnc"
+                style="@style/Text.Row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="11dp"
+                android:paddingBottom="11dp"
+                android:text="MCC / MNC：—" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider" />
+
+            <TextView
+                android:id="@+id/tvSimCountry"
+                style="@style/Text.Row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="11dp"
+                android:paddingBottom="11dp"
+                android:text="国家 / 地区：—" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider" />
+
+            <TextView
+                android:id="@+id/tvSimNetwork"
+                style="@style/Text.Row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="11dp"
+                android:paddingBottom="11dp"
+                android:text="数据网络：—" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider" />
+
+            <TextView
+                android:id="@+id/tvSimSignal"
+                style="@style/Text.Row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="11dp"
+                android:paddingBottom="11dp"
+                android:text="信号：—" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider" />
+
+            <TextView
+                android:id="@+id/tvSimRoaming"
+                style="@style/Text.Row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="11dp"
+                android:paddingBottom="11dp"
+                android:text="漫游 / 数据开关：—" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvSimCells"
+            style="@style/Text.RawBlock"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_code_panel"
+            android:padding="14dp"
+            android:text="该卡的小区信息：" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

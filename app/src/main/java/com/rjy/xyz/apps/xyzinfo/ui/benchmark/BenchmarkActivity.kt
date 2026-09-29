@@ -22,7 +22,6 @@ import com.rjy.xyz.apps.xyzinfo.util.Labels
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -167,11 +166,14 @@ class BenchmarkActivity : AppCompatActivity() {
             listOfNotNull(result.cpuSingleDetail, result.cpuMultiDetail, result.gpuDetail)
                 .joinToString("\n")
         )
-        renderComparison(result)
+        renderRanking(result)
     }
 
-    /** 列出与本机多核分数最接近的参考机型，用条形图横向比较。 */
-    private fun renderComparison(result: BenchmarkResult) {
+    /**
+     * 性能排行榜：本机与全部内置参考机型放在同一张榜里按多核分数排名，
+     * 单核 / 多核并排显示，GPU 单独一列。
+     */
+    private fun renderRanking(result: BenchmarkResult) {
         val device = ChipReference(
             name = deviceChipName ?: "本机",
             cpuSingle = result.cpuSingleScore,
@@ -179,50 +181,36 @@ class BenchmarkActivity : AppCompatActivity() {
             gpu = result.gpuScore ?: 0
         )
 
-        val nearby = ReferenceScores.all
-            .sortedBy { abs(it.cpuMulti - device.cpuMulti) }
-            .take(NEARBY_REFERENCE_COUNT)
-            .sortedByDescending { it.cpuMulti }
-
-        val rows = listOf(device) + nearby
-        val maxMulti = rows.maxOf { it.cpuMulti }.coerceAtLeast(1)
+        val rows = (ReferenceScores.all + device).sortedByDescending { it.cpuMulti }
+        val deviceRank = rows.indexOfFirst { it === device } + 1
         val deviceColor = ContextCompat.getColor(this, R.color.accent)
         val referenceColor = ContextCompat.getColor(this, R.color.text_secondary)
 
         binding.tvCompareChip.setInfoRow(
-            "对比基准：多核分数 ｜ 本机 ${device.cpuMulti}，下列为最接近的 $NEARBY_REFERENCE_COUNT 款参考机型"
+            "本机排名：第 $deviceRank 名 / 共 ${rows.size} 款" +
+                "（本机 单核 ${device.cpuSingle} ｜ 多核 ${device.cpuMulti} ｜ " +
+                "GPU ${device.gpu.takeIf { it > 0 } ?: "—"}）"
         )
 
         binding.layoutCompare.removeAllViews()
-        rows.forEach { row ->
+        rows.forEachIndexed { index, row ->
             val item = ItemBenchmarkRowBinding.inflate(layoutInflater, binding.layoutCompare, false)
             val isDevice = row === device
 
-            item.tvRowName.text = if (isDevice) "本机" else row.name
+            item.tvRowRank.text = "#${index + 1}"
+            item.tvRowName.text = if (isDevice) "${row.name}（本机）" else row.name
             item.tvRowName.setTextColor(if (isDevice) deviceColor else referenceColor)
-
-            val percent = ReferenceScores.percentOfMax(row.cpuMulti, maxMulti)
-            (item.rowBarFill.layoutParams as LinearLayout.LayoutParams).weight = percent.toFloat()
-            (item.rowBarRest.layoutParams as LinearLayout.LayoutParams).weight =
-                (100 - percent).toFloat()
-
-            item.tvRowValue.text = if (isDevice) {
-                row.cpuMulti.toString()
-            } else {
-                ratioLabel(row.cpuMulti, device.cpuMulti)
-            }
+            item.tvRowSingle.text = row.cpuSingle.toString()
+            item.tvRowMulti.text = row.cpuMulti.toString()
+            item.tvRowMulti.setTextColor(if (isDevice) deviceColor else referenceColor)
+            item.tvRowGpu.text = if (row.gpu > 0) row.gpu.toString() else "—"
+            item.tvRowGpu.setTextColor(if (isDevice) deviceColor else referenceColor)
 
             binding.layoutCompare.addView(item.root)
         }
     }
 
-    private fun ratioLabel(referenceMulti: Int, deviceMulti: Int): String {
-        if (deviceMulti <= 0) return "—"
-        return String.format(Locale.US, "×%.2f", referenceMulti.toDouble() / deviceMulti)
-    }
-
     private companion object {
-        const val NEARBY_REFERENCE_COUNT = 15
         const val GPU_TIMEOUT_SECONDS = 20L
 
         /** GPU 分数换算：中端机（骁龙 778G）约 25 帧 → 900 分左右，后续按真机校准。 */

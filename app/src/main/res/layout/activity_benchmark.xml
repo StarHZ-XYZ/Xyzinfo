@@ -198,14 +198,14 @@
                     style="@style/Text.SectionTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="与参考机型对比" />
+                    android:text="性能排行榜" />
 
                 <TextView
                     style="@style/Text.SectionSubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="3dp"
-                    android:text="按多核分数，列出与本机最接近的参考机型" />
+                    android:text="按多核分数排名：单核 / 多核并排，GPU 单独一列" />
 
                 <TextView
                     android:id="@+id/tvCompareChip"
@@ -218,13 +218,62 @@
                     android:text="本机芯片：—" />
 
                 <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Text.SectionSubtitle"
+                        android:layout_width="30dp"
+                        android:layout_height="wrap_content"
+                        android:text="名次" />
+
+                    <TextView
+                        style="@style/Text.SectionSubtitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:text="机型" />
+
+                    <TextView
+                        style="@style/Text.SectionSubtitle"
+                        android:layout_width="46dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="end"
+                        android:text="单核" />
+
+                    <TextView
+                        style="@style/Text.SectionSubtitle"
+                        android:layout_width="50dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="end"
+                        android:text="多核" />
+
+                    <TextView
+                        style="@style/Text.SectionSubtitle"
+                        android:layout_width="46dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="end"
+                        android:text="GPU" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@color/divider" />
+
+                <LinearLayout
                     android:id="@+id/layoutCompare"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="4dp"
                     android:orientation="vertical" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
 
         <!-- 说明 -->
         <com.google.android.material.card.MaterialCardView
