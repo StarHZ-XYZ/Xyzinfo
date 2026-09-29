@@ -4,7 +4,7 @@
 
 ## 当前版本
 
-v0.4（芯片库全量补齐 + 系统识别，详见 [CHANGELOG.md](CHANGELOG.md)）
+v0.5（性能测试 + 芯片库全量补齐 + 系统识别，详见 [CHANGELOG.md](CHANGELOG.md)）
 
 ## 已实现功能
 
@@ -16,6 +16,8 @@ v0.4（芯片库全量补齐 + 系统识别，详见 [CHANGELOG.md](CHANGELOG.md
 - 系统信息：版本 / 安全补丁 / Build 标识 / 存储 / Root / Treble
 - 系统识别：澎湃OS、MIUI、ColorOS、realme UI、OxygenOS、OriginOS / Funtouch、One UI、
   鸿蒙 / EMUI、Flyme、MagicOS、类原生等
+- 性能测试：CPU（单核整数 / 浮点 / 压缩 / 多核）与 GPU（离屏 OpenGL ES）跑分，
+  并与内置的 60 款参考处理器分数对比
 - 深色模式：跟随系统自动切换，全部页面使用同一套语义化配色
 
 ## 界面与配色

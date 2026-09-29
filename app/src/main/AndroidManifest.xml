@@ -27,5 +27,6 @@
         <activity android:name=".ui.battery.BatteryInfoActivity" />
         <activity android:name=".ui.sensor.SensorInfoActivity" />
         <activity android:name=".ui.system.SystemInfoActivity" />
+        <activity android:name=".ui.benchmark.BenchmarkActivity" />
     </application>
 </manifest>

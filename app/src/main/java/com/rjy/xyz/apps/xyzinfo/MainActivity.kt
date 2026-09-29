@@ -8,6 +8,7 @@ import com.rjy.xyz.apps.xyzinfo.data.DeviceOverviewProvider
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityMainBinding
 import com.rjy.xyz.apps.xyzinfo.model.DeviceOverview
 import com.rjy.xyz.apps.xyzinfo.ui.battery.BatteryInfoActivity
+import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkActivity
 import com.rjy.xyz.apps.xyzinfo.ui.ram.RamInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.sensor.SensorInfoActivity
@@ -52,6 +53,7 @@ class MainActivity : AppCompatActivity() {
         cardBattery.setOnClickListener { open(BatteryInfoActivity::class.java) }
         cardSensor.setOnClickListener { open(SensorInfoActivity::class.java) }
         cardSystem.setOnClickListener { open(SystemInfoActivity::class.java) }
+        cardBenchmark.setOnClickListener { open(BenchmarkActivity::class.java) }
     }
 
     private fun open(screen: Class<out Activity>) {
