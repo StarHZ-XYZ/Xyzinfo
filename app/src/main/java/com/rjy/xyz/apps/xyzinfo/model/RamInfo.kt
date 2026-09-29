@@ -4,7 +4,10 @@ package com.rjy.xyz.apps.xyzinfo.model
  * 运行内存与交换分区信息。
  */
 data class RamInfo(
-    val totalBytes: Long,
+    /** 系统实际可用总量（/proc/meminfo 的 MemTotal）。 */
+    val measuredTotalBytes: Long,
+    /** 由实测值推断出的标称容量（例如 12GB），无法判断时为 null。 */
+    val nominalTotalGigabytes: Int?,
     val availableBytes: Long,
     val usedBytes: Long,
     val usagePercent: Int,
@@ -18,7 +21,10 @@ data class RamInfo(
     val typeName: String,
     /** 系统未公开内存品牌时为 null。 */
     val brandName: String?,
-    val nominalFrequencyMHz: Int?,
     val currentFrequencyMHz: Int?,
+    val minFrequencyMHz: Int?,
+    val maxFrequencyMHz: Int?,
+    /** 频率读自哪个系统节点，便于机型适配排查。 */
+    val frequencySource: String?,
     val memInfoPreview: String
 )

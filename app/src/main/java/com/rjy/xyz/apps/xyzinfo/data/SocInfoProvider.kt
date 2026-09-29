@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import com.rjy.xyz.apps.xyzinfo.data.soc.SocSpecRepository
+import com.rjy.xyz.apps.xyzinfo.model.SocBrand
 import com.rjy.xyz.apps.xyzinfo.model.SocInfo
 import com.rjy.xyz.apps.xyzinfo.util.DeviceFacts
 import com.rjy.xyz.apps.xyzinfo.util.Formats
@@ -65,10 +66,12 @@ object SocInfoProvider {
         val candidates = buildCandidates(cpuInfoRaw)
         val spec = SocSpecRepository.findBestSpec(candidates, deviceHints(), gpuMaxFreqMHz)
         val graphics = readGraphicsSupport(context)
+        val brandName = spec?.brandName ?: detectBrandFallback(cpuInfoRaw)
 
         return SocInfo(
             displayName = spec?.displayName ?: collectBestCode(candidates),
-            brandName = spec?.brandName ?: detectBrandFallback(cpuInfoRaw),
+            brandName = brandName,
+            brand = spec?.let { SocBrand.ofBadge(it.badgeText) } ?: SocBrand.ofBrandName(brandName),
             badge = spec?.badgeText ?: DEFAULT_BADGE,
             performanceLevel = spec?.performanceLevel ?: Labels.UNKNOWN,
             cpuArchitecture = spec?.cpuArchitecture ?: DeviceFacts.cpuArchitecture(cpuInfoRaw),

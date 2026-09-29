@@ -8,6 +8,7 @@ package com.rjy.xyz.apps.xyzinfo.model
 data class SocInfo(
     val displayName: String,
     val brandName: String,
+    val brand: SocBrand,
     val badge: String,
     val performanceLevel: String,
     val cpuArchitecture: String,

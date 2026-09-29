@@ -5,6 +5,9 @@ import androidx.appcompat.app.AppCompatActivity
 import com.rjy.xyz.apps.xyzinfo.data.ScreenInfoProvider
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityScreenInfoBinding
 import com.rjy.xyz.apps.xyzinfo.model.ScreenInfo
+import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
+import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
 import com.rjy.xyz.apps.xyzinfo.util.Formats
 import com.rjy.xyz.apps.xyzinfo.util.Labels
 
@@ -19,6 +22,7 @@ class ScreenInfoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityScreenInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarPadding()
 
         render(ScreenInfoProvider.load(this))
     }
@@ -27,23 +31,24 @@ class ScreenInfoActivity : AppCompatActivity() {
         tvScreenTitle.text = "${info.widthPx} × ${info.heightPx}"
         tvScreenSubTitle.text = "分辨率、刷新率与触控能力总览"
 
-        tvResolution.text = "屏幕分辨率：${info.widthPx} × ${info.heightPx}"
-        tvScreenSize.text = "屏幕尺寸：${sizeInches(info.diagonalInches)}"
-        tvDensity.text =
+        tvResolution.setInfoRow("屏幕分辨率：${info.widthPx} × ${info.heightPx}")
+        tvScreenSize.setInfoRow("屏幕尺寸：${sizeInches(info.diagonalInches)}")
+        tvDensity.setInfoRow(
             "屏幕密度：${info.densityDpi} dpi / ${Formats.decimal(info.density.toDouble())}x / ${info.densityBucket}"
-        tvOrientation.text = "当前方向：${if (info.landscape) "横屏" else "竖屏"}"
+        )
+        tvOrientation.setInfoRow("当前方向：${if (info.landscape) "横屏" else "竖屏"}")
 
-        tvCurrentRefreshRate.text = "当前刷新率：${Formats.hertz(info.currentRefreshRateHz)}"
-        tvRefreshModes.text = "支持刷新率档位：${refreshModes(info.supportedRefreshRatesHz)}"
-        tvTouchPoints.text = "最大触控点数：${touchPoints(info.touchPointsHint)}"
-        tvTouchSampleRate.text = "触控采样率：${touchSampleRate(info.touchSampleRateHz)}"
+        tvCurrentRefreshRate.setInfoRow("当前刷新率：${Formats.hertz(info.currentRefreshRateHz)}")
+        tvRefreshModes.setInfoRow("支持刷新率档位：${refreshModes(info.supportedRefreshRatesHz)}")
+        tvTouchPoints.setInfoRow("最大触控点数：${touchPoints(info.touchPointsHint)}")
+        tvTouchSampleRate.setInfoRow("触控采样率：${touchSampleRate(info.touchSampleRateHz)}")
 
-        tvHdrSupport.text = "HDR 支持：${hdrSupport(info)}"
-        tvHdrCurrentStatus.text = "HDR 当前状态：${hdrCurrentStatus(info)}"
-        tvWideColor.text = "广色域支持：${wideColorGamut(info.wideColorGamut)}"
-        tvBrightnessHint.text = "亮度提示：${brightnessHint(info.maxBrightnessNode)}"
+        tvHdrSupport.setInfoRow("HDR 支持：${hdrSupport(info)}")
+        tvHdrCurrentStatus.setInfoRow("HDR 当前状态：${hdrCurrentStatus(info)}")
+        tvWideColor.setInfoRow("广色域支持：${wideColorGamut(info.wideColorGamut)}")
+        tvBrightnessHint.setInfoRow("亮度提示：${brightnessHint(info.maxBrightnessNode)}")
 
-        tvRawDisplayInfo.text = info.rawPreview
+        tvRawDisplayInfo.setRawBlock(info.rawPreview)
     }
 
     private fun sizeInches(diagonalInches: Double?): String =

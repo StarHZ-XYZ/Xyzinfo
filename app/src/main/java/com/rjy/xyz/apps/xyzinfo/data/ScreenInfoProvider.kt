@@ -76,7 +76,8 @@ object ScreenInfoProvider {
     @Suppress("DEPRECATION")
     private fun currentDisplay(context: Context, windowManager: WindowManager): Display? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            context.display
+            // 少数 Context（如仅在后台创建的场景）取不到 Display，退回默认显示
+            runCatching { context.display }.getOrNull() ?: windowManager.defaultDisplay
         } else {
             windowManager.defaultDisplay
         }

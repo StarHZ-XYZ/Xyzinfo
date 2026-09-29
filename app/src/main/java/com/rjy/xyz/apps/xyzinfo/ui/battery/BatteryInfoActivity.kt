@@ -7,6 +7,9 @@ import androidx.appcompat.app.AppCompatActivity
 import com.rjy.xyz.apps.xyzinfo.data.BatteryInfoProvider
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityBatteryInfoBinding
 import com.rjy.xyz.apps.xyzinfo.model.BatteryInfo
+import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
+import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
 import com.rjy.xyz.apps.xyzinfo.util.Formats
 import com.rjy.xyz.apps.xyzinfo.util.Labels
 
@@ -30,6 +33,7 @@ class BatteryInfoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityBatteryInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarPadding()
 
         render(BatteryInfoProvider.load(this))
     }
@@ -56,26 +60,25 @@ class BatteryInfoActivity : AppCompatActivity() {
         tvBatterySubTitle.text =
             "${Labels.batteryStatus(info.status)} ｜ ${Labels.powerSource(info.powerSource)}"
 
-        tvBatteryPercent.text = "当前电量：${percent(info.percent)}"
-        tvBatteryRemainMah.text = "当前剩余容量：${milliAmpHour(info.remainingCapacityMah)}"
-        tvBatteryCapacity.text = "额定 / 满充容量：${milliAmpHour(info.fullCapacityMah)}"
-        tvBatteryDesignCapacity.text = "设计容量：${milliAmpHour(info.designCapacityMah)}"
+        tvBatteryPercent.setInfoRow("当前电量：${percent(info.percent)}")
+        tvBatteryRemainMah.setInfoRow("当前剩余容量：${milliAmpHour(info.remainingCapacityMah)}")
+        tvBatteryCapacity.setInfoRow("额定 / 满充容量：${milliAmpHour(info.fullCapacityMah)}")
+        tvBatteryDesignCapacity.setInfoRow("设计容量：${milliAmpHour(info.designCapacityMah)}")
 
-        tvBatteryStatus.text = "电池状态：${Labels.batteryStatus(info.status)}"
-        tvBatteryHealth.text = "电池健康：${Labels.batteryHealth(info.health)}"
-        tvBatteryTechnology.text =
-            "电池技术：${info.technology.ifBlank { Labels.NOT_PUBLIC }}"
-        tvBatteryTemperature.text = "电池温度：${temperature(info.temperatureTenths)}"
+        tvBatteryStatus.setInfoRow("电池状态：${Labels.batteryStatus(info.status)}")
+        tvBatteryHealth.setInfoRow("电池健康：${Labels.batteryHealth(info.health)}")
+        tvBatteryTechnology.setInfoRow("电池技术：${info.technology.ifBlank { Labels.NOT_PUBLIC }}")
+        tvBatteryTemperature.setInfoRow("电池温度：${temperature(info.temperatureTenths)}")
 
-        tvBatteryVoltage.text = "电池电压：${voltage(info.voltageMv)}"
-        tvBatteryCurrentNow.text = "当前电流：${current(info)}"
-        tvBatteryPowerSource.text = "供电来源：${Labels.powerSource(info.powerSource)}"
-        tvBatteryCycleCount.text = "循环次数：${info.cycleCount ?: Labels.NOT_PUBLIC}"
+        tvBatteryVoltage.setInfoRow("电池电压：${voltage(info.voltageMv)}")
+        tvBatteryCurrentNow.setInfoRow("当前电流：${current(info)}")
+        tvBatteryPowerSource.setInfoRow("供电来源：${Labels.powerSource(info.powerSource)}")
+        tvBatteryCycleCount.setInfoRow("循环次数：${info.cycleCount ?: Labels.NOT_PUBLIC}")
 
-        tvBatteryChargeCounter.text = "Charge Counter：${chargeCounter(info.chargeCounterUah)}"
-        tvBatteryEnergyCounter.text = "Energy Counter：${energyCounter(info.energyCounterNwh)}"
+        tvBatteryChargeCounter.setInfoRow("Charge Counter：${chargeCounter(info.chargeCounterUah)}")
+        tvBatteryEnergyCounter.setInfoRow("Energy Counter：${energyCounter(info.energyCounterNwh)}")
 
-        tvBatteryRawInfo.text = info.rawPreview
+        tvBatteryRawInfo.setRawBlock(info.rawPreview)
     }
 
     private fun percent(value: Int): String = if (value >= 0) "$value%" else Labels.UNKNOWN

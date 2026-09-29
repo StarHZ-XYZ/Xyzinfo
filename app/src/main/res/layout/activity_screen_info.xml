@@ -1,65 +1,129 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 屏幕详情页 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_main_gradient"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="18dp"
+        android:paddingTop="22dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="36dp">
 
         <TextView
+            android:id="@+id/tvScreenTitle"
+            style="@style/Text.PageTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="屏幕详细信息"
-            android:textColor="#FFFFFF"
-            android:textSize="30sp"
-            android:textStyle="bold" />
+            android:text="屏幕详细信息" />
 
         <TextView
+            android:id="@+id/tvScreenSubTitle"
+            style="@style/Text.PageSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="分辨率、刷新率与触控能力总览"
-            android:textColor="#D7E3FF"
-            android:textSize="15sp" />
+            android:layout_marginTop="8dp"
+            android:text="分辨率、刷新率与触控能力总览" />
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            app:cardBackgroundColor="#FFFFFF"
-            app:cardCornerRadius="26dp"
-            app:cardElevation="6dp">
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="22dp">
+                android:padding="18dp">
 
                 <TextView
-                    android:id="@+id/tvScreenTitle"
+                    style="@style/Text.SectionTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="屏幕"
-                    android:textColor="#111111"
-                    android:textSize="30sp"
-                    android:textStyle="bold" />
+                    android:text="基础参数" />
 
                 <TextView
-                    android:id="@+id/tvScreenSubTitle"
+                    style="@style/Text.SectionSubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="屏幕总览"
-                    android:textColor="#4A5568"
-                    android:textSize="15sp" />
+                    android:layout_marginTop="3dp"
+                    android:text="尺寸、分辨率、密度与方向" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_row_panel"
+                    android:orientation="vertical"
+                    android:paddingStart="14dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="14dp"
+                    android:paddingBottom="4dp">
+
+                    <TextView
+                        android:id="@+id/tvResolution"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="屏幕分辨率：—" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:id="@+id/tvScreenSize"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="屏幕尺寸：—" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:id="@+id/tvDensity"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="屏幕密度：—" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:id="@+id/tvOrientation"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="当前方向：—" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -67,73 +131,93 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            app:cardBackgroundColor="#FFFFFF"
-            app:cardCornerRadius="24dp"
-            app:cardElevation="5dp">
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="18dp">
 
                 <TextView
+                    style="@style/Text.SectionTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="基础参数"
-                    android:textColor="#111111"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:text="刷新与触控" />
 
                 <TextView
+                    style="@style/Text.SectionSubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="尺寸、分辨率、密度与方向"
-                    android:textColor="#7A869A"
-                    android:textSize="13sp" />
+                    android:layout_marginTop="3dp"
+                    android:text="刷新率档位与触控能力" />
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="14dp"
-                    android:background="#EEF1F6" />
-
-                <TextView
-                    android:id="@+id/tvResolution"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="屏幕分辨率："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp" />
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_row_panel"
+                    android:orientation="vertical"
+                    android:paddingStart="14dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="14dp"
+                    android:paddingBottom="4dp">
 
-                <TextView
-                    android:id="@+id/tvScreenSize"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="屏幕尺寸："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp" />
+                    <TextView
+                        android:id="@+id/tvCurrentRefreshRate"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="当前刷新率：—" />
 
-                <TextView
-                    android:id="@+id/tvDensity"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="屏幕密度："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp" />
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
 
-                <TextView
-                    android:id="@+id/tvOrientation"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="当前方向："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp" />
+                    <TextView
+                        android:id="@+id/tvRefreshModes"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="支持刷新率档位：—" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:id="@+id/tvTouchPoints"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="最大触控点数：—" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:id="@+id/tvTouchSampleRate"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="触控采样率：—" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -141,74 +225,93 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            app:cardBackgroundColor="#FFFFFF"
-            app:cardCornerRadius="24dp"
-            app:cardElevation="5dp">
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="18dp">
 
                 <TextView
+                    style="@style/Text.SectionTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="刷新与触控"
-                    android:textColor="#111111"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:text="显示特性" />
 
                 <TextView
+                    style="@style/Text.SectionSubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="当前刷新率、档位与触控能力"
-                    android:textColor="#7A869A"
-                    android:textSize="13sp" />
+                    android:layout_marginTop="3dp"
+                    android:text="HDR、广色域与亮度" />
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="14dp"
-                    android:background="#EEF1F6" />
-
-                <TextView
-                    android:id="@+id/tvCurrentRefreshRate"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="当前刷新率："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp" />
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_row_panel"
+                    android:orientation="vertical"
+                    android:paddingStart="14dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="14dp"
+                    android:paddingBottom="4dp">
 
-                <TextView
-                    android:id="@+id/tvRefreshModes"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="支持刷新率档位："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp"
-                    android:lineSpacingExtra="3dp" />
+                    <TextView
+                        android:id="@+id/tvHdrSupport"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="HDR 支持：—" />
 
-                <TextView
-                    android:id="@+id/tvTouchPoints"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="最大触控点数："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp" />
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
 
-                <TextView
-                    android:id="@+id/tvTouchSampleRate"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="触控采样率："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp" />
+                    <TextView
+                        android:id="@+id/tvHdrCurrentStatus"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="HDR 当前状态：—" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:id="@+id/tvWideColor"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="广色域支持：—" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:id="@+id/tvBrightnessHint"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="亮度提示：—" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -216,126 +319,41 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            app:cardBackgroundColor="#FFFFFF"
-            app:cardCornerRadius="24dp"
-            app:cardElevation="5dp">
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="18dp">
 
                 <TextView
+                    style="@style/Text.SectionTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="显示特性"
-                    android:textColor="#111111"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:text="原始信息" />
 
                 <TextView
+                    style="@style/Text.SectionSubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="HDR、广色域与亮度提示"
-                    android:textColor="#7A869A"
-                    android:textSize="13sp" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="14dp"
-                    android:background="#EEF1F6" />
-
-                <TextView
-                    android:id="@+id/tvHdrSupport"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="HDR 支持："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:id="@+id/tvHdrCurrentStatus"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="HDR 当前状态："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:id="@+id/tvWideColor"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="广色域支持："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:id="@+id/tvBrightnessHint"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="亮度提示："
-                    android:textColor="#2D3748"
-                    android:textSize="15sp"
-                    android:lineSpacingExtra="3dp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="#FFFFFF"
-            app:cardCornerRadius="24dp"
-            app:cardElevation="5dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="原始信息"
-                    android:textColor="#111111"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="用于辅助识别与排查"
-                    android:textColor="#7A869A"
-                    android:textSize="13sp" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="14dp"
-                    android:background="#EEF1F6" />
+                    android:layout_marginTop="3dp"
+                    android:text="用于辅助识别与排查" />
 
                 <TextView
                     android:id="@+id/tvRawDisplayInfo"
+                    style="@style/Text.RawBlock"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="原始显示信息："
-                    android:textColor="#4A5568"
-                    android:textIsSelectable="true"
-                    android:textSize="13sp"
-                    android:lineSpacingExtra="3dp" />
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_code_panel"
+                    android:padding="14dp"
+                    android:text="原始显示信息预览：" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
     </LinearLayout>
 </ScrollView>

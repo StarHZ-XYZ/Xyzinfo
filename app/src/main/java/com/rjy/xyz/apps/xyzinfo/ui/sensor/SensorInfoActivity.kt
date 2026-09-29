@@ -9,6 +9,9 @@ import com.rjy.xyz.apps.xyzinfo.model.SensorEntry
 import com.rjy.xyz.apps.xyzinfo.model.SensorInfo
 import com.rjy.xyz.apps.xyzinfo.model.ThermalKind
 import com.rjy.xyz.apps.xyzinfo.model.ThermalZone
+import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
+import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
 import com.rjy.xyz.apps.xyzinfo.util.Formats
 import com.rjy.xyz.apps.xyzinfo.util.Labels
 
@@ -23,6 +26,7 @@ class SensorInfoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivitySensorInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarPadding()
 
         render(SensorInfoProvider.load(this))
     }
@@ -31,10 +35,10 @@ class SensorInfoActivity : AppCompatActivity() {
         tvSensorTitle.text = "传感器与热区"
         tvSensorSubTitle.text = "温度传感器、热区与常规硬件传感器总览"
 
-        tvThermalSummary.text = thermalSummary(info.thermalZones)
-        tvThermalList.text = thermalList(info.thermalZones)
-        tvSensorSummary.text = sensorSummary(info.sensors)
-        tvSensorList.text = sensorList(info.sensors)
+        tvThermalSummary.setInfoRow(thermalSummary(info.thermalZones))
+        tvThermalList.setRawBlock(thermalList(info.thermalZones))
+        tvSensorSummary.setInfoRow(sensorSummary(info.sensors))
+        tvSensorList.setRawBlock(sensorList(info.sensors))
     }
 
     private fun thermalSummary(zones: List<ThermalZone>): String {

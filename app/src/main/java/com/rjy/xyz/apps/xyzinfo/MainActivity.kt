@@ -13,6 +13,8 @@ import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.sensor.SensorInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.soc.SocInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.system.SystemInfoActivity
+import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 
 /**
  * 首页：展示设备概要，并作为各检测页面的入口。
@@ -25,6 +27,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarPadding()
 
         renderOverview(DeviceOverviewProvider.load())
         setupNavigation()
@@ -32,14 +35,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderOverview(overview: DeviceOverview) = with(binding) {
         tvDeviceName.text = overview.displayName
-        tvAndroidVersion.text = "Android ${overview.androidRelease}  (API ${overview.apiLevel})"
-        tvKernelVersion.text = "Linux 内核：${overview.kernelRelease}"
-        tvBrandManufacturer.text =
-            "品牌：${overview.brand}    制造商：${overview.manufacturer}"
-        tvDeviceCode.text =
-            "设备代号：${overview.deviceCode}    产品：${overview.product}"
-        tvSystemAbi.text = "系统架构：${overview.abiLabel}"
-        tvCpuArch.text = "CPU架构：${overview.cpuArchitecture}"
+        tvAndroidVersion.setInfoRow("Android 版本：${overview.androidRelease}（API ${overview.apiLevel}）")
+        tvKernelVersion.setInfoRow("Linux 内核：${overview.kernelRelease}")
+        tvBrandManufacturer.setInfoRow("品牌：${overview.brand} / ${overview.manufacturer}")
+        tvDeviceCode.setInfoRow("设备代号：${overview.deviceCode} / ${overview.product}")
+        tvSystemAbi.setInfoRow("系统架构：${overview.abiLabel}")
+        tvCpuArch.setInfoRow("CPU架构：${overview.cpuArchitecture}")
     }
 
     private fun setupNavigation() = with(binding) {

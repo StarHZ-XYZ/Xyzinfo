@@ -4,16 +4,24 @@
 
 ## 当前版本
 
-v0.2（重构版，详见 [CHANGELOG.md](CHANGELOG.md)）
+v0.3（界面重构 + 深色模式 + 内存/芯片识别增强，详见 [CHANGELOG.md](CHANGELOG.md)）
 
 ## 已实现功能
 
-- SoC 信息：型号 / 品牌 / 大小核结构 / 每核心频率 / GPU / 图形接口
-- RAM 信息：容量 / 占用率 / 堆信息 / Swap·ZRAM / 内存类型与实时频率
+- SoC 信息：中文芯片名 / 品牌图标 / 大小核结构 / 每核心频率 / GPU / 图形接口
+- RAM 信息：标称容量与实测总量 / 占用率 / 堆信息 / Swap·ZRAM / 内存类型与 DDR 频率
 - 屏幕信息：分辨率 / 尺寸 / 密度 / 刷新率档位 / 触控 / HDR / 广色域
 - 电池信息：电量 / 容量 / 电流 / 电压 / 温度 / 循环次数（每秒刷新）
 - 传感器信息：热区温度 + 硬件传感器清单
 - 系统信息：版本 / 安全补丁 / Build 标识 / 存储 / Root / Treble
+- 深色模式：跟随系统自动切换，全部页面使用同一套语义化配色
+
+## 界面与配色
+
+- 配色定义在 `res/values/colors.xml`（浅色）与 `res/values-night/colors.xml`（深色），
+  布局里只引用 `@color/*`，因此深色模式无需额外代码。
+- 主题在 `res/values/themes.xml` 里只写一份，状态栏图标明暗由 `values-night/bools.xml` 切换。
+- 信息行统一用 `ui/common/InfoRow.kt` 渲染：标签次要色、数值加粗。
 
 ## 项目结构
 

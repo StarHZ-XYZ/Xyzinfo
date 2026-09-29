@@ -1,5 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  浅色主题配色：石墨灰底 + 青绿强调色。
+  深色主题在 values-night/colors.xml 中定义同名颜色，系统切换深色模式时自动生效。
+-->
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- 背景与表面 -->
+    <color name="bg_top">#FFF7F8FA</color>
+    <color name="bg_bottom">#FFEDF0F4</color>
+    <color name="surface">#FFFFFFFF</color>
+    <color name="surface_variant">#FFF3F5F8</color>
+    <color name="stroke">#FFE2E6EC</color>
+    <color name="divider">#FFEDEFF3</color>
+
+    <!-- 文字 -->
+    <color name="text_primary">#FF11151A</color>
+    <color name="text_secondary">#FF69717E</color>
+    <color name="text_tertiary">#FF97A0AC</color>
+    <color name="text_on_accent">#FFFFFFFF</color>
+
+    <!-- 强调色（青绿） -->
+    <color name="accent">#FF0E9F76</color>
+    <color name="accent_soft">#FFE2F4EE</color>
+    <color name="accent_dim">#FF7FD3BC</color>
+
+    <!-- 状态色 -->
+    <color name="status_warning">#FFB26A00</color>
+    <color name="status_danger">#FFC94F4A</color>
+
+    <!-- 芯片品牌：前景 / 背景 -->
+    <color name="brand_snapdragon_fg">#FFD5241F</color>
+    <color name="brand_snapdragon_bg">#FFFDECEB</color>
+    <color name="brand_mediatek_fg">#FF1F72D9</color>
+    <color name="brand_mediatek_bg">#FFE9F1FD</color>
+    <color name="brand_exynos_fg">#FF6A4BE0</color>
+    <color name="brand_exynos_bg">#FFF0EDFD</color>
+    <color name="brand_kirin_fg">#FF0F9B4C</color>
+    <color name="brand_kirin_bg">#FFE7F8EE</color>
+    <color name="brand_unisoc_fg">#FFD6437A</color>
+    <color name="brand_unisoc_bg">#FFFDEBF2</color>
+    <color name="brand_tensor_fg">#FF2C6BE0</color>
+    <color name="brand_tensor_bg">#FFE9F0FD</color>
+    <color name="brand_xring_fg">#FFE2621B</color>
+    <color name="brand_xring_bg">#FFFDEEDF</color>
+    <color name="brand_unknown_fg">#FF6B7280</color>
+    <color name="brand_unknown_bg">#FFF1F2F5</color>
 </resources>

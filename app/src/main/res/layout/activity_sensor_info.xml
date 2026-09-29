@@ -1,115 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 传感器与热区详情页 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_main_gradient"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="18dp"
+        android:paddingTop="22dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="36dp">
 
         <TextView
+            android:id="@+id/tvSensorTitle"
+            style="@style/Text.PageTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="传感器详细信息"
-            android:textColor="#FFFFFF"
-            android:textSize="30sp"
-            android:textStyle="bold" />
+            android:text="传感器与热区" />
 
         <TextView
+            android:id="@+id/tvSensorSubTitle"
+            style="@style/Text.PageSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="温度热区与硬件传感器总览"
-            android:textColor="#D7E3FF"
-            android:textSize="15sp" />
+            android:layout_marginTop="8dp"
+            android:text="温度热区与硬件传感器总览" />
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            app:cardBackgroundColor="#FFFFFF"
-            app:cardCornerRadius="26dp"
-            app:cardElevation="6dp">
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="22dp">
+                android:padding="18dp">
 
                 <TextView
-                    android:id="@+id/tvSensorTitle"
+                    style="@style/Text.SectionTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="传感器与热区"
-                    android:textColor="#111111"
-                    android:textSize="30sp"
-                    android:textStyle="bold" />
+                    android:text="温度传感器 / 热区" />
 
                 <TextView
-                    android:id="@+id/tvSensorSubTitle"
+                    style="@style/Text.SectionSubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="温度与硬件传感器总览"
-                    android:textColor="#4A5568"
-                    android:textSize="15sp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardBackgroundColor="#FFFFFF"
-            app:cardCornerRadius="24dp"
-            app:cardElevation="5dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="温度传感器 / 热区"
-                    android:textColor="#111111"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:layout_marginTop="3dp"
+                    android:text="来自 /sys/class/thermal" />
 
                 <TextView
                     android:id="@+id/tvThermalSummary"
+                    style="@style/Text.Row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="热区概览："
-                    android:textColor="#4A5568"
-                    android:textSize="14sp"
-                    android:lineSpacingExtra="3dp" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="14dp"
-                    android:background="#EEF1F6" />
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_row_panel"
+                    android:padding="14dp"
+                    android:text="热区概览：—" />
 
                 <TextView
                     android:id="@+id/tvThermalList"
+                    style="@style/Text.RawBlock"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="热区列表"
-                    android:textColor="#2D3748"
-                    android:textSize="14sp"
-                    android:lineSpacingExtra="4dp" />
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_code_panel"
+                    android:padding="14dp"
+                    android:text="热区列表：" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -117,52 +88,51 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="#FFFFFF"
-            app:cardCornerRadius="24dp"
-            app:cardElevation="5dp">
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="18dp">
 
                 <TextView
+                    style="@style/Text.SectionTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="常规硬件传感器"
-                    android:textColor="#111111"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:text="常规硬件传感器" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="来自 SensorManager" />
 
                 <TextView
                     android:id="@+id/tvSensorSummary"
+                    style="@style/Text.Row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="硬件传感器概览："
-                    android:textColor="#4A5568"
-                    android:textSize="14sp"
-                    android:lineSpacingExtra="3dp" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="14dp"
-                    android:background="#EEF1F6" />
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_row_panel"
+                    android:padding="14dp"
+                    android:text="硬件传感器概览：—" />
 
                 <TextView
                     android:id="@+id/tvSensorList"
+                    style="@style/Text.RawBlock"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="传感器列表"
-                    android:textColor="#2D3748"
-                    android:textSize="14sp"
-                    android:lineSpacingExtra="4dp" />
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_code_panel"
+                    android:padding="14dp"
+                    android:text="传感器列表：" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
     </LinearLayout>
 </ScrollView>

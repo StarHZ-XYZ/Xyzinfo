@@ -1,12 +1,17 @@
 package com.rjy.xyz.apps.xyzinfo.ui.soc
 
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
+import android.content.res.ColorStateList
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.rjy.xyz.apps.xyzinfo.R
 import com.rjy.xyz.apps.xyzinfo.data.SocInfoProvider
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivitySocInfoBinding
 import com.rjy.xyz.apps.xyzinfo.model.SocInfo
+import com.rjy.xyz.apps.xyzinfo.model.SocBrand
+import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
+import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
 import com.rjy.xyz.apps.xyzinfo.util.Formats
 import com.rjy.xyz.apps.xyzinfo.util.Labels
 
@@ -21,35 +26,35 @@ class SocInfoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivitySocInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarPadding()
 
         render(SocInfoProvider.load(this))
     }
 
     private fun render(info: SocInfo) = with(binding) {
         tvSocModelTitle.text = info.displayName
-        tvSocBrandSub.text = "SoC 品牌：${info.brandName}"
+        tvSocBrandSub.setInfoRow("SoC 品牌：${info.brandName}")
         tvBrandBadge.text = info.badge
         tvSocLevelHint.text = Labels.socLevelHint(info.performanceLevel)
 
-        tvCpuArch.text = "CPU架构：${info.cpuArchitecture}"
-        tvAbi.text = "ABI列表：${info.abiList}"
-        tvCoreCount.text = "CPU核心数：${info.coreCount} 核"
-        tvCluster.text = "CPU集群 / 大小核：${info.clusters}"
-        tvSocManufacturer.text = "SoC制造商：${info.manufacturer}"
-        tvSocModelCode.text = "SoC代号：${info.modelCode}"
-        tvHardware.text = "硬件代号：${info.hardware}"
+        tvCpuArch.setInfoRow("CPU架构：${info.cpuArchitecture}")
+        tvAbi.setInfoRow("ABI列表：${info.abiList}")
+        tvCoreCount.setInfoRow("CPU核心数：${info.coreCount} 核")
+        tvCluster.setInfoRow("CPU集群 / 大小核：${info.clusters}")
+        tvSocManufacturer.setInfoRow("SoC制造商：${info.manufacturer}")
+        tvSocModelCode.setInfoRow("SoC代号：${info.modelCode}")
+        tvHardware.setInfoRow("硬件代号：${info.hardware}")
 
-        tvGpuName.text = "GPU型号：${info.gpuName}"
-        tvGpuCores.text = "GPU核心 / 计算单元：${info.gpuCores}"
-        tvGpuMinFreq.text = "GPU最小频率：${megaHertz(info.gpuMinFreqMHz)}"
-        tvGpuMaxFreq.text = "GPU最大频率：${gpuMaxFrequency(info)}"
-        tvGraphicsApi.text =
-            "图形接口与版本：${graphicsApi(info)}\n${rendererBackend(info)}"
+        tvGpuName.setInfoRow("GPU型号：${info.gpuName}")
+        tvGpuCores.setInfoRow("GPU核心 / 计算单元：${info.gpuCores}")
+        tvGpuMinFreq.setInfoRow("GPU最小频率：${megaHertz(info.gpuMinFreqMHz)}")
+        tvGpuMaxFreq.setInfoRow("GPU最大频率：${gpuMaxFrequency(info)}")
+        tvGraphicsApi.setInfoRow("图形接口与版本：${graphicsApi(info)}\n${rendererBackend(info)}")
 
-        tvPerCoreFreq.text = perCoreFrequency(info.perCoreMaxFreqKHz)
-        tvCpuInfoRaw.text = info.cpuInfoPreview
+        tvPerCoreFreq.setRawBlock(perCoreFrequency(info.perCoreMaxFreqKHz))
+        tvCpuInfoRaw.setRawBlock(info.cpuInfoPreview)
 
-        applyBrandStyle(info.badge)
+        applyBrandStyle(info.brand)
     }
 
     private fun megaHertz(value: Int?): String = value?.let { "$it MHz" } ?: Labels.UNKNOWN
@@ -85,32 +90,51 @@ class SocInfoActivity : AppCompatActivity() {
         }
     }.trim()
 
-    /** 依据芯片品牌调整头部卡片与徽标配色。 */
-    private fun applyBrandStyle(badge: String) = with(binding) {
-        val backgroundColor = when (badge) {
-            "骁龙" -> "#FFF2E8"
-            "联发科" -> "#EAF3FF"
-            "猎户座" -> "#F1EEFF"
-            "麒麟" -> "#ECFFF2"
-            "展锐" -> "#FFF0F6"
-            else -> "#F3F5F8"
-        }
-        val badgeColor = when (badge) {
-            "骁龙" -> "#FF6A00"
-            "联发科" -> "#247DFF"
-            "猎户座" -> "#7253FF"
-            "麒麟" -> "#18A957"
-            "展锐" -> "#FF4F87"
-            else -> "#6C7788"
-        }
+    /**
+     * 依据芯片品牌显示对应图标与配色。
+     *
+     * 颜色都取自 @color/brand_*，浅色 / 深色模式下会自动切换。
+     */
+    private fun applyBrandStyle(brand: SocBrand) = with(binding) {
+        val foreground = ContextCompat.getColor(this@SocInfoActivity, brand.foregroundColorRes())
+        val background = ContextCompat.getColor(this@SocInfoActivity, brand.backgroundColorRes())
 
-        cardBrand.setCardBackgroundColor(Color.parseColor(backgroundColor))
+        ivBrandIcon.setImageResource(brand.iconRes())
+        ivBrandIcon.backgroundTintList = ColorStateList.valueOf(background)
+        tvBrandBadge.backgroundTintList = ColorStateList.valueOf(background)
+        tvBrandBadge.setTextColor(foreground)
+    }
 
-        val shape = GradientDrawable().apply {
-            cornerRadius = 999f
-            setColor(Color.parseColor(badgeColor))
-        }
-        tvBrandBadge.background = shape
-        tvBrandBadge.setTextColor(Color.WHITE)
+    private fun SocBrand.iconRes(): Int = when (this) {
+        SocBrand.SNAPDRAGON -> R.drawable.ic_brand_snapdragon
+        SocBrand.MEDIATEK -> R.drawable.ic_brand_mediatek
+        SocBrand.EXYNOS -> R.drawable.ic_brand_exynos
+        SocBrand.KIRIN -> R.drawable.ic_brand_kirin
+        SocBrand.UNISOC -> R.drawable.ic_brand_unisoc
+        SocBrand.TENSOR -> R.drawable.ic_brand_tensor
+        SocBrand.XRING -> R.drawable.ic_brand_xring
+        SocBrand.UNKNOWN -> R.drawable.ic_brand_unknown
+    }
+
+    private fun SocBrand.foregroundColorRes(): Int = when (this) {
+        SocBrand.SNAPDRAGON -> R.color.brand_snapdragon_fg
+        SocBrand.MEDIATEK -> R.color.brand_mediatek_fg
+        SocBrand.EXYNOS -> R.color.brand_exynos_fg
+        SocBrand.KIRIN -> R.color.brand_kirin_fg
+        SocBrand.UNISOC -> R.color.brand_unisoc_fg
+        SocBrand.TENSOR -> R.color.brand_tensor_fg
+        SocBrand.XRING -> R.color.brand_xring_fg
+        SocBrand.UNKNOWN -> R.color.brand_unknown_fg
+    }
+
+    private fun SocBrand.backgroundColorRes(): Int = when (this) {
+        SocBrand.SNAPDRAGON -> R.color.brand_snapdragon_bg
+        SocBrand.MEDIATEK -> R.color.brand_mediatek_bg
+        SocBrand.EXYNOS -> R.color.brand_exynos_bg
+        SocBrand.KIRIN -> R.color.brand_kirin_bg
+        SocBrand.UNISOC -> R.color.brand_unisoc_bg
+        SocBrand.TENSOR -> R.color.brand_tensor_bg
+        SocBrand.XRING -> R.color.brand_xring_bg
+        SocBrand.UNKNOWN -> R.color.brand_unknown_bg
     }
 }

@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 页面背景：浅色为冷灰渐变，深色为近黑渐变（颜色随 values-night 自动切换） -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <gradient
         android:angle="270"
-        android:endColor="#0F1D46"
-        android:startColor="#2D5BCE"
+        android:endColor="@color/bg_bottom"
+        android:startColor="@color/bg_top"
         android:type="linear" />
 </shape>
