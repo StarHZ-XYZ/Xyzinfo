@@ -34,6 +34,7 @@ class BenchmarkActivity : AppCompatActivity() {
 
     private var running = false
     private var deviceChipName: String? = null
+    private var deviceGpuName: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,7 +51,9 @@ class BenchmarkActivity : AppCompatActivity() {
 
     /** 先显示本机芯片与它的参考指数，让用户知道对比基准。 */
     private fun showChipContext() {
-        deviceChipName = runCatching { SocInfoProvider.findSpec()?.displayName }.getOrNull()
+        val spec = runCatching { SocInfoProvider.findSpec() }.getOrNull()
+        deviceChipName = spec?.displayName
+        deviceGpuName = spec?.gpuName
         val reference = ReferenceScores.match(deviceChipName)
 
         val text = buildString {
@@ -79,7 +82,7 @@ class BenchmarkActivity : AppCompatActivity() {
 
         Thread({
             val cpu = CpuBenchmark.run { step -> postStatus(step) }
-            val gpu = runGpuStress()
+            val gpu = if (ENABLE_GPU_STRESS_TEST) runGpuStress() else null
 
             val result = BenchmarkResult(
                 cpuSingleScore = cpu.singleScore,
@@ -100,7 +103,7 @@ class BenchmarkActivity : AppCompatActivity() {
                 ),
                 gpuDetail = gpu?.let {
                     String.format(Locale.US, "GPU：%.0f 帧/秒（%s）", it.framesPerSecond, it.renderer)
-                }
+                } ?: "GPU：${deviceGpuName ?: "未知"}（未跑分：部分机型驱动在着色器编译时会原生崩溃，压力测试暂缓启用）"
             )
 
             runOnUiThread { if (!isFinishing) renderResult(result) }
@@ -153,7 +156,7 @@ class BenchmarkActivity : AppCompatActivity() {
         binding.tvCpuSingleScore.setInfoRow("CPU 单核：${result.cpuSingleScore}")
         binding.tvCpuMultiScore.setInfoRow("CPU 多核：${result.cpuMultiScore}")
         binding.tvGpuScore.setInfoRow(
-            "GPU：${result.gpuScore?.toString() ?: "本次未完成（设备或驱动不支持离屏渲染）"}"
+            "GPU：${result.gpuScore?.toString() ?: "未跑分（见下方说明）"}"
         )
         binding.tvBenchmarkDetail.setRawBlock(
             listOfNotNull(result.cpuSingleDetail, result.cpuMultiDetail, result.gpuDetail)
@@ -216,5 +219,15 @@ class BenchmarkActivity : AppCompatActivity() {
     private companion object {
         const val NEARBY_REFERENCE_COUNT = 15
         const val GPU_TIMEOUT_SECONDS = 20L
+
+        /**
+         * GPU 压力渲染测试默认关闭。
+         *
+         * 实测（Xiaomi Civi / HyperOS 14 + Adreno 6xx）：无论着色器复杂与否，
+         * GLSurfaceView 的着色器编译都会触发驱动级 SIGSEGV，直接把 App 杀掉，
+         * 而原生崩溃无法 try/catch。要重新启用，需要把它放到独立进程
+         * （android:process=":gpu"）里跑，让崩溃只影响子进程。
+         */
+        const val ENABLE_GPU_STRESS_TEST = false
     }
 }

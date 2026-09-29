@@ -70,7 +70,11 @@ class GpuStressRenderer(
         GLES20.glUseProgram(program)
         GLES20.glEnableVertexAttribArray(positionHandle)
         GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, VERTICES)
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, VERTEX_COUNT)
+        // 一帧里重复绘制多遍：靠填充率堆负载，而不是把着色器写得很长
+        // （1024 次迭代的着色器会让部分高通驱动在编译期直接崩掉）
+        repeat(DRAWS_PER_FRAME) {
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, VERTEX_COUNT)
+        }
 
         if (!measuring) return
         if (measureStartNanos == 0L) {
@@ -140,6 +144,7 @@ class GpuStressRenderer(
         const val TAG = "GpuStressRenderer"
         const val MEASURE_SECONDS = 3.0
         const val VERTEX_COUNT = 4
+        const val DRAWS_PER_FRAME = 64
 
         /** 归一化基准：中端机（骁龙 778G）在 1080p 下约 25~30 帧，对应 900 分左右。 */
         const val SCORE_PER_FPS = 32.0
@@ -162,22 +167,16 @@ class GpuStressRenderer(
             }
         """
 
-        /** 每个像素 1024 次迭代，足以让旗舰 GPU 也跑不到满帧，从而区分出性能差距。 */
+        /**
+         * 刻意做成极简着色器：
+         * 之前带 1024/192 次迭代循环的版本会让部分高通驱动在编译期直接 SIGSEGV 杀掉进程，
+         * 所以这里不用循环、不用预处理指令，靠每帧 64 遍全屏绘制把填充率打满。
+         */
         const val FRAGMENT_SHADER = """
-            #ifdef GL_FRAGMENT_PRECISION_HIGH
             precision highp float;
-            #else
-            precision mediump float;
-            #endif
             varying vec2 vCoordinate;
             void main() {
-                vec2 p = vCoordinate * 3.0;
-                float accumulator = 0.0;
-                for (int i = 0; i < 1024; i++) {
-                    p = vec2(p.x * 1.011 - p.y * 0.017, p.y * 1.013 + p.x * 0.019);
-                    accumulator += sin(p.x) * cos(p.y) + 0.3 * sin(p.x + p.y);
-                }
-                float value = fract(abs(accumulator) * 0.01);
+                float value = 0.5 + 0.25 * sin(vCoordinate.x * 6.0) + 0.25 * cos(vCoordinate.y * 6.0);
                 gl_FragColor = vec4(value, value * 0.55, 0.32, 1.0);
             }
         """
