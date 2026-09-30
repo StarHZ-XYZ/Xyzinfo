@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
 
         renderOverview(DeviceOverviewProvider.load())
         setupNavigation()
+        applyHomeLayoutStyle()
         loadDeviceName()
         setupUpdate()
         setupCardFeedback()
@@ -177,6 +178,51 @@ class MainActivity : AppCompatActivity() {
         cardTelephony.setOnClickListener { open(TelephonyInfoActivity::class.java) }
         cardSystem.setOnClickListener { open(SystemInfoActivity::class.java) }
         cardGps.setOnClickListener { open(GpsInfoActivity::class.java) }
+    }
+
+    /**
+     * 主页排版样式：默认一列列表，可选两列宫格。
+     *
+     * 做法是在运行时把 8 张功能卡片从原来的竖排容器里摘出来，塞进一个 2 列 GridLayout，
+     * 再插回原来的位置——不用维护两套布局 XML，卡片本身也不用改。
+     */
+    private fun applyHomeLayoutStyle() {
+        if (!SettingsRepository.homeGridStyle(this)) return
+        val cards = listOf(
+            binding.cardCpu, binding.cardMemory, binding.cardScreen, binding.cardBattery,
+            binding.cardSensor, binding.cardTelephony, binding.cardSystem, binding.cardGps
+        )
+        val parent = cards.first().parent as? android.view.ViewGroup ?: return
+        val anchorIndex = parent.indexOfChild(cards.first())
+        cards.forEach { parent.removeView(it) }
+
+        val density = resources.displayMetrics.density
+        val gap = (10 * density).toInt()
+        val grid = android.widget.GridLayout(this).apply {
+            columnCount = 2
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+        cards.forEachIndexed { index, card ->
+            val row = index / 2
+            val column = index % 2
+            card.layoutParams = android.widget.GridLayout.LayoutParams().apply {
+                width = 0
+                height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                rowSpec = android.widget.GridLayout.spec(row)
+                columnSpec = android.widget.GridLayout.spec(column, 1f)
+                setMargins(
+                    if (column == 0) 0 else gap / 2,
+                    if (row == 0) 0 else gap,
+                    if (column == 1) 0 else gap / 2,
+                    0
+                )
+            }
+            grid.addView(card)
+        }
+        parent.addView(grid, anchorIndex.coerceAtLeast(0))
     }
 
     private fun open(screen: Class<out Activity>) {

@@ -73,6 +73,12 @@ class SettingsActivity : AppCompatActivity() {
             recreate()
         }
 
+        binding.switchHomeGrid.isChecked = SettingsRepository.homeGridStyle(this)
+        binding.switchHomeGrid.setOnCheckedChangeListener { _, checked ->
+            SettingsRepository.setHomeGridStyle(this, checked)
+            recreate()
+        }
+
         // 活体预览：就是首页用的那个底栏组件，点着能直接感受液体指示块
         binding.glassBarPreview.bind(GlassScaffold.tabs(), GlassScaffold.TAB_SETTINGS) { _, _ -> }
         // 预览也要真的磨砂：拿设置页自己的内容当取样源

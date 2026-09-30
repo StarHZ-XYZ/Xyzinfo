@@ -23,6 +23,7 @@ object SettingsRepository {
     private const val KEY_FOLLOW_SYSTEM_COLOR = "follow_system_color"
     private const val KEY_SEASON_EFFECT = "season_effect"
     private const val KEY_SEASON_MODE = "season_mode"
+    private const val KEY_HOME_GRID = "home_grid_style"
 
     private const val KEY_LAST_SINGLE = "last_single"
     private const val KEY_LAST_MULTI = "last_multi"
@@ -119,6 +120,16 @@ object SettingsRepository {
 
     fun setSeasonMode(context: Context, mode: String) {
         prefs(context).edit().putString(KEY_SEASON_MODE, mode).apply()
+    }
+
+    // ---------- 主页排版样式 ----------
+
+    /** 主页功能模块是否用宫格（两列）排列；默认 false = 一列列表。 */
+    fun homeGridStyle(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_HOME_GRID, false)
+
+    fun setHomeGridStyle(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_HOME_GRID, enabled).apply()
     }
 
     // ---------- 最近一次跑分成绩 ----------
