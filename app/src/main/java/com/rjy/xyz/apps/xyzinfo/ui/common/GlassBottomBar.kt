@@ -83,7 +83,10 @@ class GlassBottomBar @JvmOverloads constructor(
     private var indicatorCenterX = 0f
     private var appliedStyles = -1
     private var lastLaidOutWidth = 0
-    private var touchAlpha = 0f
+    /** 手指按下时所在的标签（松手时用来判断是"点"还是"滑"）。 */
+    private var tabIndexAtDown = 0
+    private var downX = 0f
+    private var dragging = false
 
     private val colorEvaluator = ArgbEvaluator()
     private val decelerate = PathInterpolator(0.05f, 0.7f, 0.1f, 1f)
@@ -156,12 +159,12 @@ class GlassBottomBar @JvmOverloads constructor(
             val item = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
-                isClickable = true
+                // 不做成 clickable：否则它会自己消费 DOWN，父级就收不到 MOVE/UP，跟手滑动就没了。
+                // 点击与滑动统一由底栏自己的 onTouchEvent 处理。
+                isClickable = false
                 setPadding(0, dp(9f).toInt(), 0, 0)
                 addView(icon)
                 addView(label)
-                setOnClickListener { handleClick(index) }
-                setOnTouchListener { _, event -> handleTouch(event) }
             }
             addView(item, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             items += item
@@ -214,28 +217,75 @@ class GlassBottomBar @JvmOverloads constructor(
         appliedStyles = selectedIndex
     }
 
-    private fun handleClick(index: Int) {
-        val reselected = index == selectedIndex
-        if (reselected) {
-            pulse()
-        } else if (autoAnimateOnSelect) {
-            val previous = selectedIndex
-            selectedIndex = index
-            applyItemStyles(previous)
-            moveTo(index, Anim.enabled(context))
+    /**
+     * 底栏统一手势：
+     * - 按下 / 拖动时指示线**跟手移动**，手指经过的标签实时高亮；
+     * - 松手才真正切换页面（拖动到别的标签算切换，原地松手算点击）。
+     *
+     * 之前两个毛病也在这一版去掉：
+     * 1. 手指放上去整条会变灰 —— 那是旧的"整条提亮"叠加层，视觉上就是发灰，已删除；
+     * 2. 点一下像闪一下 —— 同样来自那层叠加的瞬间出现/消失，现在没有任何整条高亮。
+     */
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                isPressed = true
+                dragging = false
+                downX = event.x
+                tabIndexAtDown = indexAt(event.x)
+                backdrop.requestRefresh()
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                if (kotlin.math.abs(event.x - downX) > dp(6f)) dragging = true
+                if (dragging) {
+                    // 指示线跟手（限制在第一个到最后一个标签中心之间）
+                    val first = centerOf(0).takeIf { it > 0f }
+                    val last = centerOf(tabs.size - 1).takeIf { it > 0f }
+                    if (first != null && last != null) {
+                        moveAnimator?.cancel()
+                        indicatorCenterX = event.x.coerceIn(first, last)
+                        val hover = indexAt(event.x)
+                        if (hover != selectedIndex) {
+                            val previous = selectedIndex
+                            selectedIndex = hover
+                            applyItemStyles(previous)
+                        }
+                        invalidate()
+                    }
+                }
+            }
+
+            MotionEvent.ACTION_UP -> {
+                isPressed = false
+                val commit = indexAt(event.x)
+                if (dragging) {
+                    // 跟手结束后落到最近的标签
+                    moveTo(commit, Anim.enabled(context))
+                    onTabSelected?.invoke(commit, commit == tabIndexAtDown)
+                } else {
+                    // 原地点击：保留原来的"重复点当前标签弹一下"行为
+                    val reselected = commit == tabIndexAtDown && commit == selectedIndex
+                    if (reselected) pulse() else moveTo(commit, Anim.enabled(context))
+                    onTabSelected?.invoke(commit, reselected)
+                }
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                isPressed = false
+                dragging = false
+                moveTo(selectedIndex.coerceAtLeast(0), Anim.enabled(context))
+            }
         }
-        onTabSelected?.invoke(index, reselected)
+        return true
     }
 
-    private fun handleTouch(event: MotionEvent): Boolean {
-        touchAlpha = when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> 1f
-            MotionEvent.ACTION_MOVE -> 0.6f
-            else -> 0f
-        }
-        if (event.actionMasked == MotionEvent.ACTION_DOWN) backdrop.requestRefresh()
-        invalidate()
-        return false
+    /** 某个 x 坐标落在第几个标签上。 */
+    private fun indexAt(x: Float): Int {
+        if (items.isEmpty()) return 0
+        val width = items.first().width
+        if (width <= 0) return 0
+        return (x / width).toInt().coerceIn(0, items.size - 1)
     }
 
     private fun pulse() {
@@ -366,13 +416,6 @@ class GlassBottomBar @JvmOverloads constructor(
                 paint.alpha = 255
                 paint.shader = null
             }
-        }
-
-        // 5) 按压时整条稍微亮一点
-        if (touchAlpha > 0f) {
-            paint.color = withAlpha(0xFFFFFF, (touchAlpha * 18).toInt())
-            canvas.drawRect(0f, 0f, w, h, paint)
-            paint.color = 0
         }
 
         canvas.restoreToCount(checkpoint)
