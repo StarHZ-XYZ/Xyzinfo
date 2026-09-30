@@ -31,6 +31,15 @@ class MiscActivity : AppCompatActivity() {
     private var readyAt = 0L
     private var bestMillis = 0L
 
+    /** 保存成字段，才能可靠地取消（旧写法用匿名 lambda，抢跑后定时器还在跑）。 */
+    private val reactionDelay = Runnable {
+        if (reactionState != 1) return@Runnable
+        reactionState = 2
+        readyAt = SystemClock.elapsedRealtime()
+        binding.reactionArea.setBackgroundColor(ThemeColors.accent(this))
+        binding.tvReactionResult.setInfoRow("状态：就是现在，快点！")
+    }
+
     private var cameraId: String? = null
     private var torchOn = false
 
@@ -48,7 +57,7 @@ class MiscActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        handler.removeCallbacksAndMessages(null)
+        handler.removeCallbacks(reactionDelay)
         // 离开页面时把状态复位，避免回来时卡在"等待变色"
         if (reactionState == 1) {
             reactionState = 0
@@ -59,41 +68,39 @@ class MiscActivity : AppCompatActivity() {
     // ---------- 反应力测试 ----------
 
     private fun setupReaction() {
-        binding.tvReactionResult.setInfoRow("最佳成绩：—")
-        binding.reactionArea.setOnClickListener {
-            when (reactionState) {
-                0 -> {
-                    reactionState = 1
-                    binding.reactionArea.setBackgroundColor(0xFF2A2F38.toInt())
-                    binding.tvReactionResult.setInfoRow("状态：等待方块变色…（抢跑作废）")
-                    val delay = Random.nextLong(1500L, 4000L)
-                    handler.postDelayed({
-                        if (reactionState != 1) return@postDelayed
-                        reactionState = 2
-                        readyAt = SystemClock.elapsedRealtime()
-                        binding.reactionArea.setBackgroundColor(ThemeColors.accent(this))
-                        binding.tvReactionResult.setInfoRow("状态：就是现在，快点！")
-                    }, delay)
-                }
+        // 待机态：深色方块 + 明确的操作提示
+        binding.reactionArea.setBackgroundColor(IDLE_COLOR)
+        binding.tvReactionResult.setInfoRow("点一下方块开始；等它变成主题色再点")
+        // 这里不用 Anim.pressFeedback：给它挂 OnTouchListener 会影响连点的手感
+        binding.reactionArea.isClickable = true
+        binding.reactionArea.setOnClickListener { handleReactionTap() }
+    }
 
-                1 -> {
-                    handler.removeCallbacksAndMessages(null)
-                    reactionState = 0
-                    binding.reactionArea.setBackgroundColor(0xFF2A2F38.toInt())
-                    binding.tvReactionResult.setInfoRow("抢跑了，这次作废，再点一次重来")
-                }
-
-                else -> {
-                    val millis = SystemClock.elapsedRealtime() - readyAt
-                    reactionState = 0
-                    binding.reactionArea.setBackgroundColor(0xFF2A2F38.toInt())
-                    if (bestMillis == 0L || millis < bestMillis) bestMillis = millis
-                    binding.tvReactionResult.setInfoRow(
-                        "本次反应：$millis 毫秒 ｜ 最佳：$bestMillis 毫秒"
-                    )
-                }
+    /** 反应力测试：0 待机 → 1 等待变色 → 2 等待点击。 */
+    private fun handleReactionTap() {
+        when (reactionState) {
+            0 -> {
+                reactionState = 1
+                binding.reactionArea.setBackgroundColor(IDLE_COLOR)
+                binding.tvReactionResult.setInfoRow("状态：等待变色…（现在别点，抢跑作废）")
+                handler.removeCallbacks(reactionDelay)
+                handler.postDelayed(reactionDelay, Random.nextLong(1500L, 4000L))
             }
-            Anim.pressFeedback(binding.reactionArea)
+
+            1 -> {
+                handler.removeCallbacks(reactionDelay)
+                reactionState = 0
+                binding.reactionArea.setBackgroundColor(IDLE_COLOR)
+                binding.tvReactionResult.setInfoRow("抢跑了，这次作废，再点一次重来")
+            }
+
+            else -> {
+                val millis = SystemClock.elapsedRealtime() - readyAt
+                reactionState = 0
+                binding.reactionArea.setBackgroundColor(IDLE_COLOR)
+                if (bestMillis == 0L || millis < bestMillis) bestMillis = millis
+                binding.tvReactionResult.setInfoRow("本次反应：$millis 毫秒 ｜ 最佳：$bestMillis 毫秒")
+            }
         }
     }
 
@@ -164,5 +171,10 @@ class MiscActivity : AppCompatActivity() {
                 cameraId?.let { manager?.setTorchMode(it, false) }
             }
         }
+    }
+
+    private companion object {
+        /** 待机色：深灰蓝，和主题色形成明显对比。 */
+        const val IDLE_COLOR = 0xFF2A2F38.toInt()
     }
 }
