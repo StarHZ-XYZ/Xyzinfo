@@ -272,5 +272,11 @@ class SettingsActivity : AppCompatActivity() {
                 )
             }.onFailure { Toast.makeText(this, "没有可用的浏览器", Toast.LENGTH_SHORT).show() }
         }
+        binding.btnOpenChangelog.setOnClickListener {
+            Anim.pressFeedback(it)
+            startActivity(
+                android.content.Intent(this, com.rjy.xyz.apps.xyzinfo.ui.about.ChangelogActivity::class.java)
+            )
+        }
     }
 }

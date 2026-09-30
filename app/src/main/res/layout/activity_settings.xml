@@ -445,6 +445,18 @@
                     android:textSize="13sp"
                     app:cornerRadius="12dp"
                     app:strokeColor="?attr/colorPrimary" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnOpenChangelog"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="更新日志 / 下个版本预告"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="13sp"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="?attr/colorPrimary" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
