@@ -19,6 +19,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.hardware.HardwareMoreActivity
 import com.rjy.xyz.apps.xyzinfo.ui.misc.MiscActivity
 import com.rjy.xyz.apps.xyzinfo.ui.about.ChangelogActivity
 import com.rjy.xyz.apps.xyzinfo.ui.gps.GpsInfoActivity
+import com.rjy.xyz.apps.xyzinfo.ui.env.EnvironmentCheckActivity
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -59,6 +60,7 @@ class LayoutRenderTest {
         ,"13-hardware-more" to HardwareMoreActivity::class.java
         ,"14-misc" to MiscActivity::class.java
         ,"15-changelog" to ChangelogActivity::class.java
+        ,"16-env-check" to EnvironmentCheckActivity::class.java
     )
 
     @Test
