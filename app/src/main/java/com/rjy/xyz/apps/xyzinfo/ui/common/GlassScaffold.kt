@@ -40,7 +40,7 @@ object GlassScaffold {
         GlassBottomBar.Tab(R.drawable.ic_nav_home, "首页"),
         GlassBottomBar.Tab(R.drawable.ic_nav_benchmark, "跑分"),
         GlassBottomBar.Tab(R.drawable.ic_nav_ranking, "排行"),
-        GlassBottomBar.Tab(R.drawable.ic_module_deepseek, "大肥鱼"),
+        GlassBottomBar.Tab(R.drawable.ic_deepseek_fish, "大肥鱼"),
         GlassBottomBar.Tab(R.drawable.ic_nav_settings, "设置")
     )
 
