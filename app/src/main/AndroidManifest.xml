@@ -53,6 +53,7 @@
         <activity android:name=".ui.gps.GpsInfoActivity" />
         <activity android:name=".ui.misc.MiscActivity" />
         <activity android:name=".ui.about.ChangelogActivity" />
+        <activity android:name=".ui.env.EnvironmentCheckActivity" />
         <activity android:name=".ui.hardware.HardwareMoreActivity" />
         <activity
             android:name=".ui.hardware.ScreenTestActivity"

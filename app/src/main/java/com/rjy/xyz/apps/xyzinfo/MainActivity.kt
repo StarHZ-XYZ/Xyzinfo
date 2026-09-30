@@ -20,6 +20,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.gps.GpsInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.hardware.ScreenTestActivity
 import com.rjy.xyz.apps.xyzinfo.ui.hardware.HardwareMoreActivity
 import com.rjy.xyz.apps.xyzinfo.ui.misc.MiscActivity
+import com.rjy.xyz.apps.xyzinfo.ui.env.EnvironmentCheckActivity
 import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
 import com.rjy.xyz.apps.xyzinfo.ui.ram.RamInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
@@ -223,6 +224,13 @@ class MainActivity : AppCompatActivity() {
         }
         addEntryCard("杂项工具", "反应力测试、随机密码、手电筒", R.drawable.ic_module_benchmark) {
             open(MiscActivity::class.java)
+        }
+        addEntryCard(
+            "环境检测",
+            "root 与风险环境痕迹（分级 + 证据）",
+            R.drawable.ic_module_system
+        ) {
+            open(EnvironmentCheckActivity::class.java)
         }
     }
 
