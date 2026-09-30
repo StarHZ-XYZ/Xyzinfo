@@ -40,9 +40,11 @@ class ThermalActivity : AppCompatActivity() {
     private val refresh = object : Runnable {
         override fun run() {
             refreshNow()
-            if (logging) {
-                runCatching { ThermalLogger.logSample(this@ThermalActivity) }
-            }
+            /*
+             * 这里**不能**顺手写 CSV：原来每 2 秒落一条，既和"每分钟一条"的承诺不符，
+             * 又是在主线程读 /sys + 写文件，页面会一顿一顿的（用户报过卡）。
+             * 落盘统一交给 logTick（每分钟一条，而且放在后台线程）。
+             */
             handler.postDelayed(this, REFRESH_MILLIS)
         }
     }
@@ -50,8 +52,11 @@ class ThermalActivity : AppCompatActivity() {
     private val logTick = object : Runnable {
         override fun run() {
             if (!logging) return
-            runCatching { ThermalLogger.logSample(this@ThermalActivity) }
-            showHistory()
+            // 读热区 + 写文件都是 I/O，放后台线程，避免主线程掉帧
+            Thread({
+                runCatching { ThermalLogger.logSample(this@ThermalActivity) }
+                runOnUiThread { if (!isFinishing) showHistory() }
+            }, "xyzinfo-thermal-log").start()
             handler.postDelayed(this, LOG_INTERVAL_MILLIS)
         }
     }
@@ -75,7 +80,9 @@ class ThermalActivity : AppCompatActivity() {
             logging = !logging
             if (logging) {
                 binding.btnToggleLogging.text = "停止记录"
-                ThermalLogger.logSample(this)
+                Thread({
+                    runCatching { ThermalLogger.logSample(this@ThermalActivity) }
+                }, "xyzinfo-thermal-log").start()
                 handler.postDelayed(logTick, LOG_INTERVAL_MILLIS)
             } else {
                 binding.btnToggleLogging.text = "开始记录（每分钟一条）"

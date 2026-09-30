@@ -138,16 +138,26 @@ class DeepSeekWebActivity : AppCompatActivity() {
     }
 
     private fun copyReport() {
-        val text = runCatching {
-            val report = DeviceInspector.inspect(this)
-            buildString {
-                append("请帮我看看这台设备（验机报告）：\n")
-                append("评分：${report.score}/100\n")
-                report.summaries.take(8).forEach { append("· $it\n") }
+        /*
+         * 验机要读 /proc、/sys 一堆文件，**不能放在主线程**：
+         * 之前是在 onCreate / 点击回调里直接调 DeviceInspector.inspect()，
+         * 老机器上会卡住甚至 ANR。现在放后台线程，剪贴板再回主线程写。
+         */
+        Thread({
+            val text = runCatching {
+                val report = DeviceInspector.inspect(this)
+                buildString {
+                    append("请帮我看看这台设备（验机报告）：\n")
+                    append("评分：${report.score}/100\n")
+                    report.summaries.take(8).forEach { append("· $it\n") }
+                }
+            }.getOrElse { "请帮我分析这台设备的验机报告。" }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("验机报告", text))
             }
-        }.getOrElse { "请帮我分析这台设备的验机报告。" }
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("验机报告", text))
+        }, "xyzinfo-fish-copy").start()
     }
 
     /** 提示栏：顺便把「是否已经登录过」告诉用户。 */

@@ -177,10 +177,16 @@ class ThermalOverlayService : Service() {
     }
 
     private fun updateTemperature() {
-        val zones = runCatching { ThermalLogger.readZones() }.getOrDefault(emptyList())
-        val hottest = zones.firstOrNull() ?: return
-        tempLabel?.text = String.format(Locale.US, "%.1f ℃", hottest.celsius)
-        tempLabel?.contentDescription = "当前最高温 · ${hottest.name}"
+        // 读 /sys 是 I/O：放后台线程，读完再回主线程刷文字
+        Thread({
+            val hottest = runCatching { ThermalLogger.readZones() }
+                .getOrDefault(emptyList())
+                .firstOrNull() ?: return@Thread
+            handler.post {
+                tempLabel?.text = String.format(Locale.US, "%.1f ℃", hottest.celsius)
+                tempLabel?.contentDescription = "当前最高温 · ${hottest.name}"
+            }
+        }, "xyzinfo-thermal-overlay").start()
     }
 
     // ---------- 通知 ----------
