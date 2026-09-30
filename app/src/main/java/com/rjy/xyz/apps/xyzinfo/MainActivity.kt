@@ -159,14 +159,18 @@ class MainActivity : AppCompatActivity() {
         tvDeviceName.text = overview.displayName
         tvDeviceRawModel.text =
             "原始型号：${overview.rawModel} ｜ 设备代号：${overview.deviceCode}"
-        tvAndroidVersion.setInfoRow("Android 版本：${overview.androidRelease}（API ${overview.apiLevel}）")
+        tvAndroidVersion.setInfoRow(
+            "Android 版本：${overview.androidRelease}（API ${overview.apiLevel}）",
+            iconRes = R.drawable.ic_module_system
+        )
         // 一并显示设备形态：手机 / 平板 / 折叠屏（含展开折叠状态）
         val form = DeviceFormDetector.detect(this@MainActivity)
         tvRomName.setInfoRow(
             "系统 UI：${overview.romName ?: Labels.NOT_PUBLIC} ｜ 形态：${form.form.label}"
         )
         tvKernelVersion.setInfoRow(
-            "内核：${overview.kernelRelease} ｜ 架构：${overview.abiLabel}"
+            "内核：${overview.kernelRelease} ｜ 架构：${overview.abiLabel}",
+            iconRes = R.drawable.ic_module_cpu
         )
         tvBrandManufacturer.setInfoRow(
             "品牌：${overview.brand}" +
@@ -174,7 +178,8 @@ class MainActivity : AppCompatActivity() {
                     " / ${overview.manufacturer}"
                 } else {
                     ""
-                }
+                },
+            iconRes = R.drawable.ic_module_telephony
         )
         // 顶部信息收敛：设备代号已并入「原始型号」那一行，CPU 架构并入内核那一行，
         // 这两行不再单独占位，避免首页一上来就是一大串等宽字段。
