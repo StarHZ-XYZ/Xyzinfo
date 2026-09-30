@@ -278,5 +278,45 @@ class SettingsActivity : AppCompatActivity() {
                 android.content.Intent(this, com.rjy.xyz.apps.xyzinfo.ui.about.ChangelogActivity::class.java)
             )
         }
+        setupFishAssistant()
+    }
+
+    /** 大肥鱼助手：填 API Key（直连官方接口）或切到官方免费版网页。 */
+    private fun setupFishAssistant() {
+        binding.etDeepSeekKey.setText(SettingsRepository.deepSeekApiKey(this))
+        binding.btnSaveDeepSeekKey.setOnClickListener {
+            Anim.pressFeedback(it)
+            SettingsRepository.setDeepSeekApiKey(this, binding.etDeepSeekKey.text?.toString().orEmpty())
+            Toast.makeText(this, "已保存 DeepSeek API Key", Toast.LENGTH_SHORT).show()
+            updateAiModeUi()
+        }
+        binding.chipAiModeApi.setOnClickListener {
+            SettingsRepository.setAiMode(this, "api")
+            updateAiModeUi()
+        }
+        binding.chipAiModeWeb.setOnClickListener {
+            SettingsRepository.setAiMode(this, "web")
+            updateAiModeUi()
+        }
+        updateAiModeUi()
+    }
+
+    private fun updateAiModeUi() {
+        val api = SettingsRepository.aiMode(this) == "api"
+        val keySet = SettingsRepository.deepSeekApiKey(this).isNotBlank()
+        listOf(binding.chipAiModeApi to api, binding.chipAiModeWeb to !api).forEach { (chip, selected) ->
+            chip.isSelected = selected
+            chip.setTextColor(
+                ContextCompat.getColor(
+                    this,
+                    if (selected) R.color.accent else R.color.text_secondary
+                )
+            )
+        }
+        binding.tvAiModeHint.text = when {
+            api && keySet -> "当前：API Key 直连（已填写 Key，点「大肥鱼」标签即可让 DeepSeek 解读验机报告）"
+            api && !keySet -> "当前：API Key 直连，但还没填 Key —— 请在上面的输入框里填入并保存"
+            else -> "当前：官方免费版（点「大肥鱼」标签里的按钮会打开 chat.deepseek.com，需要登录）"
+        }
     }
 }
