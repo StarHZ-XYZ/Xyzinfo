@@ -66,6 +66,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.switchSeason.isChecked = SettingsRepository.seasonEffectEnabled(this)
+        buildDarkModeChips()
         updateSeasonHint()
         buildSeasonChips()
         binding.switchSeason.setOnCheckedChangeListener { _, checked ->
@@ -138,6 +139,45 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun scrimLabel(value: Int): String =
         "蒙版浓度：$value%（越高文字越清楚，越低越能看到壁纸）"
+
+    /** 深色模式：跟随系统 / 浅色 / 深色 三个胶囊，点一下立刻全局生效。 */
+    private fun buildDarkModeChips() {
+        val modes = listOf(0 to "跟随系统", 1 to "浅色", 2 to "深色")
+        val current = SettingsRepository.darkMode(this)
+        binding.layoutDarkModeChips.removeAllViews()
+        modes.forEach { (mode, label) ->
+            val chip = TextView(this).apply {
+                text = label
+                textSize = 12.5f
+                gravity = android.view.Gravity.CENTER
+                setPadding(dp(14f), dp(7f), dp(14f), dp(7f))
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@SettingsActivity,
+                        if (mode == current) R.color.accent else R.color.text_secondary
+                    )
+                )
+                background = ContextCompat.getDrawable(this@SettingsActivity, R.drawable.bg_chip_filter)
+                isSelected = mode == current
+                isClickable = true
+                setOnClickListener {
+                    SettingsRepository.setDarkMode(this@SettingsActivity, mode)
+                    androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
+                        when (mode) {
+                            1 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+                            2 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+                            else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                        }
+                    )
+                }
+            }
+            chip.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = dp(8f) }
+            binding.layoutDarkModeChips.addView(chip)
+        }
+    }
 
     private fun updateSeasonHint() {
         val manual = SettingsRepository.seasonMode(this) != "auto"

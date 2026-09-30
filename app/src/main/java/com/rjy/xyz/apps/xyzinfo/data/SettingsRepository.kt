@@ -24,6 +24,7 @@ object SettingsRepository {
     private const val KEY_SEASON_EFFECT = "season_effect"
     private const val KEY_SEASON_MODE = "season_mode"
     private const val KEY_HOME_GRID = "home_grid_style"
+    private const val KEY_DARK_MODE = "dark_mode"
 
     private const val KEY_LAST_SINGLE = "last_single"
     private const val KEY_LAST_MULTI = "last_multi"
@@ -130,6 +131,15 @@ object SettingsRepository {
 
     fun setHomeGridStyle(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_HOME_GRID, enabled).apply()
+    }
+
+    // ---------- 深色模式 ----------
+
+    /** 0 = 跟随系统，1 = 浅色，2 = 深色。 */
+    fun darkMode(context: Context): Int = prefs(context).getInt(KEY_DARK_MODE, 0)
+
+    fun setDarkMode(context: Context, mode: Int) {
+        prefs(context).edit().putInt(KEY_DARK_MODE, mode.coerceIn(0, 2)).apply()
     }
 
     // ---------- 最近一次跑分成绩 ----------

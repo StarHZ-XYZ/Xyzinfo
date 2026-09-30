@@ -126,6 +126,26 @@
                     android:layout_height="wrap_content"
                     android:text="Android 12 及以上按系统壁纸生成配色，作用于按钮、开关、滑块、水波纹与系统栏；关掉保持应用自己的青绿" />
 
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="深色模式" />
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/layoutDarkModeChips"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
+
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"

@@ -19,7 +19,18 @@ class XyzInfoApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        applyDarkMode()
         applyDynamicColors()
+    }
+
+    /** 深色模式：跟随系统 / 强制浅色 / 强制深色。 */
+    private fun applyDarkMode() {
+        val mode = when (SettingsRepository.darkMode(this)) {
+            1 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+            2 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+            else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        }
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
     }
 
     private fun applyDynamicColors() {
