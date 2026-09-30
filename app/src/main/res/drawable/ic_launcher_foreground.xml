@@ -1,22 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  前景：**完全沿用原图标的路径**（机器人头 + 齿轮 + 星芒，一个点都没改），
-  外层缩放/位移也保持原样，确保和原来长得一模一样。
+  XYZ-Devinfo 图标（重构版）：**完全用你原图里的三件元素重新编排** ——
+
+  · 齿轮：从原图取出来放大成主体，8 个圆头齿 + 外环；
+  · 机器人脸：原图那个机器人头，简化成"天线 + 两只眼睛"嵌进齿轮中心，
+    齿轮环本身就是它的头，含义变成「设备在齿轮里」= 硬件 + 参数；
+  · 星芒：保留原图的星芒，一大（右上）一小（左下）做点缀。
+
+  颜色沿用白 + 薄荷绿；底色仍是原图的青绿家族（换成应用的青绿渐变）。
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
-    android:tint="#000000">
-  <!-- 图形本身没动，只把整体放大约 10%（0.58 → 0.64 并重新居中），
-       让小尺寸下更醒目、四周不那么空。 -->
-  <group android:scaleX="0.64"
-      android:scaleY="0.64"
-      android:translateX="4.32"
-      android:translateY="4.32">
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
     <path
-        android:fillColor="@android:color/white"
-        android:pathData="M17.41,6.59L15,5.5l2.41,-1.09L18.5,2l1.09,2.41L22,5.5l-2.41,1.09L18.5,9L17.41,6.59zM21.28,12.72L20.5,11l-0.78,1.72L18,13.5l1.72,0.78L20.5,16l0.78,-1.72L23,13.5L21.28,12.72zM16.24,14.37l1.94,1.47l-2.5,4.33l-2.24,-0.94c-0.2,0.13 -0.42,0.26 -0.64,0.37L12.5,22h-5l-0.3,-2.41c-0.22,-0.11 -0.43,-0.23 -0.64,-0.37l-2.24,0.94l-2.5,-4.33l1.94,-1.47C3.75,14.25 3.75,14.12 3.75,14s0,-0.25 0.01,-0.37l-1.94,-1.47l2.5,-4.33l2.24,0.94c0.2,-0.13 0.42,-0.26 0.64,-0.37L7.5,6h5l0.3,2.41c0.22,0.11 0.43,0.23 0.64,0.37l2.24,-0.94l2.5,4.33l-1.94,1.47c0.01,0.12 0.01,0.24 0.01,0.37S16.25,14.25 16.24,14.37zM13,14c0,-1.66 -1.34,-3 -3,-3s-3,1.34 -3,3s1.34,3 3,3S13,15.66 13,14z"/>
-  </group>
+        android:fillColor="#00000000"
+        android:pathData="M54,26 A28,28 0 1 0 54,82 A28,28 0 1 0 54,26 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="5.4" />
+
+    <path
+        android:pathData="M54,25 L54,18 M74.5,33.5 L79.5,28.5 M83,54 L90,54 M74.5,74.5 L79.5,79.5 M54,83 L54,90 M33.5,74.5 L28.5,79.5 M25,54 L18,54 M33.5,33.5 L28.5,28.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="6.2" />
+
+    <path
+        android:pathData="M54,53 L54,39"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="4.4" />
+    <path
+        android:fillColor="#FF8BF0CE"
+        android:pathData="M54,33.2 A4.2,4.2 0 1 0 54,41.6 A4.2,4.2 0 1 0 54,33.2 Z" />
+
+    <path
+        android:fillColor="#FF8BF0CE"
+        android:pathData="M45,55 A4.4,4.4 0 1 0 45,63.8 A4.4,4.4 0 1 0 45,55 Z M63,55 A4.4,4.4 0 1 0 63,63.8 A4.4,4.4 0 1 0 63,55 Z" />
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M86,20 L88.4,27.6 L96,30 L88.4,32.4 L86,40 L83.6,32.4 L76,30 L83.6,27.6 Z" />
+    <path
+        android:fillColor="#FF8BF0CE"
+        android:pathData="M24,76 L25.6,81.4 L31,83 L25.6,84.6 L24,90 L22.4,84.6 L17,83 L22.4,81.4 Z" />
 </vector>
