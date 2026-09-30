@@ -213,10 +213,16 @@ class MainActivity : AppCompatActivity() {
             val row = index / 2
             val column = index % 2
             card.layoutParams = android.widget.GridLayout.LayoutParams().apply {
-                // 宽高都给 0 + 行列都带权重：同行同列严格等宽等高，宫格才整齐
+                /*
+                 * 列：宽度给 0 + 权重（外层宽度是 match_parent，有界，权重才生效）。
+                 * 行：**不能**给权重！GridLayout 在 WRAP_CONTENT 高度的容器里
+                 * 无法分配加权行，会把行高算成 0，整块宫格直接消失。
+                 * 这里改成 FILL 对齐 + MATCH_PARENT：同一行的卡片自动拉伸到该行最高的一张，
+                 * 8 张卡片结构一样，行与行的高度自然也就一致了。
+                 */
                 width = 0
-                height = 0
-                rowSpec = android.widget.GridLayout.spec(row, 1f)
+                height = android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                rowSpec = android.widget.GridLayout.spec(row, android.widget.GridLayout.FILL)
                 columnSpec = android.widget.GridLayout.spec(column, 1f)
                 // 卡片之间统一留 gap，外侧不留边（相邻卡片各出一半，正好等于 gap）
                 setMargins(
