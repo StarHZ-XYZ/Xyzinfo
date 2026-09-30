@@ -56,6 +56,12 @@ class GlassBottomBar @JvmOverloads constructor(
      */
     var autoAnimateOnSelect: Boolean = true
 
+    /**
+     * 下沉式：贴着屏幕底边、直角、无阴影（普通底栏的样子）。
+     * 设置页里的活体预览保持 false，用圆角胶囊形态展示。
+     */
+    var docked: Boolean = false
+
     private val tabs = mutableListOf<Tab>()
     private val items = mutableListOf<LinearLayout>()
     private val icons = mutableListOf<ImageView>()
@@ -288,7 +294,9 @@ class GlassBottomBar @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        (background as? GradientDrawable)?.cornerRadius = h / 2f
+        val radius = if (docked) 0f else h / 2f
+        (background as? GradientDrawable)?.cornerRadius = radius
+        elevation = if (docked) 0f else dp(18f)
         tintShader = LinearGradient(0f, 0f, 0f, h.toFloat(), colorTintTop, colorTintBottom, Shader.TileMode.CLAMP)
         borderShader = LinearGradient(0f, 0f, 0f, h.toFloat(), colorRimTop, colorRimBottom, Shader.TileMode.CLAMP)
         backdrop.requestRefresh(immediate = true)
@@ -331,7 +339,7 @@ class GlassBottomBar @JvmOverloads constructor(
         val w = width.toFloat()
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
-        val capsule = h / 2f
+        val capsule = if (docked) 0f else h / 2f
         barRect.set(0f, 0f, w, h)
         barPath.reset()
         barPath.addRoundRect(barRect, capsule, capsule, Path.Direction.CW)
@@ -374,9 +382,11 @@ class GlassBottomBar @JvmOverloads constructor(
         pillPaint.color = colorPill
         canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillPaint)
 
-        pillRimPaint.shader = pillRimShader
-        canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillRimPaint)
-        pillRimPaint.shader = null
+        if (!docked) {
+            pillRimPaint.shader = pillRimShader
+            canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillRimPaint)
+            pillRimPaint.shader = null
+        }
 
         // 4) 外圈细边
         borderPaint.shader = borderShader

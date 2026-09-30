@@ -32,28 +32,17 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupAppearance() {
-        binding.switchGlassBar.isChecked = SettingsRepository.glassBottomBarEnabled(this)
-        binding.switchGlassBar.setOnCheckedChangeListener { _, checked ->
-            SettingsRepository.setGlassBottomBarEnabled(this, checked)
-            // 底栏是运行时挂上去的，改开关后重建页面即可看到效果
-            recreate()
-        }
-
         binding.switchAnimations.isChecked = SettingsRepository.animationsEnabled(this)
         binding.switchAnimations.setOnCheckedChangeListener { _, checked ->
             SettingsRepository.setAnimationsEnabled(this, checked)
-            if (checked) {
-                Anim.staggerIn(
-                    listOf(binding.switchAnimations, binding.switchGlassBar),
-                    step = 60L,
-                    travelDp = 10f
-                )
-            }
+            // 粒子层是运行时挂上去的，改完重建页面让开关立刻生效
+            recreate()
         }
 
         binding.switchParticles.isChecked = SettingsRepository.particleEffectEnabled(this)
         binding.switchParticles.setOnCheckedChangeListener { _, checked ->
             SettingsRepository.setParticleEffectEnabled(this, checked)
+            recreate()
         }
 
         // 活体预览：就是首页用的那个底栏组件，点着能直接感受液体指示块

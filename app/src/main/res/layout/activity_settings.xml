@@ -53,28 +53,12 @@
                     android:layout_height="wrap_content"
                     android:text="外观" />
 
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/switchGlassBar"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:minHeight="46dp"
-                    android:text="液态玻璃底栏"
-                    android:textColor="@color/text_primary"
-                    android:textSize="14sp" />
-
-                <TextView
-                    style="@style/Text.SectionSubtitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="半透明磨砂 + 液体指示块，浮在所有页面底部；关掉后页面变成纯内容布局" />
-
-                <!-- 活体预览：就是真实底栏组件，可以点着玩 -->
+                <!-- 底栏固定开启（普通高斯模糊 + 下沉），这里放一个活体预览 -->
                 <com.rjy.xyz.apps.xyzinfo.ui.common.GlassBottomBar
                     android:id="@+id/glassBarPreview"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/glass_bar_height"
-                    android:layout_marginTop="12dp" />
+                    android:layout_marginTop="6dp" />
 
                 <View
                     android:layout_width="match_parent"

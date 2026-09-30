@@ -53,11 +53,14 @@ object GlassScaffold {
      * @return 底栏实例；设置里关掉底栏时返回 null，此时不改动布局。
      */
     fun attach(activity: AppCompatActivity, content: View, currentTab: Int): GlassBottomBar? {
-        if (!SettingsRepository.glassBottomBarEnabled(activity)) return null
+        // 底栏固定开启：设置里的开关已经去掉。
+        // 注意不能再读旧版本存下来的开关值——有些用户之前把它关过，
+        // 继续读就会导致「没有开关、底栏也永远不出现」。
 
         val barHeight = activity.resources.getDimension(R.dimen.glass_bar_height).toInt()
-        val sideMargin = activity.resources.getDimension(R.dimen.glass_bar_side_margin).toInt()
-        val baseBottomMargin = activity.resources.getDimension(R.dimen.glass_bar_bottom_margin).toInt()
+        // 下沉式底栏：左右不留边距，直接贴着屏幕底部（不再是悬浮胶囊）
+        val sideMargin = 0
+        val baseBottomMargin = 0
         val reserved = activity.resources.getDimension(R.dimen.glass_bar_reserved_space).toInt()
 
         val container = FrameLayout(activity).apply {
@@ -79,6 +82,7 @@ object GlassScaffold {
         )
 
         val bar = GlassBottomBar(activity)
+        bar.docked = true
         val barParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             barHeight
@@ -145,7 +149,10 @@ object GlassScaffold {
         bar.post { bar.setSelectedTab(currentTab, animated = false) }
 
         // 点击粒子：盖在最上层，但不消费触摸事件
-        if (SettingsRepository.particleEffectEnabled(activity)) {
+        // 动画总开关关掉时，粒子也不出现（用户按的就是这个开关）
+        if (SettingsRepository.particleEffectEnabled(activity) &&
+            SettingsRepository.animationsEnabled(activity)
+        ) {
             val particles = ParticleOverlay(activity)
             container.addView(
                 particles,
@@ -164,7 +171,40 @@ object GlassScaffold {
 
         activity.setContentView(container)
         ViewCompat.requestApplyInsets(container)
+        animateEntrance(content)
         return bar
+    }
+
+    /**
+     * 页面入场动画：把页面里的一级区块**从左往右依次滑入**。
+     *
+     * 流畅优先的三条约束：
+     * 1. 只做 alpha + translationX（不缩放、不加 alpha 到整窗，避免离屏层）；
+     * 2. 只动前 14 个区块（首屏可见的那几个），不碰长列表；
+     * 3. 关掉「丝滑动画」后整段跳过。
+     */
+    private fun animateEntrance(content: View) {
+        if (!Anim.enabled(content.context)) return
+        val host = (content as? ViewGroup)
+            ?.takeIf { it.childCount > 0 }
+            ?.getChildAt(0) as? ViewGroup ?: return
+        if (host.childCount < 2) return
+        val density = content.resources.displayMetrics.density
+        val interpolator = android.view.animation.PathInterpolator(0.05f, 0.7f, 0.1f, 1f)
+        val count = minOf(host.childCount, 14)
+        for (index in 0 until count) {
+            val view = host.getChildAt(index)
+            view.animate().cancel()
+            view.alpha = 0f
+            view.translationX = 64f * density
+            view.animate()
+                .alpha(1f)
+                .translationX(0f)
+                .setStartDelay(index * 26L)
+                .setDuration(240L)
+                .setInterpolator(interpolator)
+                .start()
+        }
     }
 
     /**

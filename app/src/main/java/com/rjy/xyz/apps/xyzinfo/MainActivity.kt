@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() {
         setupNavigation()
         loadDeviceName()
         setupUpdate()
-        playEntrance()
+        setupCardFeedback()
     }
 
     /** 从其它页面返回时重新查一次机型名（机型库可能刚更新过）。 */
@@ -62,25 +62,13 @@ class MainActivity : AppCompatActivity() {
         loadDeviceName()
     }
 
-    /**
-     * 首页入场：标题先到，卡片依次上浮，最后是更新按钮。
-     *
-     * 只做位移 + 透明度，避免在低端机上做属性动画时掉帧。
-     */
-    private fun playEntrance() {
-        val header = listOf<View>(binding.tvTitle, binding.tvSubTitle)
-        val cards = listOf<View>(
+    /** 卡片按压反馈（入场动画由 GlassScaffold 统一负责）。 */
+    private fun setupCardFeedback() {
+        Anim.pressFeedback(
             binding.cardCpu, binding.cardMemory, binding.cardScreen, binding.cardBattery,
-            binding.cardSensor, binding.cardTelephony, binding.cardSystem, binding.cardGps
+            binding.cardSensor, binding.cardTelephony, binding.cardSystem, binding.cardGps,
+            binding.btnUpdateDeviceNames
         )
-        Anim.staggerIn(header, step = 60L, travelDp = 10f, duration = Anim.DURATION_MEDIUM)
-        Anim.staggerIn(cards, startDelay = 100L, step = 55L, travelDp = 20f)
-        Anim.staggerIn(
-            listOf(binding.tvUpdateStatus, binding.btnUpdateDeviceNames),
-            startDelay = 260L, step = 60L, travelDp = 14f
-        )
-        Anim.pressFeedback(cards)
-        Anim.pressFeedback(binding.btnUpdateDeviceNames)
     }
 
     /** 机型库更新入口：状态展示 + 更新 + 恢复内置（与设置页共用同一套逻辑）。 */
