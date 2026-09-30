@@ -163,7 +163,33 @@ class OfflineMapView @JvmOverloads constructor(
             canvas.drawBitmap(image, sourceRect, destinationRect, bitmapPaint)
             drawGraticule(canvas, destinationRect)
             drawMarker(canvas, destinationRect)
+            logTransform(left, top, width, height)
         }
+    }
+
+    /**
+     * 把地图变换的关键值打到 logcat（每秒最多一条）。
+     *
+     * 之前「放大后跑到非洲」就是这里的算式写错了，留一行日志方便以后在真机上直接核对
+     * 「标记是不是真的落在视图中心」。
+     */
+    private fun logTransform(left: Float, top: Float, viewWidth: Float, viewHeight: Float) {
+        val now = System.currentTimeMillis()
+        if (now - lastLogAt < 1000L) return
+        lastLogAt = now
+        val lat = latitude ?: return
+        val lon = longitude ?: return
+        val markerX = left + drawWidth * ((lon + 180.0) / 360.0).toFloat()
+        val markerY = top + drawHeight * ((90.0 - lat) / 180.0).toFloat()
+        android.util.Log.d(
+            "XyzMap",
+            "zoom=$zoom view=${viewWidth.toInt()}x${viewHeight.toInt()} " +
+                "draw=${drawWidth.toInt()}x${drawHeight.toInt()} " +
+                "left=${left.toInt()} top=${top.toInt()} " +
+                "marker=(${markerX.toInt()}, ${markerY.toInt()}) " +
+                "center=(${(viewWidth / 2).toInt()}, ${(viewHeight / 2).toInt()}) " +
+                "pos=($lat, $lon) follow=$followPosition"
+        )
     }
 
     private val isDark: Boolean

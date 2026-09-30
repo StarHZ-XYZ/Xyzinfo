@@ -57,9 +57,27 @@ class ParticleOverlay @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (particleEnabled && event.actionMasked == MotionEvent.ACTION_DOWN) {
-            burst(event.x, event.y)
+            // 底栏那一条不炸粒子：点标签本来就会触发页面转场，
+            // 两个动画叠在一起（粒子持续重绘 + 窗口转场）是明显的掉帧源。
+            if (event.y < height - BOTTOM_SKIP_DP * density) {
+                burst(event.x, event.y)
+            }
         }
         return false
+    }
+
+    /** 页面离开时立刻收干净，避免和转场动画抢帧。 */
+    fun stop() {
+        if (particles.isEmpty() && rings.isEmpty()) return
+        particles.clear()
+        rings.clear()
+        lastFrame = 0L
+        invalidate()
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        if (visibility != VISIBLE) stop()
     }
 
     /** 在 (x, y) 炸开一小簇粒子 + 一圈扩散波纹。 */
@@ -135,4 +153,9 @@ class ParticleOverlay @JvmOverloads constructor(
 
     private fun withAlpha(color: Int, alpha: Int): Int =
         (color and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
+
+    private companion object {
+        /** 底部多少 dp 之内不触发粒子（底栏 + 手势条）。 */
+        const val BOTTOM_SKIP_DP = 96f
+    }
 }

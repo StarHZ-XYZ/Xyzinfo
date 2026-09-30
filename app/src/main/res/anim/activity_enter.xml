@@ -3,9 +3,6 @@
 <set xmlns:android="http://schemas.android.com/apk/res/android"
     android:duration="320"
     android:interpolator="@interpolator/xyz_decelerate">
-    <alpha
-        android:fromAlpha="0.0"
-        android:toAlpha="1.0" />
     <translate
         android:fromXDelta="6%p"
         android:toXDelta="0" />

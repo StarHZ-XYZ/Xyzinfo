@@ -154,6 +154,12 @@ object GlassScaffold {
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
             )
+            // 页面被切走时马上停掉粒子，别和窗口转场动画抢帧
+            (activity as? androidx.lifecycle.LifecycleOwner)?.lifecycle?.addObserver(
+                androidx.lifecycle.LifecycleEventObserver { _, event ->
+                    if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE) particles.stop()
+                }
+            )
         }
 
         activity.setContentView(container)
