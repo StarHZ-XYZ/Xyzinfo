@@ -155,6 +155,104 @@ object DeviceInspector {
         }
 
         // 7) 形态与架构（纯信息，不扣分）
+        // 8) 存储剩余空间
+        runCatching {
+            val stat = android.os.StatFs(android.os.Environment.getDataDirectory().path)
+            val totalBytes = stat.blockCountLong * stat.blockSizeLong
+            val freeBytes = stat.availableBlocksLong * stat.blockSizeLong
+            val freePercent = if (totalBytes > 0) freeBytes * 100.0 / totalBytes else 100.0
+            if (freePercent < 10) {
+                findings += Finding(
+                    "存储空间",
+                    "剩余 " + "%.0f".format(freePercent) + "%（约 " +
+                        "%.1f".format(freeBytes / 1024.0 / 1024 / 1024) +
+                        "GB），偏少，会影响系统更新与读写性能",
+                    EnvironmentCheck.Level.NOTICE
+                )
+                flags += "storage_low"
+                score -= 5
+            } else {
+                findings += Finding(
+                    "存储空间",
+                    "剩余 " + "%.0f".format(freePercent) + "%（约 " +
+                        "%.1f".format(freeBytes / 1024.0 / 1024 / 1024) + "GB），充足",
+                    EnvironmentCheck.Level.SAFE
+                )
+            }
+        }
+
+        // 9) 屏幕刷新率
+        runCatching {
+            val wm = context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+            val hz = wm.defaultDisplay.refreshRate
+            if (hz < 55f) {
+                findings += Finding(
+                    "屏幕刷新率",
+                    "当前 " + "%.0f".format(hz) + "Hz，低于常见 60Hz，可能在省电模式或识别异常",
+                    EnvironmentCheck.Level.NOTICE
+                )
+                flags += "low_hz"
+                score -= 3
+            } else {
+                findings += Finding(
+                    "屏幕刷新率",
+                    "当前 " + "%.0f".format(hz) + "Hz",
+                    EnvironmentCheck.Level.SAFE
+                )
+            }
+        }
+
+        // 10) 常用无线与感应硬件是否声明支持
+        runCatching {
+            val missing = buildList {
+                if (!manager.hasSystemFeature(PackageManager.FEATURE_WIFI)) add("WiFi")
+                if (!manager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH)) add("蓝牙")
+                if (!manager.hasSystemFeature(PackageManager.FEATURE_NFC)) add("NFC")
+                if (!manager.hasSystemFeature(PackageManager.FEATURE_SENSOR_LIGHT)) add("光线传感器")
+                if (!manager.hasSystemFeature(PackageManager.FEATURE_SENSOR_PROXIMITY)) add("距离传感器")
+            }
+            findings += Finding(
+                "无线与感应硬件",
+                if (missing.isEmpty()) "WiFi / 蓝牙 / NFC / 光线 / 距离 均已声明支持"
+                else "未声明支持：" + missing.joinToString("、") + "（部分机型系统不声明 NFC，属正常）",
+                EnvironmentCheck.Level.SAFE
+            )
+        }
+
+        // 11) 摄像头数量
+        runCatching {
+            @Suppress("DEPRECATION")
+            val cameraCount = android.hardware.Camera.getNumberOfCameras()
+            if (cameraCount == 0) {
+                findings += Finding("摄像头", "系统没有注册任何摄像头", EnvironmentCheck.Level.RISK)
+                flags += "no_camera"
+                score -= 10
+            } else {
+                findings += Finding("摄像头", "系统注册 $cameraCount 个摄像头", EnvironmentCheck.Level.SAFE)
+            }
+        }
+
+        // 12) CPU 架构与系统版本
+        if (Build.SUPPORTED_ABIS.none { it.contains("arm64") }) {
+            findings += Finding(
+                "CPU 架构",
+                "不含 arm64-v8a（" + Build.SUPPORTED_ABIS.joinToString(",") + "），新应用兼容性会受影响",
+                EnvironmentCheck.Level.NOTICE
+            )
+            flags += "no_arm64"
+            score -= 3
+        }
+        if (Build.VERSION.SDK_INT < 30) {
+            findings += Finding(
+                "系统版本",
+                "Android ${Build.VERSION.RELEASE}（API ${Build.VERSION.SDK_INT}）偏旧，"
+                    + "安全补丁可能已停止更新",
+                EnvironmentCheck.Level.NOTICE
+            )
+            flags += "old_android"
+        }
+
+        // 13) 形态与架构（纯信息，不扣分）
         val form = runCatching { DeviceFormDetector.detect(context) }.getOrNull()
         findings += Finding(
             "设备形态与架构",
