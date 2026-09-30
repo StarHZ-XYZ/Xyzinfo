@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.rjy.xyz.apps.xyzinfo.data.DeviceOverviewProvider
+import com.rjy.xyz.apps.xyzinfo.data.BrandLogoCatalog
 import com.rjy.xyz.apps.xyzinfo.data.DeviceNameRepository
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityMainBinding
 import android.view.View
@@ -88,15 +89,33 @@ class MainActivity : AppCompatActivity() {
     private fun loadDeviceName() {
         Thread({
             val name = DeviceNameRepository.lookup(this, Build.DEVICE, Build.MODEL)
-            if (name != null) {
-                runOnUiThread {
-                    if (!isFinishing) {
-                        binding.tvDeviceName.text = name
-                        binding.tvDeviceName.setTextColor(brandColor(name))
-                    }
+            // 品牌徽标：不依赖机型库是否命中，用 Build 字段也能认出来
+            val brand = BrandLogoCatalog.find(
+                Build.MANUFACTURER, Build.BRAND, name, Build.DEVICE, Build.MODEL
+            )
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                if (name != null) {
+                    binding.tvDeviceName.text = name
+                    binding.tvDeviceName.setTextColor(brandColor(name))
                 }
+                applyBrandBadge(brand)
             }
         }, "device-name-lookup").start()
+    }
+
+    /** 把品牌徽章贴在机型名左边（compound drawable，不额外占一行）。 */
+    private fun applyBrandBadge(brand: BrandLogoCatalog.Brand?) {
+        if (brand == null) {
+            binding.tvDeviceName.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
+            return
+        }
+        val density = resources.displayMetrics.density
+        val size = (22 * density).toInt()
+        binding.tvDeviceName.setCompoundDrawablesWithIntrinsicBounds(
+            BrandLogoCatalog.drawable(this, brand, size), null, null, null
+        )
+        binding.tvDeviceName.compoundDrawablePadding = (10 * density).toInt()
     }
 
     /** 主流品牌官方色（中英文都覆盖），让首页机型名一眼可辨品牌。 */
