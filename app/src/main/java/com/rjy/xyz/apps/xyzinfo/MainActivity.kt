@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.rjy.xyz.apps.xyzinfo.data.DeviceOverviewProvider
 import com.rjy.xyz.apps.xyzinfo.data.BrandLogoCatalog
 import com.rjy.xyz.apps.xyzinfo.data.DeviceFormDetector
+import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import com.rjy.xyz.apps.xyzinfo.data.DeviceNameRepository
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityMainBinding
 import android.view.View
