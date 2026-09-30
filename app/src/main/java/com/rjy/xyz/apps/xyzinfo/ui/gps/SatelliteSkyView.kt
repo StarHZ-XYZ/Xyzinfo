@@ -105,6 +105,9 @@ class SatelliteSkyView @JvmOverloads constructor(
     /** 图例文案，放在视图下方。 */
     fun legend(): String = "G=GPS  C=北斗  R=GLONASS  E=伽利略  J=QZSS  S=SBAS  I=IRNSS"
 
+    /** 星座中文名（供页面拼「各国卫星各有多少」的统计用）。 */
+    fun constellationLabelOf(constellation: Int): String = prefixLabel(constellation)
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val width = width.toFloat()

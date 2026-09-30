@@ -141,7 +141,16 @@ class GpsInfoActivity : AppCompatActivity() {
             )
             // 文字版「当前卫星」清单：图上已经标了，这里再给一份可以直接念出来的
             binding.tvSatellites.append(
-                "\n当前卫星（参与定位）：" + binding.skyView.usedSatelliteLabels()
+                "\n总计：" + satellitesVisible + " 颗可见 ｜ " + satellitesUsed + " 颗参与定位" +
+                    "\n各国卫星：" + list
+                    .groupBy { it.constellation }
+                    .entries
+                    .sortedByDescending { it.value.size }
+                    .joinToString("  ") { entry ->
+                        binding.skyView.constellationLabelOf(entry.key) +
+                            " " + entry.value.count { it.usedInFix } + "/" + entry.value.size
+                    } +
+                    "\n当前卫星（参与定位）：" + binding.skyView.usedSatelliteLabels()
             )
             binding.skyView.update(list)
             binding.tvConstellations.setInfoRow("星座：${binding.skyView.constellationSummary()}")

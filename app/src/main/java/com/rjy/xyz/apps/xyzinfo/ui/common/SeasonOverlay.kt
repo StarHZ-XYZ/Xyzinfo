@@ -1,11 +1,18 @@
 package com.rjy.xyz.apps.xyzinfo.ui.common
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RadialGradient
 import android.graphics.RectF
+import android.graphics.Shader
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import java.util.Calendar
@@ -16,13 +23,12 @@ import kotlin.random.Random
 
 /** 四季氛围效果。 */
 enum class Season(val label: String) {
-    SPRING("春天（花瓣与柳絮）"),
-    SUMMER("夏天（阳光光斑）"),
+    SPRING("春天（花瓣）"),
+    SUMMER("夏天（阳光）"),
     AUTUMN("秋天（枫叶）"),
     WINTER("冬天（雪花）");
 
     companion object {
-        /** 按当前月份自动决定季节：3~5 春、6~8 夏、9~11 秋、12~2 冬。 */
         fun current(): Season {
             val month = Calendar.getInstance().get(Calendar.MONTH) + 1
             return when (month) {
@@ -46,11 +52,17 @@ enum class Season(val label: String) {
 }
 
 /**
- * 四季氛围层。
+ * 四季氛围层（v0.8 第二版）。
  *
- * 铺在内容之上、底栏之下，粒子数量刻意压得很少（20~26 个），
- * 只做位移 + 旋转 + 透明度，笔触都是最简单的图形，保证不掉帧；
- * 页面不在前台（ON_PAUSE）或总动画开关关闭时完全停掉，不参与绘制。
+ * 上一版冬天卡顿的原因：每一帧对**每个**粒子现场画圆 + 两条线，
+ * 24 个粒子就是 70 多次矢量绘制，全屏重绘时很吃亏。
+ *
+ * 现在改成**预渲染精灵图**：每个季节只生成一张 64px 的精灵（雪花 / 枫叶 / 花瓣 / 光斑），
+ * 每帧用 Matrix（旋转 + 缩放 + 平移）直接 drawBitmap，一次调用画一个粒子，
+ * 绘制开销降到原来的十分之一左右。形状也跟着重画了：
+ * 雪花是六芒 + 中心圆 + 柔光晕，枫叶是带叶柄的三裂叶，花瓣是双色椭圆，夏天是暖色光斑。
+ *
+ * 另外限频 30fps（雪花本来就是慢动作），页面切后台立刻停。
  */
 class SeasonOverlay @JvmOverloads constructor(
     context: Context,
@@ -62,24 +74,25 @@ class SeasonOverlay @JvmOverloads constructor(
         var y: Float,
         var size: Float,
         var speed: Float,
-        var drift: Float,
+        var sway: Float,
         var phase: Float,
         var rotation: Float,
         var spin: Float,
-        var color: Int,
         var alpha: Int
     )
 
     private val flakes = ArrayList<Flake>(32)
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val rect = RectF()
+    private val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+    private val matrix = Matrix()
     private var lastFrameNanos = 0L
     private var running = false
+    private var sprite: Bitmap? = null
 
     var season: Season = Season.WINTER
         set(value) {
             if (field != value) {
                 field = value
+                sprite = null
                 flakes.clear()
                 invalidate()
             }
@@ -88,18 +101,17 @@ class SeasonOverlay @JvmOverloads constructor(
     init {
         isClickable = false
         isFocusable = false
-        setWillNotDraw(false)
-        // 氛围层默认不参与命中测试，任何点击都直接穿透到下面的控件
         isEnabled = false
+        setWillNotDraw(false)
     }
 
-    override fun onTouchEvent(event: android.view.MotionEvent): Boolean = false
+    override fun onTouchEvent(event: MotionEvent): Boolean = false
 
     fun start() {
         if (running) return
         running = true
         lastFrameNanos = 0L
-        postInvalidateOnAnimation()
+        postInvalidateDelayed(FRAME_INTERVAL_MILLIS)
     }
 
     fun stop() {
@@ -111,7 +123,6 @@ class SeasonOverlay @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         flakes.clear()
-        if (w > 0 && h > 0) spawn(w.toFloat(), h.toFloat(), initial = true)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -125,152 +136,204 @@ class SeasonOverlay @JvmOverloads constructor(
         }
         val w = width.toFloat()
         val h = height.toFloat()
-        if (flakes.isEmpty()) spawn(w, h, initial = true)
+        if (flakes.isEmpty()) spawn(w, h)
+        val image = sprite ?: buildSprite().also { sprite = it }
 
         val now = System.nanoTime()
-        val delta = if (lastFrameNanos == 0L) {
-            0.016f
-        } else {
-            ((now - lastFrameNanos) / 1e9).toFloat().coerceAtMost(0.05f)
-        }
+        val delta = if (lastFrameNanos == 0L) 0.016f
+        else ((now - lastFrameNanos) / 1e9).toFloat().coerceAtMost(0.06f)
         lastFrameNanos = now
 
-        if (season == Season.SUMMER) drawSummer(canvas, w, h, delta) else drawFalling(canvas, w, h, delta)
-        // 氛围层按 30fps 重绘就够了（雪花/叶子本来就是慢动作），
-        // 比 60fps 省一半绘制，也不会让设备一直满帧跑。
+        flakes.forEach { flake ->
+            flake.phase += delta * flake.sway
+            flake.y += flake.speed * delta
+            flake.x += sin(flake.phase * 2f * PI.toFloat()) * flake.sway * 14f * delta
+            flake.rotation += flake.spin * delta
+
+            if (flake.y - flake.size > h) {
+                flake.y = -flake.size
+                flake.x = Random.nextFloat() * w
+            }
+            if (flake.x < -flake.size * 2) flake.x = w + flake.size
+            if (flake.x > w + flake.size * 2) flake.x = -flake.size
+
+            val scale = flake.size * 2f / image.width
+            matrix.reset()
+            matrix.postTranslate(-image.width / 2f, -image.height / 2f)
+            matrix.postRotate(flake.rotation)
+            matrix.postScale(scale, scale)
+            matrix.postTranslate(flake.x, flake.y)
+            paint.alpha = flake.alpha
+            canvas.drawBitmap(image, matrix, paint)
+        }
         postInvalidateDelayed(FRAME_INTERVAL_MILLIS)
     }
 
-    /** 雪花 / 枫叶 / 花瓣：都是「飘落 + 摆动 + 自转」。 */
-    private fun drawFalling(canvas: Canvas, w: Float, h: Float, delta: Float) {
-        flakes.forEach { flake ->
-            flake.phase += delta * flake.drift
-            flake.y += flake.speed * delta
-            flake.x += sin(flake.phase.toDouble() * 2 * PI).toFloat() * flake.drift * 22f * delta
-            flake.rotation += flake.spin * delta
-            if (flake.y - flake.size > h) {
-                flake.y = -flake.size * 2
-                flake.x = Random.nextFloat() * w
+    // ---------- 精灵图 ----------
+
+    private fun buildSprite(): Bitmap {
+        val size = when (season) {
+            Season.SUMMER -> 128
+            else -> 64
+        }
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val center = size / 2f
+        when (season) {
+            Season.WINTER -> {
+                // 柔光晕
+                paint.shader = RadialGradient(
+                    center, center, center,
+                    intArrayOf(0x99FFFFFF.toInt(), 0x33FFFFFF, 0x00FFFFFF),
+                    floatArrayOf(0f, 0.45f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+                canvas.drawCircle(center, center, center, paint)
+                paint.shader = null
+                // 六芒骨架
+                paint.color = Color.WHITE
+                paint.strokeWidth = size * 0.055f
+                paint.strokeCap = Paint.Cap.ROUND
+                paint.style = Paint.Style.STROKE
+                val arm = center * 0.78f
+                for (index in 0 until 3) {
+                    val angle = Math.toRadians((index * 60).toDouble())
+                    val dx = cos(angle).toFloat() * arm
+                    val dy = sin(angle).toFloat() * arm
+                    canvas.drawLine(center - dx, center - dy, center + dx, center + dy, paint)
+                }
+                // 每根主枝上的小分叉，更像雪花
+                paint.strokeWidth = size * 0.035f
+                for (index in 0 until 6) {
+                    val angle = Math.toRadians((index * 60).toDouble())
+                    val tipX = center + cos(angle).toFloat() * arm
+                    val tipY = center + sin(angle).toFloat() * arm
+                    val branch = arm * 0.32f
+                    for (offset in intArrayOf(-35, 35)) {
+                        val branchAngle = angle + Math.toRadians(offset.toDouble() + 180.0)
+                        canvas.drawLine(
+                            tipX, tipY,
+                            tipX + cos(branchAngle).toFloat() * branch,
+                            tipY + sin(branchAngle).toFloat() * branch,
+                            paint
+                        )
+                    }
+                }
+                paint.style = Paint.Style.FILL
+                canvas.drawCircle(center, center, size * 0.07f, paint)
             }
-            if (flake.x < -flake.size) flake.x = w + flake.size
-            if (flake.x > w + flake.size) flake.x = -flake.size
 
-            paint.color = withAlpha(flake.color, flake.alpha)
-            when (season) {
-                Season.WINTER -> {
-                    // 雪花：柔光圆 + 一点点六角感（两条细线）
-                    canvas.drawCircle(flake.x, flake.y, flake.size, paint)
-                    paint.strokeWidth = 1f
-                    paint.style = Paint.Style.STROKE
-                    canvas.drawLine(
-                        flake.x - flake.size * 1.6f, flake.y,
-                        flake.x + flake.size * 1.6f, flake.y, paint
-                    )
-                    canvas.drawLine(
-                        flake.x, flake.y - flake.size * 1.6f,
-                        flake.x, flake.y + flake.size * 1.6f, paint
-                    )
-                    paint.style = Paint.Style.FILL
-                }
+            Season.AUTUMN -> {
+                // 三裂枫叶 + 叶柄
+                val leaf = Path()
+                leaf.moveTo(center, size * 0.10f)
+                leaf.cubicTo(size * 0.72f, size * 0.26f, size * 0.94f, size * 0.42f, size * 0.72f, size * 0.56f)
+                leaf.cubicTo(size * 0.62f, size * 0.62f, size * 0.58f, size * 0.58f, size * 0.56f, size * 0.68f)
+                leaf.cubicTo(size * 0.50f, size * 0.60f, size * 0.42f, size * 0.74f, size * 0.44f, size * 0.86f)
+                leaf.cubicTo(size * 0.30f, size * 0.78f, size * 0.22f, size * 0.62f, size * 0.28f, size * 0.46f)
+                leaf.cubicTo(size * 0.10f, size * 0.40f, size * 0.28f, size * 0.24f, size * 0.42f, size * 0.30f)
+                leaf.cubicTo(size * 0.46f, size * 0.14f, size * 0.60f, size * 0.16f, center, size * 0.10f)
+                leaf.close()
+                paint.shader = LinearGradient(
+                    0f, 0f, size.toFloat(), size.toFloat(),
+                    Color.parseColor("#E8642C"), Color.parseColor("#B23A16"),
+                    Shader.TileMode.CLAMP
+                )
+                canvas.drawPath(leaf, paint)
+                paint.shader = null
+                paint.color = Color.parseColor("#8C3B12")
+                paint.strokeWidth = size * 0.06f
+                paint.strokeCap = Paint.Cap.ROUND
+                paint.style = Paint.Style.STROKE
+                canvas.drawLine(center, size * 0.52f, center, size * 0.96f, paint)
+                paint.style = Paint.Style.FILL
+            }
 
-                Season.AUTUMN -> {
-                    // 枫叶：旋转的小圆角三角块，比纯圆点更像叶子
-                    canvas.save()
-                    canvas.rotate(flake.rotation, flake.x, flake.y)
-                    rect.set(
-                        flake.x - flake.size * 1.3f, flake.y - flake.size,
-                        flake.x + flake.size * 1.3f, flake.y + flake.size
-                    )
-                    canvas.drawRoundRect(rect, flake.size * 0.7f, flake.size * 0.7f, paint)
-                    canvas.drawLine(flake.x, flake.y - flake.size, flake.x, flake.y + flake.size * 1.4f, paint)
-                    canvas.restore()
-                }
+            Season.SPRING -> {
+                // 双色花瓣：两片椭圆叠在一起，边缘带高光
+                val petal = RectF(size * 0.12f, size * 0.30f, size * 0.88f, size * 0.70f)
+                paint.shader = LinearGradient(
+                    0f, size * 0.30f, 0f, size * 0.70f,
+                    Color.parseColor("#FFE3F0"), Color.parseColor("#FFAFCF"),
+                    Shader.TileMode.CLAMP
+                )
+                canvas.save()
+                canvas.rotate(24f, center, center)
+                canvas.drawOval(petal, paint)
+                canvas.restore()
+                paint.shader = LinearGradient(
+                    0f, size * 0.30f, 0f, size * 0.70f,
+                    Color.parseColor("#FFF3F8"), Color.parseColor("#FFC6DC"),
+                    Shader.TileMode.CLAMP
+                )
+                canvas.save()
+                canvas.rotate(-28f, center, center)
+                canvas.drawOval(petal, paint)
+                canvas.restore()
+                paint.shader = null
+            }
 
-                else -> {
-                    // 花瓣 / 柳絮：椭圆旋转飘落
-                    canvas.save()
-                    canvas.rotate(flake.rotation, flake.x, flake.y)
-                    rect.set(
-                        flake.x - flake.size * 1.7f, flake.y - flake.size * 0.8f,
-                        flake.x + flake.size * 1.7f, flake.y + flake.size * 0.8f
-                    )
-                    canvas.drawOval(rect, paint)
-                    canvas.restore()
-                }
+            Season.SUMMER -> {
+                // 暖色光斑
+                paint.shader = RadialGradient(
+                    center, center, center,
+                    intArrayOf(
+                        Color.argb(150, 255, 240, 190),
+                        Color.argb(70, 255, 220, 140),
+                        Color.argb(0, 255, 220, 140)
+                    ),
+                    floatArrayOf(0f, 0.5f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+                canvas.drawCircle(center, center, center, paint)
+                paint.shader = null
             }
         }
+        return bitmap
     }
 
-    /** 夏天：右上角一团暖阳光晕 + 缓慢游走的光斑 + 轻微热浪横纹。 */
-    private fun drawSummer(canvas: Canvas, w: Float, h: Float, delta: Float) {
-        val sunX = w * 0.82f
-        val sunY = h * 0.10f
-        val radius = w * 0.55f
-        paint.color = Color.argb(46, 255, 214, 130)
-        canvas.drawCircle(sunX, sunY, radius, paint)
-        paint.color = Color.argb(30, 255, 236, 180)
-        canvas.drawCircle(sunX, sunY, radius * 0.62f, paint)
-
-        flakes.forEach { spot ->
-            spot.phase += delta * spot.drift
-            spot.x += cos(spot.phase.toDouble() * 2 * PI).toFloat() * 6f * delta
-            spot.y += spot.speed * delta * 0.25f
-            if (spot.y > h + spot.size) spot.y = -spot.size
-            paint.color = Color.argb(spot.alpha / 3, 255, 228, 160)
-            canvas.drawCircle(spot.x, spot.y, spot.size * 2.2f, paint)
+    private fun spawn(w: Float, h: Float) {
+        val density = resources.displayMetrics.density
+        val count = when (season) {
+            Season.WINTER -> 16
+            Season.AUTUMN -> 12
+            Season.SPRING -> 14
+            Season.SUMMER -> 8
         }
-
-        // 热浪：底部几条极淡的横向波纹
-        paint.color = Color.argb(14, 255, 255, 255)
-        paint.strokeWidth = 2f
-        for (line in 0 until 3) {
-            val y = h * (0.72f + line * 0.06f) + sin((System.nanoTime() / 1e9 + line).toFloat()) * 6f
-            canvas.drawLine(w * 0.05f, y, w * 0.95f, y, paint)
-        }
-    }
-
-    private fun spawn(w: Float, h: Float, initial: Boolean) {
-        val count = if (season == Season.SUMMER) 16 else 24
         repeat(count) {
             val size = when (season) {
-                Season.WINTER -> 1.4f + Random.nextFloat() * 2.4f
-                Season.AUTUMN -> 2.4f + Random.nextFloat() * 3.2f
-                Season.SPRING -> 2.2f + Random.nextFloat() * 2.6f
-                Season.SUMMER -> 6f + Random.nextFloat() * 10f
-            } * resources.displayMetrics.density
-            val color = when (season) {
-                Season.WINTER -> Color.WHITE
-                Season.AUTUMN -> autumnColors[Random.nextInt(autumnColors.size)]
-                Season.SPRING -> springColors[Random.nextInt(springColors.size)]
-                Season.SUMMER -> Color.WHITE
+                Season.WINTER -> (7f + Random.nextFloat() * 9f) * density
+                Season.AUTUMN -> (9f + Random.nextFloat() * 8f) * density
+                Season.SPRING -> (8f + Random.nextFloat() * 6f) * density
+                Season.SUMMER -> (26f + Random.nextFloat() * 34f) * density
             }
             flakes += Flake(
                 x = Random.nextFloat() * w,
-                y = if (initial) Random.nextFloat() * h else -size * 2,
+                y = Random.nextFloat() * h,
                 size = size,
-                speed = (40f + Random.nextFloat() * 70f) * resources.displayMetrics.density,
-                drift = 0.4f + Random.nextFloat() * 1.5f,
+                speed = when (season) {
+                    Season.WINTER -> (26f + Random.nextFloat() * 40f) * density
+                    Season.AUTUMN -> (34f + Random.nextFloat() * 46f) * density
+                    Season.SPRING -> (22f + Random.nextFloat() * 34f) * density
+                    Season.SUMMER -> (6f + Random.nextFloat() * 10f) * density
+                },
+                sway = 0.4f + Random.nextFloat() * 1.3f,
                 phase = Random.nextFloat() * 6.28f,
                 rotation = Random.nextFloat() * 360f,
-                spin = (-90f + Random.nextFloat() * 180f),
-                color = color,
-                alpha = 150 + Random.nextInt(80)
+                spin = -70f + Random.nextFloat() * 140f,
+                alpha = when (season) {
+                    Season.WINTER -> 150 + Random.nextInt(90)
+                    Season.AUTUMN -> 165 + Random.nextInt(80)
+                    Season.SPRING -> 150 + Random.nextInt(80)
+                    Season.SUMMER -> 70 + Random.nextInt(60)
+                }
             )
         }
     }
 
-    private fun withAlpha(color: Int, alpha: Int): Int =
-        (color and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
-
     private companion object {
+        /** 氛围层 30fps 足够（雪花叶子是慢动作），省一半绘制也不让设备一直满帧。 */
         const val FRAME_INTERVAL_MILLIS = 33L
-        val autumnColors = intArrayOf(
-            Color.parseColor("#E8642C"), Color.parseColor("#D24A1E"),
-            Color.parseColor("#C98A2B"), Color.parseColor("#A8481F")
-        )
-        val springColors = intArrayOf(
-            Color.parseColor("#FFB7D5"), Color.parseColor("#FFC9E2"),
-            Color.parseColor("#F7E6C4")
-        )
     }
 }
