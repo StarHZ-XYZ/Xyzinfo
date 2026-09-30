@@ -425,10 +425,19 @@ class GlassBottomBar @JvmOverloads constructor(
         val baseHalf = icon.width / 2f
         val breath = 1f + 0.05f * glowPulse
 
-        // 外层偏蓝、内层偏紫，两层露出的部分就是渐变描边
+        /*
+         * 三层描边，从外到内：粉 → 紫 → 蓝。
+         *
+         * 上一版只用了蓝 1.28× 和紫 1.15×，而且鲸鱼本身也是蓝的，
+         * 叠上去对比度太低、外圈只有 1~3px，所以肉眼几乎看不到。
+         * 现在把倍数拉到 1.55 / 1.38 / 1.22，颜色换成高对比的粉紫蓝，
+         * 最外层还给一个更淡的扩散层，形成明显的"发光描边"。
+         */
         listOf(
-            Triple(AI_BLUE, 1.28f, 78),
-            Triple(AI_PURPLE, 1.15f, 105)
+            Triple(AI_PINK, 1.62f, 60),
+            Triple(AI_PINK, 1.55f, 95),
+            Triple(AI_PURPLE, 1.36f, 150),
+            Triple(AI_BLUE, 1.22f, 210)
         ).forEach { (color, scale, alpha) ->
             source.setColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN)
             val half = baseHalf * scale * breath
