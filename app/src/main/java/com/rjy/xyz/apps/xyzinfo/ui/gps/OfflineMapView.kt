@@ -63,6 +63,8 @@ class OfflineMapView @JvmOverloads constructor(
 
     private var lastX = 0f
     private var lastY = 0f
+    /** 地图变换日志的节流时间戳。 */
+    private var lastLogAt = 0L
 
     init {
         setWillNotDraw(false)
