@@ -83,13 +83,24 @@ class DeepSeekWebActivity : AppCompatActivity() {
             ): Boolean = false // 一律留在软件内的 WebView 里，登录跳转才不会中断
         }
 
+        /*
+         * 返回键：**在 DeepSeek 页面里按返回 = 退出本页**。
+         *
+         * 原因是网页版是单页应用（SPA）：登录跳转、路由切换都会往 WebView 历史里塞记录，
+         * canGoBack() 永远是 true，于是按返回一直在它自己的历史里打转、退不出来
+         *（第一次登录完就是这个现象）。
+         * 现在的规则：只有"当前不在 deepseek.com 上"（比如点开了帮助/外链页面）才回上一页，
+         * 其余情况直接关掉本页，回到大肥鱼。
+         */
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (binding.webDeepSeek.canGoBack()) {
+                val url = binding.webDeepSeek.url.orEmpty()
+                val insideDeepSeek = url.contains("deepseek.com", ignoreCase = true)
+                if (!insideDeepSeek && binding.webDeepSeek.canGoBack()) {
                     binding.webDeepSeek.goBack()
                 } else {
                     isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
+                    finish()
                 }
             }
         })
@@ -100,6 +111,7 @@ class DeepSeekWebActivity : AppCompatActivity() {
             copyReport()
             Toast.makeText(this, "验机报告已复制，长按输入框粘贴即可", Toast.LENGTH_SHORT).show()
         }
+        binding.btnWebBack.setOnClickListener { finish() }
         binding.btnWebExternal.setOnClickListener {
             // 网页版偶尔会做环境校验，留一个"用系统浏览器打开"的出口
             runCatching {
@@ -146,9 +158,9 @@ class DeepSeekWebActivity : AppCompatActivity() {
         val loggedIn = cookie.contains("token", ignoreCase = true) ||
             cookie.contains("userToken", ignoreCase = true)
         binding.tvWebHint.text = if (loggedIn) {
-            "已登录（登录态保存在本应用内）· 点这条提示可复制验机报告，长按输入框粘贴即可提问 · 返回键可回上一页"
+            "已登录（登录态保存在本应用内）· 点这条提示可复制验机报告，长按输入框粘贴即可提问 · 返回键退出本页"
         } else {
-            "首次使用请在下面完成登录（登录态会保存在本应用内）· 点这条提示可复制验机报告 · 返回键可回上一页"
+            "首次使用请在下面完成登录（登录态会保存在本应用内）· 点这条提示可复制验机报告 · 返回键退出本页"
         }
     }
 

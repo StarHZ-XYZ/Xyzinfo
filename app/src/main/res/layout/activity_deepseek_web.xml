@@ -38,6 +38,16 @@
             android:paddingBottom="8dp">
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnWebBack"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="返回大肥鱼"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnWebExternal"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"
