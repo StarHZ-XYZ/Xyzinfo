@@ -17,6 +17,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.battery.BatteryInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkActivity
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.RankingActivity
 import com.rjy.xyz.apps.xyzinfo.ui.gps.GpsInfoActivity
+import com.rjy.xyz.apps.xyzinfo.ui.hardware.ScreenTestActivity
 import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
 import com.rjy.xyz.apps.xyzinfo.ui.ram.RamInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
@@ -40,6 +41,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var firstResume = true
+    /** 代码生成的硬件测试入口卡片，宫格排版时要一起排。 */
+    private var hardwareCard: android.view.View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +53,7 @@ class MainActivity : AppCompatActivity() {
 
         renderOverview(DeviceOverviewProvider.load())
         setupNavigation()
+        addHardwareTestEntry()
         applyHomeLayoutStyle()
         loadDeviceName()
         setupUpdate()
@@ -200,6 +204,63 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
+     * 用代码生成「硬件测试」入口卡片（避免再复制一大段布局 XML）。
+     * 它在 applyHomeLayoutStyle 之前插入，所以宫格模式下也会一起进两列排布。
+     */
+    private fun addHardwareTestEntry() {
+        val parent = binding.cardGps.parent as? android.view.ViewGroup ?: return
+        val density = resources.displayMetrics.density
+        val title = android.widget.TextView(this).apply {
+            text = "硬件测试"
+            setTextColor(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.text_primary))
+            textSize = 15f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }
+        val subtitle = android.widget.TextView(this).apply {
+            text = "屏幕坏点、触摸与多点触控"
+            setTextColor(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
+            textSize = 12f
+        }
+        val texts = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            addView(title)
+            addView(subtitle)
+        }
+        val icon = android.widget.ImageView(this).apply {
+            setImageResource(R.drawable.ic_module_screen)
+            setColorFilter(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.accent))
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                (22 * density).toInt(), (22 * density).toInt()
+            )
+        }
+        val row = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding((16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt())
+            addView(icon)
+            addView(texts, android.widget.LinearLayout.LayoutParams(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = (14 * density).toInt()
+            })
+        }
+        val card = com.google.android.material.card.MaterialCardView(this).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (12 * density).toInt() }
+            radius = 18f * density
+            setCardBackgroundColor(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.surface))
+            strokeColor = androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.stroke)
+            strokeWidth = (1 * density).toInt()
+            cardElevation = 0f
+            addView(row)
+            isClickable = true
+            setOnClickListener { open(ScreenTestActivity::class.java) }
+        }
+        hardwareCard = card
+        parent.addView(card, (parent.indexOfChild(binding.cardGps) + 1).coerceAtMost(parent.childCount))
+    }
+
+    /**
      * 主页排版样式：默认一列列表，可选两列宫格。
      *
      * 做法是在运行时把 8 张功能卡片从原来的竖排容器里摘出来，塞进一个 2 列 GridLayout，
@@ -207,10 +268,11 @@ class MainActivity : AppCompatActivity() {
      */
     private fun applyHomeLayoutStyle() {
         if (!SettingsRepository.homeGridStyle(this)) return
-        val cards = listOf(
-            binding.cardCpu, binding.cardMemory, binding.cardScreen, binding.cardBattery,
-            binding.cardSensor, binding.cardTelephony, binding.cardSystem, binding.cardGps
-        )
+        val cards = buildList {
+            add(binding.cardCpu); add(binding.cardMemory); add(binding.cardScreen); add(binding.cardBattery)
+            add(binding.cardSensor); add(binding.cardTelephony); add(binding.cardSystem); add(binding.cardGps)
+            hardwareCard?.let { add(it) }
+        }
         val parent = cards.first().parent as? android.view.ViewGroup ?: return
         val anchorIndex = parent.indexOfChild(cards.first())
         cards.forEach { parent.removeView(it) }

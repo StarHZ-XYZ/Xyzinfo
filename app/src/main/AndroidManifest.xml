@@ -46,5 +46,8 @@
         <activity android:name=".ui.benchmark.RankingActivity" />
         <activity android:name=".ui.settings.SettingsActivity" />
         <activity android:name=".ui.gps.GpsInfoActivity" />
+        <activity
+            android:name=".ui.hardware.ScreenTestActivity"
+            android:theme="@style/Theme.XyzInfo" />
     </application>
 </manifest>

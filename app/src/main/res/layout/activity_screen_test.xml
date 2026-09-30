@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 屏幕硬件测试：坏点纯色循环 / 触摸轨迹 + 多点计数 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF0B0E12">
+
+    <com.rjy.xyz.apps.xyzinfo.ui.hardware.ScreenTestView
+        android:id="@+id/screenTestView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDeadPixel"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="坏点测试"
+            android:textColor="#FFFFFFFF"
+            android:textSize="13sp"
+            app:cornerRadius="12dp"
+            app:strokeColor="#66FFFFFF" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTouchTest"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="触摸测试"
+            android:textColor="#FFFFFFFF"
+            android:textSize="13sp"
+            app:cornerRadius="12dp"
+            app:strokeColor="#66FFFFFF" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnScreenTestExit"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="退出"
+            android:textColor="#FFFF8A80"
+            android:textSize="13sp"
+            app:cornerRadius="12dp"
+            app:strokeColor="#66FF8A80" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvScreenTestHint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="18dp"
+        android:background="#66000000"
+        android:paddingStart="12dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="6dp"
+        android:text="坏点测试：白（点一下换色）"
+        android:textColor="#FFFFFFFF"
+        android:textSize="12sp" />
+</FrameLayout>
