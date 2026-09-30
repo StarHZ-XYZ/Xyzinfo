@@ -195,13 +195,14 @@ object GlassScaffold {
         for (index in 0 until count) {
             val view = host.getChildAt(index)
             view.animate().cancel()
+            // 幅度要看得出来：从屏幕左侧 42% 宽处滑进来 + 淡入
             view.alpha = 0f
-            view.translationX = 64f * density
+            view.translationX = content.width.coerceAtLeast(600) * 0.42f
             view.animate()
                 .alpha(1f)
                 .translationX(0f)
-                .setStartDelay(index * 26L)
-                .setDuration(240L)
+                .setStartDelay(index * 34L)
+                .setDuration(330L)
                 .setInterpolator(interpolator)
                 .start()
         }

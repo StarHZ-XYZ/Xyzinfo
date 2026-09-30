@@ -41,6 +41,11 @@
     <color name="glass_noise">#12FFFFFF</color>
     <color name="glass_shadow">#1F000000</color>
     <color name="glass_specular">#B3FFFFFF</color>
+    <!-- 极客风底栏：染色 / 网格 / 边线 -->
+    <color name="nav_tint_top">#B8FFFFFF</color>
+    <color name="nav_tint_bottom">#9EFFFFFF</color>
+    <color name="nav_grid">#0D000000</color>
+    <color name="nav_border">#33000000</color>
 
     <!-- 芯片品牌：前景 / 背景 -->
     <color name="brand_snapdragon_fg">#FFD5241F</color>

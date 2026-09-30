@@ -1,16 +1,18 @@
 package com.rjy.xyz.apps.xyzinfo.ui.common
 
 import android.animation.ArgbEvaluator
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.Gravity
@@ -23,20 +25,20 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
-import kotlin.math.min
 
 /**
- * 高斯模糊底栏：首页 / 跑分 / 排行 / 设置。
+ * 底栏（极客风）。
  *
- * 结构很简单，不再搞花活：
- * 1. [GlassBackdrop] 提供底下那层的实时高斯模糊；
- * 2. 叠一层上厚下薄的白色染色 + 一圈细边，让文字在任何壁纸上都看得清；
- * 3. 选中项是一颗白色半透明胶囊指示块，切换时用 easeOutBack 弹一下滑过去；
- * 4. 图标与文字随选中态做颜色过渡和轻微缩放。
+ * 不是胶囊、不悬浮：整条**下沉**贴住屏幕底边，背后是内容的实时高斯模糊，
+ * 上面叠一套偏工程/仪表盘的视觉语言：
  *
- * 布局用 [LinearLayout] 的 weight 等分，避免手算边距导致的错位；
- * 指示块的位置在**每次布局完成后都会重新按实际宽度计算**，
- * 所以旋屏、切页、改开关之后都不会出现「要点两次才对位」。
+ * 1. 顶部一条 2dp 的强调色**指示线**，会跟着选中项滑动（带轻微回弹），下面带一层渐隐辉光；
+ * 2. 细网格纹理（48×48 预渲染 tile 平铺），营造仪表盘/示波器的底噪感；
+ * 3. 选中项：图标与文字换成强调色，图标后面有一团径向辉光，并做轻微弹入；
+ * 4. 文案用等宽字体 + 字距拉开，未选中项压到 60% 透明度；
+ * 5. 顶/底各一条 1px 细线，把底栏和内容分开，又不抢视线。
+ *
+ * 布局仍然用 LinearLayout 的 weight 等分，指示线在每次 onLayout 后按真实宽度重算。
  */
 class GlassBottomBar @JvmOverloads constructor(
     context: Context,
@@ -48,18 +50,10 @@ class GlassBottomBar @JvmOverloads constructor(
 
     var onTabSelected: ((index: Int, reselected: Boolean) -> Unit)? = null
 
-    /**
-     * 点击非当前标签时是否在本页先做一次指示块动画。
-     *
-     * 真实页面之间切换时设为 false：这一页马上就要被结束掉，
-     * 在本页先动一遍指示块只会让人看到「按钮乱跳」，动画交给目标页直接呈现即可。
-     */
+    /** 点非当前标签时是否先在本页动一次指示线（真实切页时设 false）。 */
     var autoAnimateOnSelect: Boolean = true
 
-    /**
-     * 下沉式：贴着屏幕底边、直角、无阴影（普通底栏的样子）。
-     * 设置页里的活体预览保持 false，用圆角胶囊形态展示。
-     */
+    /** 下沉式：直角贴底、无阴影；设置页的活体预览用 false（圆角悬浮）。 */
     var docked: Boolean = false
 
     private val tabs = mutableListOf<Tab>()
@@ -70,54 +64,48 @@ class GlassBottomBar @JvmOverloads constructor(
     private val backdrop = GlassBackdrop(this)
     private val barPath = Path()
     private val barRect = RectF()
-    private val pillRect = RectF()
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(1f)
-    }
-    private val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val pillRimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = dp(1f)
+        strokeWidth = resources.displayMetrics.density
     }
 
     private val colorIdle = ContextCompat.getColor(context, R.color.text_tertiary)
     private val colorSelected = ContextCompat.getColor(context, R.color.accent)
-    private val colorTintTop = ContextCompat.getColor(context, R.color.glass_tint_top)
-    private val colorTintBottom = ContextCompat.getColor(context, R.color.glass_tint_bottom)
-    private val colorRimTop = ContextCompat.getColor(context, R.color.glass_rim_top)
-    private val colorRimBottom = ContextCompat.getColor(context, R.color.glass_rim_bottom)
-    private val colorPill = ContextCompat.getColor(context, R.color.glass_bubble)
-    private val colorPillRim = ContextCompat.getColor(context, R.color.glass_bubble_rim)
+    private val colorTintTop = ContextCompat.getColor(context, R.color.nav_tint_top)
+    private val colorTintBottom = ContextCompat.getColor(context, R.color.nav_tint_bottom)
+    private val colorGrid = ContextCompat.getColor(context, R.color.nav_grid)
+    private val colorLine = ContextCompat.getColor(context, R.color.accent)
+    private val colorBorder = ContextCompat.getColor(context, R.color.nav_border)
 
     private var selectedIndex = 0
-    private var pillCenterX = 0f
+    private var indicatorCenterX = 0f
     private var appliedStyles = -1
     private var lastLaidOutWidth = 0
+    private var touchAlpha = 0f
 
     private val colorEvaluator = ArgbEvaluator()
     private val decelerate = PathInterpolator(0.05f, 0.7f, 0.1f, 1f)
     private var moveAnimator: ValueAnimator? = null
-    // 渐变每帧新建会造成 GC 抖动，按尺寸缓存
     private var tintShader: LinearGradient? = null
-    private var borderShader: LinearGradient? = null
-    private var pillShader: LinearGradient? = null
-    private var pillRimShader: LinearGradient? = null
+    private var glowShader: RadialGradient? = null
 
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = resources.getDimension(R.dimen.glass_bar_height) / 2f
+            cornerRadius = if (docked) 0f else resources.getDimension(R.dimen.glass_bar_height) / 2f
             setColor(ContextCompat.getColor(context, R.color.glass_fill))
         }
-        elevation = dp(18f)
         outlineProvider = ViewOutlineProvider.BACKGROUND
         setWillNotDraw(false)
         isClickable = true
+        gridPaint.shader = BitmapShader(gridTile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
     }
 
     // ---------- 对外接口 ----------
@@ -126,7 +114,7 @@ class GlassBottomBar @JvmOverloads constructor(
         this.tabs.clear()
         this.tabs.addAll(tabs)
         onTabSelected = listener
-        // -1 表示「不在任何标签上」（子页面），此时不高亮任何标签
+        // -1 表示子页面：不属于任何标签，指示线隐藏
         selectedIndex = if (selected in tabs.indices) selected else NO_TAB
         buildItems()
     }
@@ -140,11 +128,7 @@ class GlassBottomBar @JvmOverloads constructor(
         val previous = selectedIndex
         selectedIndex = index
         applyItemStyles(previous)
-        if (index == NO_TAB) {
-            invalidate()
-        } else {
-            moveTo(index, animated)
-        }
+        if (index == NO_TAB) invalidate() else moveTo(index, animated)
     }
 
     // ---------- 标签 ----------
@@ -158,16 +142,18 @@ class GlassBottomBar @JvmOverloads constructor(
             val icon = ImageView(context).apply {
                 setImageResource(tab.iconRes)
                 setColorFilter(colorIdle)
-                layoutParams = LayoutParams(dp(22f).toInt(), dp(22f).toInt())
+                layoutParams = LayoutParams(dp(21f).toInt(), dp(21f).toInt())
             }
             val label = TextView(context).apply {
                 text = tab.title
-                textSize = 10.5f
+                textSize = 10f
+                typeface = Typeface.MONOSPACE
+                letterSpacing = 0.08f
                 gravity = Gravity.CENTER
                 includeFontPadding = false
                 setTextColor(colorIdle)
                 layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
-                    topMargin = dp(3f).toInt()
+                    topMargin = dp(4f).toInt()
                 }
             }
             val item = LinearLayout(context).apply {
@@ -213,19 +199,19 @@ class GlassBottomBar @JvmOverloads constructor(
                 labels.getOrNull(index)?.setTextColor(target)
             }
 
-            val scale = if (selected) 1.05f else 0.95f
-            val alpha = if (selected) 1f else 0.85f
+            val alpha = if (selected) 1f else 0.6f
+            val scale = if (selected) 1.04f else 1f
             item.animate().cancel()
             if (animated) {
                 item.animate()
-                    .scaleX(scale).scaleY(scale).alpha(alpha)
+                    .alpha(alpha).scaleX(scale).scaleY(scale)
                     .setDuration(Anim.DURATION_MEDIUM)
                     .setInterpolator(decelerate)
                     .start()
             } else {
+                item.alpha = alpha
                 item.scaleX = scale
                 item.scaleY = scale
-                item.alpha = alpha
             }
         }
         appliedStyles = selectedIndex
@@ -235,25 +221,26 @@ class GlassBottomBar @JvmOverloads constructor(
         val reselected = index == selectedIndex
         if (reselected) {
             pulse()
-        } else {
-            if (autoAnimateOnSelect) {
-                val previous = selectedIndex
-                selectedIndex = index
-                applyItemStyles(previous)
-                moveTo(index, Anim.enabled(context))
-            }
+        } else if (autoAnimateOnSelect) {
+            val previous = selectedIndex
+            selectedIndex = index
+            applyItemStyles(previous)
+            moveTo(index, Anim.enabled(context))
         }
         onTabSelected?.invoke(index, reselected)
     }
 
     private fun handleTouch(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-            backdrop.requestRefresh()
+        touchAlpha = when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> 1f
+            MotionEvent.ACTION_MOVE -> 0.6f
+            else -> 0f
         }
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) backdrop.requestRefresh()
+        invalidate()
         return false
     }
 
-    /** 再次点当前标签：指示块弹一下。 */
     private fun pulse() {
         if (!Anim.enabled(context) || selectedIndex == NO_TAB) return
         moveTo(selectedIndex, animated = true)
@@ -262,21 +249,20 @@ class GlassBottomBar @JvmOverloads constructor(
     private fun moveTo(index: Int, animated: Boolean) {
         val target = centerOf(index)
         if (target <= 0f) {
-            // 还没完成布局，等布局好了 onLayout 会自己纠正
             post { moveTo(index, animated) }
             return
         }
         moveAnimator?.cancel()
-        val startX = if (pillCenterX <= 0f) target else pillCenterX
+        val startX = if (indicatorCenterX <= 0f) target else indicatorCenterX
         if (!animated || !Anim.enabled(context)) {
-            pillCenterX = target
+            indicatorCenterX = target
             invalidate()
             return
         }
         moveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 440L
+            duration = 360L
             addUpdateListener {
-                pillCenterX = startX + (target - startX) * easeOutBack(it.animatedValue as Float)
+                indicatorCenterX = startX + (target - startX) * easeOutBack(it.animatedValue as Float)
                 invalidate()
             }
             start()
@@ -298,26 +284,20 @@ class GlassBottomBar @JvmOverloads constructor(
         (background as? GradientDrawable)?.cornerRadius = radius
         elevation = if (docked) 0f else dp(18f)
         tintShader = LinearGradient(0f, 0f, 0f, h.toFloat(), colorTintTop, colorTintBottom, Shader.TileMode.CLAMP)
-        borderShader = LinearGradient(0f, 0f, 0f, h.toFloat(), colorRimTop, colorRimBottom, Shader.TileMode.CLAMP)
+        glowShader = RadialGradient(0f, 0f, h * 2.2f, withAlpha(colorLine, 0x66), 0x00000000, Shader.TileMode.CLAMP)
         backdrop.requestRefresh(immediate = true)
     }
 
-    /**
-     * 每次布局完成后都按真实宽度重算指示块位置。
-     *
-     * 之前只在首次布局算一次，之后宽度变化（换页面、旋屏、改设置后重建）就不再纠正，
-     * 于是出现「要点两次按钮才归位」。
-     */
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
         super.onLayout(changed, l, t, r, b)
         val widthNow = r - l
         val widthChanged = widthNow != lastLaidOutWidth
         lastLaidOutWidth = widthNow
         val animating = moveAnimator?.isRunning == true
-        if (selectedIndex != NO_TAB && !animating && (changed || widthChanged || pillCenterX <= 0f)) {
+        if (selectedIndex != NO_TAB && !animating && (changed || widthChanged || indicatorCenterX <= 0f)) {
             val target = centerOf(selectedIndex)
-            if (target > 0f && target != pillCenterX) {
-                pillCenterX = target
+            if (target > 0f && target != indicatorCenterX) {
+                indicatorCenterX = target
                 invalidate()
             }
         }
@@ -339,64 +319,83 @@ class GlassBottomBar @JvmOverloads constructor(
         val w = width.toFloat()
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
-        val capsule = if (docked) 0f else h / 2f
+        val radius = if (docked) 0f else h / 2f
         barRect.set(0f, 0f, w, h)
         barPath.reset()
-        barPath.addRoundRect(barRect, capsule, capsule, Path.Direction.CW)
+        barPath.addRoundRect(barRect, radius, radius, Path.Direction.CW)
 
-        // 1) 底下那层的高斯模糊
-        backdrop.draw(canvas, barRect, capsule)
-
-        // 2) 白色染色（上厚下薄）
-        paint.shader = tintShader
-        canvas.drawPath(barPath, paint)
-        paint.shader = null
-
-        // 3) 指示块
-        if (selectedIndex == NO_TAB) {
-            paint.shader = null
-            return
-        }
-        val itemWidth = items.getOrNull(selectedIndex)?.width ?: 0
-        val pillHalf = (min(itemWidth * 0.62f, dp(86f)) / 2f).coerceAtLeast(dp(24f))
-        val pillHeight = min(h - dp(16f), dp(42f))
-        val top = (h - pillHeight) / 2f
-        pillRect.set(pillCenterX - pillHalf, top, pillCenterX + pillHalf, top + pillHeight)
-
-        if (pillShader == null || pillRimShader == null) {
-            pillShader = LinearGradient(
-                0f, 0f, 0f, pillHeight,
-                withAlpha(colorPillRim, 0x4D),
-                withAlpha(colorPill, 0x33),
-                Shader.TileMode.CLAMP
-            )
-            pillRimShader = LinearGradient(
-                0f, 0f, 0f, pillHeight,
-                colorPillRim, 0x00FFFFFF,
-                Shader.TileMode.CLAMP
-            )
-        }
-        pillPaint.shader = pillShader
-        canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillPaint)
-        pillPaint.shader = null
-        pillPaint.color = colorPill
-        canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillPaint)
-
-        if (!docked) {
-            pillRimPaint.shader = pillRimShader
-            canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillRimPaint)
-            pillRimPaint.shader = null
-        }
-
-        // 4) 外圈细边
-        borderPaint.shader = borderShader
         val checkpoint = canvas.save()
         canvas.clipPath(barPath)
-        canvas.drawRoundRect(
-            dp(0.5f), dp(0.5f), w - dp(0.5f), h - dp(0.5f), capsule, capsule, borderPaint
-        )
+
+        // 1) 内容的实时高斯模糊
+        backdrop.draw(canvas, barRect, radius)
+
+        // 2) 染色：让文字在任何背景上都够清楚
+        paint.shader = tintShader
+        canvas.drawRect(0f, 0f, w, h, paint)
+        paint.shader = null
+
+        // 3) 网格底噪
+        gridPaint.alpha = 255
+        canvas.drawRect(0f, 0f, w, h, gridPaint)
+
+        // 4) 选中项：指示线 + 辉光
+        if (selectedIndex != NO_TAB) {
+            val itemWidth = (items.getOrNull(selectedIndex)?.width ?: 0).toFloat()
+            val lineWidth = (itemWidth * 0.42f).coerceIn(dp(28f), dp(84f))
+            val lineTop = dp(1.5f)
+            // 顶部指示线
+            linePaint.color = colorLine
+            canvas.drawRect(
+                indicatorCenterX - lineWidth / 2f, lineTop,
+                indicatorCenterX + lineWidth / 2f, lineTop + dp(2f),
+                linePaint
+            )
+            // 指示线往下的渐隐辉光
+            linePaint.shader = LinearGradient(
+                0f, lineTop, 0f, lineTop + dp(22f),
+                withAlpha(colorLine, 0x59), 0x00000000, Shader.TileMode.CLAMP
+            )
+            canvas.drawRect(
+                indicatorCenterX - lineWidth * 0.8f, lineTop,
+                indicatorCenterX + lineWidth * 0.8f, lineTop + dp(22f),
+                linePaint
+            )
+            linePaint.shader = null
+
+            // 图标背后的径向辉光
+            glowShader?.let { shader ->
+                paint.shader = shader
+                paint.alpha = 90
+                val cy = h * 0.42f
+                canvas.save()
+                canvas.translate(indicatorCenterX, cy)
+                canvas.drawCircle(0f, 0f, h * 2.2f, paint)
+                canvas.restore()
+                paint.alpha = 255
+                paint.shader = null
+            }
+        }
+
+        // 5) 按压时整条稍微亮一点
+        if (touchAlpha > 0f) {
+            paint.color = withAlpha(0xFFFFFF, (touchAlpha * 18).toInt())
+            canvas.drawRect(0f, 0f, w, h, paint)
+            paint.color = 0
+        }
+
+        // 6) 上下的细线
+        linePaint.color = withAlpha(colorBorder, 0x66)
+        canvas.drawRect(0f, 0f, w, dp(1f), linePaint)
+        canvas.drawRect(0f, h - dp(1f), w, h, linePaint)
+
         canvas.restoreToCount(checkpoint)
-        borderPaint.shader = null
+
+        // 悬浮预览模式再补一圈描边
+        if (!docked) {
+            borderPaint.color = withAlpha(colorBorder, 0x80)
+            canvas.drawRoundRect(barRect, radius, radius, borderPaint)
+        }
     }
 
     private fun withAlpha(color: Int, alpha: Int): Int =
@@ -405,7 +404,7 @@ class GlassBottomBar @JvmOverloads constructor(
     private fun dp(value: Float): Float = value * resources.displayMetrics.density
 
     private fun easeOutBack(t: Float): Float {
-        val c1 = 1.20f
+        val c1 = 1.15f
         val c3 = c1 + 1f
         val inv = t - 1f
         return 1f + c3 * inv * inv * inv + c1 * inv * inv
@@ -414,5 +413,19 @@ class GlassBottomBar @JvmOverloads constructor(
     private companion object {
         /** 子页面：底栏不指向任何标签。 */
         const val NO_TAB = -1
+
+        /** 网格底噪：48×48 的预渲染 tile，平铺即可，不用每帧画线。 */
+        val gridTile: Bitmap by lazy {
+            val size = 48
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val paint = Paint().apply {
+                color = 0x0DFFFFFF
+                strokeWidth = 1f
+            }
+            canvas.drawLine(0f, 0f, size.toFloat(), 0f, paint)
+            canvas.drawLine(0f, 0f, 0f, size.toFloat(), paint)
+            bitmap
+        }
     }
 }
