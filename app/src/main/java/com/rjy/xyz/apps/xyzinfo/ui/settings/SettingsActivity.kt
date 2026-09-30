@@ -2,11 +2,16 @@ package com.rjy.xyz.apps.xyzinfo.ui.settings
 
 import android.os.Bundle
 import android.widget.SeekBar
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.rjy.xyz.apps.xyzinfo.R
 import com.rjy.xyz.apps.xyzinfo.data.BingWallpaperRepository
 import com.rjy.xyz.apps.xyzinfo.BuildConfig
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
+import com.rjy.xyz.apps.xyzinfo.ui.common.Season
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivitySettingsBinding
 import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
@@ -61,7 +66,8 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.switchSeason.isChecked = SettingsRepository.seasonEffectEnabled(this)
-        binding.tvSeasonHint.text = "当前会显示：" + com.rjy.xyz.apps.xyzinfo.ui.common.Season.current().label
+        updateSeasonHint()
+        buildSeasonChips()
         binding.switchSeason.setOnCheckedChangeListener { _, checked ->
             SettingsRepository.setSeasonEffectEnabled(this, checked)
             recreate()
@@ -126,6 +132,54 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun scrimLabel(value: Int): String =
         "蒙版浓度：$value%（越高文字越清楚，越低越能看到壁纸）"
+
+    private fun updateSeasonHint() {
+        val manual = SettingsRepository.seasonMode(this) != "auto"
+        binding.tvSeasonHint.text = (if (manual) "已手动锁定：" else "自动模式（按当前月份）：") +
+            Season.resolve(this).label
+    }
+
+    /** 自动 / 春 / 夏 / 秋 / 冬 五个胶囊按钮，点一下就锁定（点「自动」恢复按月份）。 */
+    private fun buildSeasonChips() {
+        val modes = listOf(
+            "auto" to "自动",
+            "spring" to "春",
+            "summer" to "夏",
+            "autumn" to "秋",
+            "winter" to "冬"
+        )
+        val current = SettingsRepository.seasonMode(this)
+        binding.layoutSeasonChips.removeAllViews()
+        modes.forEach { (mode, label) ->
+            val chip = TextView(this).apply {
+                text = label
+                textSize = 12.5f
+                gravity = android.view.Gravity.CENTER
+                setPadding(dp(14f), dp(7f), dp(14f), dp(7f))
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@SettingsActivity,
+                        if (mode == current) R.color.accent else R.color.text_secondary
+                    )
+                )
+                background = ContextCompat.getDrawable(this@SettingsActivity, R.drawable.bg_chip_filter)
+                isSelected = mode == current
+                isClickable = true
+                setOnClickListener {
+                    SettingsRepository.setSeasonMode(this@SettingsActivity, mode)
+                    SettingsRepository.setSeasonEffectEnabled(this@SettingsActivity, true)
+                    recreate()
+                }
+            }
+            chip.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = dp(8f) }
+            binding.layoutSeasonChips.addView(chip)
+        }
+    }
+
+    private fun dp(value: Float): Int = (value * resources.displayMetrics.density).toInt()
 
     private fun updateWallpaperInfo() {
         val current = BingWallpaperRepository.current(this)

@@ -181,6 +181,20 @@
                             android:paddingTop="11dp"
                             android:paddingBottom="11dp"
                             android:text="稳定性：—" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/divider" />
+
+                        <TextView
+                            android:id="@+id/tvMemoryScore"
+                            style="@style/Text.Row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingTop="11dp"
+                            android:paddingBottom="11dp"
+                            android:text="内存：—" />
                     </LinearLayout>
 
                     <TextView

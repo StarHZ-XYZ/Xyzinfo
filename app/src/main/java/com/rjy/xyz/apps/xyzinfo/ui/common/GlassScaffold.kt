@@ -89,7 +89,7 @@ object GlassScaffold {
         if (SettingsRepository.seasonEffectEnabled(activity) &&
             SettingsRepository.animationsEnabled(activity)
         ) {
-            val season = SeasonOverlay(activity).apply { this.season = Season.current() }
+            val season = SeasonOverlay(activity).apply { this.season = Season.resolve(activity) }
             container.addView(
                 season,
                 FrameLayout.LayoutParams(

@@ -13,6 +13,8 @@ data class BenchmarkResult(
     val cpuSingleDetail: String,
     val cpuMultiDetail: String,
     val gpuDetail: String?,
+    /** 0.8 新增：内存测试明细。 */
+    val memoryDetail: String? = null,
     /** 稳定性：多核长跑「后半程 / 前半程」的吞吐比，100 表示完全不掉速。 */
     val stabilityPercent: Int,
     /** 本次跑分总耗时（秒）。 */

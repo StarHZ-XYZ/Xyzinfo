@@ -32,6 +32,16 @@ enum class Season(val label: String) {
                 else -> WINTER
             }
         }
+
+        /** 按设置解析季节：auto 走当前月份，其余手动锁定。 */
+        fun resolve(context: Context): Season =
+            when (SettingsRepository.seasonMode(context)) {
+                "spring" -> SPRING
+                "summer" -> SUMMER
+                "autumn" -> AUTUMN
+                "winter" -> WINTER
+                else -> current()
+            }
     }
 }
 
@@ -126,7 +136,9 @@ class SeasonOverlay @JvmOverloads constructor(
         lastFrameNanos = now
 
         if (season == Season.SUMMER) drawSummer(canvas, w, h, delta) else drawFalling(canvas, w, h, delta)
-        postInvalidateOnAnimation()
+        // 氛围层按 30fps 重绘就够了（雪花/叶子本来就是慢动作），
+        // 比 60fps 省一半绘制，也不会让设备一直满帧跑。
+        postInvalidateDelayed(FRAME_INTERVAL_MILLIS)
     }
 
     /** 雪花 / 枫叶 / 花瓣：都是「飘落 + 摆动 + 自转」。 */
@@ -251,6 +263,7 @@ class SeasonOverlay @JvmOverloads constructor(
         (color and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
 
     private companion object {
+        const val FRAME_INTERVAL_MILLIS = 33L
         val autumnColors = intArrayOf(
             Color.parseColor("#E8642C"), Color.parseColor("#D24A1E"),
             Color.parseColor("#C98A2B"), Color.parseColor("#A8481F")

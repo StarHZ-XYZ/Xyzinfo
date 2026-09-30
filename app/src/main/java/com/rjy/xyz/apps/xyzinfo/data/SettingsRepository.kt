@@ -22,6 +22,7 @@ object SettingsRepository {
     private const val KEY_WALLPAPER_SCRIM = "wallpaper_scrim"
     private const val KEY_FOLLOW_SYSTEM_COLOR = "follow_system_color"
     private const val KEY_SEASON_EFFECT = "season_effect"
+    private const val KEY_SEASON_MODE = "season_mode"
 
     private const val KEY_LAST_SINGLE = "last_single"
     private const val KEY_LAST_MULTI = "last_multi"
@@ -101,12 +102,23 @@ object SettingsRepository {
 
     // ---------- 四季氛围效果 ----------
 
-    /** 是否显示四季氛围（雪花 / 枫叶 / 花瓣 / 阳光）。默认关，避免影响老机器流畅度。 */
+    /** 是否显示四季氛围（雪花 / 枫叶 / 花瓣 / 阳光）。默认**开启**。 */
     fun seasonEffectEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_SEASON_EFFECT, false)
+        prefs(context).getBoolean(KEY_SEASON_EFFECT, true)
 
     fun setSeasonEffectEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_SEASON_EFFECT, enabled).apply()
+    }
+
+    /**
+     * 季节模式：`auto` 按月份自动，其它是 `spring` / `summer` / `autumn` / `winter`
+     * 手动锁定（用户想一年四季随时看某个季节就用这个）。
+     */
+    fun seasonMode(context: Context): String =
+        prefs(context).getString(KEY_SEASON_MODE, "auto") ?: "auto"
+
+    fun setSeasonMode(context: Context, mode: String) {
+        prefs(context).edit().putString(KEY_SEASON_MODE, mode).apply()
     }
 
     // ---------- 最近一次跑分成绩 ----------

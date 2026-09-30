@@ -13,6 +13,7 @@ import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import com.rjy.xyz.apps.xyzinfo.data.SocInfoProvider
 import com.rjy.xyz.apps.xyzinfo.data.benchmark.CpuBenchmark
 import com.rjy.xyz.apps.xyzinfo.data.benchmark.GeekerwanScores
+import com.rjy.xyz.apps.xyzinfo.data.benchmark.MemoryBenchmark
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityBenchmarkBinding
 import com.rjy.xyz.apps.xyzinfo.model.BenchmarkResult
 import com.rjy.xyz.apps.xyzinfo.model.BenchmarkStage
@@ -46,6 +47,8 @@ class BenchmarkActivity : AppCompatActivity() {
     private var running = false
     private var deviceChipName: String? = null
     private var deviceGpuName: String? = null
+    /** 最近一次内存测试结果（0.8 新增）。 */
+    private var lastMemory: MemoryBenchmark.Result? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -116,8 +119,9 @@ class BenchmarkActivity : AppCompatActivity() {
 
         val deep = SettingsRepository.deepBenchmarkEnabled(this)
         val cpuSeconds = CpuBenchmark.totalSeconds(deep)
+        val memSeconds = if (deep) 30.0 else 18.0
         val gpuSeconds = if (deep) 30.0 else 20.0
-        val totalSeconds = cpuSeconds + gpuSeconds
+        val totalSeconds = cpuSeconds + memSeconds + gpuSeconds
         setStatus("测试中，请勿离开本页面", 0.0, totalSeconds)
 
         Thread({
@@ -125,7 +129,12 @@ class BenchmarkActivity : AppCompatActivity() {
             val cpu = CpuBenchmark.run(deep) { progress ->
                 setStatus(progress.stageName, progress.elapsedSeconds, totalSeconds, progress.live)
             }
-            val gpu = runGpuStress(gpuSeconds, cpuSeconds, totalSeconds)
+            // 内存测试：顺序带宽 / 随机访问延迟 / 分配速率
+            val memory = MemoryBenchmark.run(memSeconds) { elapsed ->
+                setStatus("内存测试", cpuSeconds + elapsed, totalSeconds, "顺序带宽 · 随机延迟 · 分配速率")
+            }
+            lastMemory = memory
+            val gpu = runGpuStress(gpuSeconds, cpuSeconds + memSeconds, totalSeconds)
 
             val result = BenchmarkResult(
                 cpuSingleScore = cpu.singleScore,
@@ -263,9 +272,16 @@ class BenchmarkActivity : AppCompatActivity() {
                 String.format(Locale.US, "%.2fx", cpu.multiSpeedup)
             } ｜ ${cpu.threads} 线程"
         )
+        lastMemory?.let { memory ->
+            binding.tvMemoryScore.countUpWith(memory.score, render = { "内存：$it" })
+        }
         binding.tvBenchmarkDetail.setRawBlock(
-            listOfNotNull(result.cpuSingleDetail, result.cpuMultiDetail, result.gpuDetail)
-                .joinToString("\n")
+            listOfNotNull(
+                result.cpuSingleDetail,
+                result.cpuMultiDetail,
+                result.gpuDetail,
+                lastMemory?.detail
+            ).joinToString("\n")
         )
         renderStages(result.stages)
     }
