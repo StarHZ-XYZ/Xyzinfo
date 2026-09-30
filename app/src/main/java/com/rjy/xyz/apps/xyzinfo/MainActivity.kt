@@ -228,7 +228,12 @@ class MainActivity : AppCompatActivity() {
             }
             grid.addView(card)
         }
-        parent.addView(grid, anchorIndex.coerceAtLeast(0))
+        /*
+         * 注意：插入下标必须是「搬走 8 张卡片之后」的合法值。
+         * 之前直接用搬走之前记下的 anchorIndex，容器已经变短，下标越界 →
+         * 一开启宫格就抛 IndexOutOfBoundsException，整个应用直接退出。
+         */
+        parent.addView(grid, anchorIndex.coerceIn(0, parent.childCount))
     }
 
     private fun open(screen: Class<out Activity>) {
