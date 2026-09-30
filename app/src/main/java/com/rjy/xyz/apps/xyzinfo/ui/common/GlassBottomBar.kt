@@ -105,6 +105,14 @@ class GlassBottomBar @JvmOverloads constructor(
     private var glowPulse = 0f
     private var tintShader: LinearGradient? = null
     private var glowShader: RadialGradient? = null
+    private var fishGlowShader: RadialGradient? = null
+    private var touchShaderAccent: RadialGradient? = null
+    private var touchShaderAi: RadialGradient? = null
+    private var touchRadius = 0f
+    /** 手指当前所在的 x（底栏坐标系）与按下辉光强度 0~1。 */
+    private var touchX = 0f
+    private var touchGlow = 0f
+    private var touchGlowAnimator: ValueAnimator? = null
 
     init {
         orientation = HORIZONTAL
@@ -202,6 +210,11 @@ class GlassBottomBar @JvmOverloads constructor(
                     icon.colorFilter = null
                     icon.alpha = if (selected) 1f else 0.78f
                 }
+                // 「大肥鱼」文字始终保留，选中时染成 AI 蓝，和描边呼应
+                labels.getOrNull(index)?.let { label ->
+                    label.visibility = View.VISIBLE
+                    label.setTextColor(if (selected) AI_BLUE else colorIdle)
+                }
             } else if (animated && changing && startColor != target) {
                 ValueAnimator.ofObject(colorEvaluator, startColor, target).apply {
                     duration = Anim.DURATION_MEDIUM
@@ -250,11 +263,17 @@ class GlassBottomBar @JvmOverloads constructor(
                 isPressed = true
                 dragging = false
                 downX = event.x
+                touchX = event.x
                 tabIndexAtDown = indexAt(event.x)
+                animateTouchGlow(1f)
                 backdrop.requestRefresh()
             }
 
             MotionEvent.ACTION_MOVE -> {
+                if (event.x != touchX) {
+                    touchX = event.x
+                    invalidate()
+                }
                 if (kotlin.math.abs(event.x - downX) > dp(6f)) dragging = true
                 if (dragging) {
                     // 指示线跟手（限制在第一个到最后一个标签中心之间）
@@ -276,6 +295,7 @@ class GlassBottomBar @JvmOverloads constructor(
 
             MotionEvent.ACTION_UP -> {
                 isPressed = false
+                animateTouchGlow(0f)
                 val commit = indexAt(event.x)
                 if (dragging) {
                     // 跟手结束后落到最近的标签
@@ -292,10 +312,33 @@ class GlassBottomBar @JvmOverloads constructor(
             MotionEvent.ACTION_CANCEL -> {
                 isPressed = false
                 dragging = false
+                animateTouchGlow(0f)
                 moveTo(selectedIndex.coerceAtLeast(0), Anim.enabled(context))
             }
         }
         return true
+    }
+
+    /**
+     * 手指辉光的淡入淡出：按下 140ms 淡入，松手 260ms 淡出，
+     * 避免点一下出现"闪一下"的突兀感。
+     */
+    private fun animateTouchGlow(target: Float) {
+        touchGlowAnimator?.cancel()
+        if (!Anim.enabled(context)) {
+            touchGlow = target
+            invalidate()
+            return
+        }
+        touchGlowAnimator = ValueAnimator.ofFloat(touchGlow, target).apply {
+            duration = if (target > touchGlow) 140L else 260L
+            interpolator = decelerate
+            addUpdateListener {
+                touchGlow = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
     }
 
     /** 某个 x 坐标落在第几个标签上。 */
@@ -354,6 +397,31 @@ class GlassBottomBar @JvmOverloads constructor(
             0f, 0f, h * 3.2f,
             intArrayOf(withAlpha(colorLine, 0x59), withAlpha(colorLine, 0x24), 0x00000000),
             floatArrayOf(0f, 0.42f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        // 大肥鱼被选中：柔光圈换成 AI 蓝紫，一眼区分 AI 入口
+        fishGlowShader = RadialGradient(
+            0f, 0f, h * 3.2f,
+            intArrayOf(withAlpha(AI_BLUE, 0x59), withAlpha(AI_PURPLE, 0x20), 0x00000000),
+            floatArrayOf(0f, 0.42f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        /*
+         * 手指辉光：手指按在底栏上，指下浮起一团柔光，颜色**跟着那一格走**——
+         * 滑到大肥鱼那一格就是大肥鱼的蓝紫色，其它格子用主题强调色。
+         * Shader 只建一次，绘制时用 canvas.translate 挪到手指位置。
+         */
+        touchRadius = (h * 1.35f).coerceAtLeast(w / 5f * 0.8f)
+        touchShaderAccent = RadialGradient(
+            0f, 0f, touchRadius,
+            intArrayOf(withAlpha(colorLine, 0x6E), withAlpha(colorLine, 0x26), 0x00000000),
+            floatArrayOf(0f, 0.45f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        touchShaderAi = RadialGradient(
+            0f, 0f, touchRadius,
+            intArrayOf(withAlpha(AI_BLUE, 0x7A), withAlpha(AI_PURPLE, 0x33), 0x00000000),
+            floatArrayOf(0f, 0.45f, 1f),
             Shader.TileMode.CLAMP
         )
         backdrop.requestRefresh(immediate = true)
@@ -483,20 +551,36 @@ class GlassBottomBar @JvmOverloads constructor(
         // 3.5) AI 图标的整体发光描边（放大一圈画在图标下面）
         drawAiOutline(canvas, h)
 
+        // 3.5) 手指辉光：颜色跟着手指所在的那一格走（大肥鱼那一格是 AI 蓝紫）
+        if (touchGlow > 0.01f) {
+            val shader = if (indexAt(touchX) == aiTabIndex) touchShaderAi else touchShaderAccent
+            if (shader != null) {
+                paint.shader = shader
+                paint.alpha = (255 * touchGlow).toInt().coerceIn(0, 255)
+                canvas.save()
+                canvas.translate(touchX, h * 0.5f)
+                canvas.drawCircle(0f, 0f, touchRadius, paint)
+                canvas.restore()
+                paint.alpha = 255
+                paint.shader = null
+            }
+        }
+
         // 4) 选中项：指示线 + 辉光
         if (selectedIndex != NO_TAB) {
             val itemWidth = (items.getOrNull(selectedIndex)?.width ?: 0).toFloat()
             val lineWidth = (itemWidth * 0.42f).coerceIn(dp(28f), dp(84f))
             val lineTop = dp(1.5f)
             // 顶部指示线
-            linePaint.color = colorLine
+            linePaint.color = if (selectedIndex == aiTabIndex) AI_BLUE else colorLine
             canvas.drawRect(
                 indicatorCenterX - lineWidth / 2f, lineTop,
                 indicatorCenterX + lineWidth / 2f, lineTop + dp(2f),
                 linePaint
             )
             // 图标背后的一团柔光晕（不再是带边的光块）
-            glowShader?.let { shader ->
+            val selectionGlow = if (selectedIndex == aiTabIndex) fishGlowShader else glowShader
+            selectionGlow?.let { shader ->
                 paint.shader = shader
                 paint.alpha = 130
                 val cy = h * 0.46f
@@ -528,10 +612,16 @@ class GlassBottomBar @JvmOverloads constructor(
         /** 子页面：底栏不指向任何标签。 */
         const val NO_TAB = -1
 
-        /** Gemini 近似配色：蓝 / 紫 / 粉。 */
-        const val AI_BLUE = 0x4285F4
-        const val AI_PURPLE = 0x9B72CB
-        const val AI_PINK = 0xD96570
+        /**
+         * Gemini 近似配色：蓝 / 紫 / 粉。
+         *
+         * 注意必须带 `0xFF` 不透明通道：早先写成 `0x4285F4` 这种形式，
+         * 那在 Int 里 alpha = 0x00，等于**全透明**——所以从「光晕」到「描边」
+         * 每一版都画了却完全看不见，也让大肥鱼选中时的指示线是隐形的。
+         */
+        const val AI_BLUE = 0xFF4285F4.toInt()
+        const val AI_PURPLE = 0xFF9B72CB.toInt()
+        const val AI_PINK = 0xFFD96570.toInt()
 
         /** 网格底噪：48×48 的预渲染 tile，平铺即可，不用每帧画线。 */
         val gridTile: Bitmap by lazy {
