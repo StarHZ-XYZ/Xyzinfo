@@ -150,7 +150,7 @@ class MiscActivity : AppCompatActivity() {
             Anim.pressFeedback(it)
             val target = !torchOn
             val ok = runCatching {
-                manager?.setTorchMode(cameraId!!, target)
+                cameraId?.let { id -> manager?.setTorchMode(id, target) }
             }.isSuccess
             if (ok) {
                 torchOn = target
