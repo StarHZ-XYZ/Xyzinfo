@@ -79,7 +79,7 @@
                         android:paddingEnd="10dp"
                         android:paddingBottom="4dp"
                         android:text="实时识别"
-                        android:textColor="@color/accent"
+                        android:textColor="?attr/colorPrimary"
                         android:textSize="11sp" />
                 </LinearLayout>
 
@@ -202,7 +202,7 @@
             app:cardBackgroundColor="@color/surface"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp"
-            app:rippleColor="@color/accent_soft"
+            app:rippleColor="?attr/colorPrimaryContainer"
             app:strokeColor="@color/stroke"
             app:strokeWidth="1dp">
 
@@ -264,7 +264,7 @@
             app:cardBackgroundColor="@color/surface"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp"
-            app:rippleColor="@color/accent_soft"
+            app:rippleColor="?attr/colorPrimaryContainer"
             app:strokeColor="@color/stroke"
             app:strokeWidth="1dp">
 
@@ -326,7 +326,7 @@
             app:cardBackgroundColor="@color/surface"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp"
-            app:rippleColor="@color/accent_soft"
+            app:rippleColor="?attr/colorPrimaryContainer"
             app:strokeColor="@color/stroke"
             app:strokeWidth="1dp">
 
@@ -388,7 +388,7 @@
             app:cardBackgroundColor="@color/surface"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp"
-            app:rippleColor="@color/accent_soft"
+            app:rippleColor="?attr/colorPrimaryContainer"
             app:strokeColor="@color/stroke"
             app:strokeWidth="1dp">
 
@@ -450,7 +450,7 @@
             app:cardBackgroundColor="@color/surface"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp"
-            app:rippleColor="@color/accent_soft"
+            app:rippleColor="?attr/colorPrimaryContainer"
             app:strokeColor="@color/stroke"
             app:strokeWidth="1dp">
 
@@ -512,7 +512,7 @@
             app:cardBackgroundColor="@color/surface"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp"
-            app:rippleColor="@color/accent_soft"
+            app:rippleColor="?attr/colorPrimaryContainer"
             app:strokeColor="@color/stroke"
             app:strokeWidth="1dp">
 
@@ -574,7 +574,7 @@
             app:cardBackgroundColor="@color/surface"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp"
-            app:rippleColor="@color/accent_soft"
+            app:rippleColor="?attr/colorPrimaryContainer"
             app:strokeColor="@color/stroke"
             app:strokeWidth="1dp">
 
@@ -643,7 +643,7 @@
             app:cardBackgroundColor="@color/surface"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp"
-            app:rippleColor="@color/accent_soft"
+            app:rippleColor="?attr/colorPrimaryContainer"
             app:strokeColor="@color/stroke"
             app:strokeWidth="1dp">
 
@@ -732,7 +732,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:backgroundTint="@color/accent"
+                    android:backgroundTint="?attr/colorPrimary"
                     android:paddingTop="10dp"
                     android:paddingBottom="10dp"
                     android:text="检查更新"

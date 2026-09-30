@@ -18,6 +18,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
 import com.rjy.xyz.apps.xyzinfo.util.Labels
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
  * 通信参数页：基带、双卡信息、信号强度与小区信息。
@@ -119,7 +120,7 @@ class TelephonyInfoActivity : AppCompatActivity() {
             return
         }
 
-        val accentColor = ContextCompat.getColor(this, R.color.accent)
+        val accentColor = ThemeColors.accent(this)
         info.slots.forEach { slot ->
             val item = ItemSimCardBinding.inflate(layoutInflater, binding.layoutSimCards, false)
             val cardType = if (slot.isEmbedded) "eSIM" else "实体卡"

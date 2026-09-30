@@ -31,6 +31,7 @@ import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
  * 性能测试页（v0.7 重写）。
@@ -291,7 +292,7 @@ class BenchmarkActivity : AppCompatActivity() {
         binding.layoutStages.removeAllViews()
         val nameColor = ContextCompat.getColor(this, R.color.text_primary)
         val detailColor = ContextCompat.getColor(this, R.color.text_secondary)
-        val scoreColor = ContextCompat.getColor(this, R.color.accent)
+        val scoreColor = ThemeColors.accent(this)
 
         stages.forEach { stage ->
             val row = LinearLayout(this).apply {

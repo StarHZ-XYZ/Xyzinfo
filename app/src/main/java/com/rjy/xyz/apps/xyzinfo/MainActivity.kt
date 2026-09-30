@@ -30,6 +30,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.UpdateControls
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 import com.rjy.xyz.apps.xyzinfo.util.Labels
 import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
@@ -228,7 +229,7 @@ class MainActivity : AppCompatActivity() {
         }
         val icon = android.widget.ImageView(this).apply {
             setImageResource(R.drawable.ic_module_screen)
-            setColorFilter(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.accent))
+            setColorFilter(ThemeColors.accent(this@MainActivity))
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 (22 * density).toInt(), (22 * density).toInt()
             )

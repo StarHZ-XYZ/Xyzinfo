@@ -13,6 +13,7 @@ import com.rjy.xyz.apps.xyzinfo.R
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
  * 卫星天顶图 + 指南针二合一。
@@ -57,7 +58,7 @@ class SatelliteSkyView @JvmOverloads constructor(
     }
     private val needlePath = Path()
 
-    private val colorAccent = ContextCompat.getColor(context, R.color.accent)
+    private val colorAccent = ThemeColors.accent(context)
     private val colorSurface = ContextCompat.getColor(context, R.color.surface)
     private val colorIdle = ContextCompat.getColor(context, R.color.text_tertiary)
     private val colorText = ContextCompat.getColor(context, R.color.text_secondary)

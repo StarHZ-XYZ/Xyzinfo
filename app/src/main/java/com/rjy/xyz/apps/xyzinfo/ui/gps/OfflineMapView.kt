@@ -18,6 +18,7 @@ import com.rjy.xyz.apps.xyzinfo.data.LocalMapRepository
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
  * 内置离线地图（等距圆柱投影，1920px 世界地图打包在 assets 里）。
@@ -44,7 +45,7 @@ class OfflineMapView @JvmOverloads constructor(
     private val sourceRect = Rect()
     private val destinationRect = RectF()
 
-    private val colorAccent = ContextCompat.getColor(context, R.color.accent)
+    private val colorAccent = ThemeColors.accent(context)
 
     private var latitude: Double? = null
     private var longitude: Double? = null

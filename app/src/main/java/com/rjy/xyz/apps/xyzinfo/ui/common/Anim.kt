@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import kotlin.math.roundToInt
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
  * 全局动效工具。
@@ -86,7 +87,7 @@ object Anim {
     fun pressFeedback(views: Collection<View>) {
         views.forEach { view ->
             val context = view.context
-            val rippleColor = ContextCompat.getColor(context, R.color.accent)
+            val rippleColor = ThemeColors.accent(context)
             if (view is com.google.android.material.card.MaterialCardView) {
                 view.rippleColor = ColorStateList.valueOf(
                     (rippleColor and 0x00FFFFFF) or 0x1F000000

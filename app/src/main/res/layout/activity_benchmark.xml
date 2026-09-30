@@ -55,7 +55,7 @@
                         android:id="@+id/btnStartBenchmark"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:backgroundTint="@color/accent"
+                        android:backgroundTint="?attr/colorPrimary"
                         android:paddingTop="12dp"
                         android:paddingBottom="12dp"
                         android:text="开始跑分"
@@ -71,7 +71,7 @@
                         android:layout_marginTop="14dp"
                         android:max="100"
                         android:progress="0"
-                        android:progressTint="@color/accent"
+                        android:progressTint="?attr/colorPrimary"
                         android:visibility="gone" />
 
                     <TextView
@@ -256,10 +256,10 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
                         android:text="查看完整排行榜"
-                        android:textColor="@color/accent"
+                        android:textColor="?attr/colorPrimary"
                         android:textSize="13sp"
                         app:cornerRadius="12dp"
-                        app:strokeColor="@color/accent" />
+                        app:strokeColor="?attr/colorPrimary" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

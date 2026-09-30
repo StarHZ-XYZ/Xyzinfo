@@ -11,6 +11,7 @@ import com.rjy.xyz.apps.xyzinfo.R
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
  * 全局点击粒子效果。
@@ -41,8 +42,8 @@ class ParticleOverlay @JvmOverloads constructor(
     private val density = resources.displayMetrics.density
 
     private val colors = intArrayOf(
-        ContextCompat.getColor(context, R.color.accent),
-        ContextCompat.getColor(context, R.color.accent_dim),
+        ThemeColors.accent(context),
+        ThemeColors.accentDim(context),
         ContextCompat.getColor(context, R.color.status_warning)
     )
 

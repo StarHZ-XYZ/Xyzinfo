@@ -25,6 +25,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
  * 底栏（极客风）。
@@ -71,11 +72,11 @@ class GlassBottomBar @JvmOverloads constructor(
     private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     private val colorIdle = ContextCompat.getColor(context, R.color.text_tertiary)
-    private val colorSelected = ContextCompat.getColor(context, R.color.accent)
+    private val colorSelected = ThemeColors.accent(context)
     private val colorTintTop = ContextCompat.getColor(context, R.color.nav_tint_top)
     private val colorTintBottom = ContextCompat.getColor(context, R.color.nav_tint_bottom)
     private val colorGrid = ContextCompat.getColor(context, R.color.nav_grid)
-    private val colorLine = ContextCompat.getColor(context, R.color.accent)
+    private val colorLine = ThemeColors.accent(context)
     private val colorBorder = ContextCompat.getColor(context, R.color.nav_border)
 
     private var selectedIndex = 0

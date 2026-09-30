@@ -70,10 +70,10 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:text="去跑分，把本机实测插进榜单"
-                    android:textColor="@color/accent"
+                    android:textColor="?attr/colorPrimary"
                     android:textSize="13sp"
                     app:cornerRadius="12dp"
-                    app:strokeColor="@color/accent" />
+                    app:strokeColor="?attr/colorPrimary" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -147,7 +147,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:backgroundTint="@color/accent"
+                        android:backgroundTint="?attr/colorPrimary"
                         android:text="加载排行榜"
                         android:textColor="@color/text_on_accent"
                         android:textSize="14sp"
@@ -161,11 +161,11 @@
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
                         android:text="刷新榜单"
-                        android:textColor="@color/accent"
+                        android:textColor="?attr/colorPrimary"
                         android:textSize="13sp"
                         android:visibility="gone"
                         app:cornerRadius="12dp"
-                        app:strokeColor="@color/accent" />
+                        app:strokeColor="?attr/colorPrimary" />
                 </LinearLayout>
 
                 <TextView

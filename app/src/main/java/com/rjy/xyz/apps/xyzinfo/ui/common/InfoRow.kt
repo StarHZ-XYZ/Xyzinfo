@@ -9,6 +9,7 @@ import android.text.style.StyleSpan
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
  * 信息行统一渲染：把「标签：值」拆成两种样式，可选在前面加一个小图标。
@@ -36,11 +37,19 @@ private fun TextView.buildInfoRow(base: CharSequence, content: String, iconRes: 
         if (icon != null) {
             val size = (15 * resources.displayMetrics.density).toInt()
             icon.setBounds(0, 0, size, size)
-            runCatching { icon.setTint(ContextCompat.getColor(context, R.color.accent_dim)) }
+            runCatching { icon.setTint(ThemeColors.accentDim(context)) }
             builder.append(
                 SpannableString(" ").apply {
                     setSpan(
-                        ImageSpan(icon, ImageSpan.ALIGN_BOTTOM),
+                        // ALIGN_CENTER（API 29+）让图标与文字垂直居中；老系统退回底部对齐
+                        ImageSpan(
+                            icon,
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                ImageSpan.ALIGN_CENTER
+                            } else {
+                                ImageSpan.ALIGN_BOTTOM
+                            }
+                        ),
                         0,
                         1,
                         SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE

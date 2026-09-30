@@ -24,6 +24,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.growBar
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import kotlin.math.roundToInt
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
  * 性能排行榜（数据来自极客湾公开榜单）。
@@ -235,7 +236,7 @@ class RankingActivity : AppCompatActivity() {
         binding.btnRefreshRanking.isEnabled = true
         binding.layoutRanking.removeAllViews()
 
-        val deviceColor = ContextCompat.getColor(this, R.color.accent)
+        val deviceColor = ThemeColors.accent(this)
         val warningColor = ContextCompat.getColor(this, R.color.status_warning)
         val idleColor = ContextCompat.getColor(this, R.color.text_primary)
         val deviceBar = ContextCompat.getDrawable(this, R.drawable.bg_rank_bar_device)
