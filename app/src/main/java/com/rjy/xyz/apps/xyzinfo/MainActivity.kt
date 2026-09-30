@@ -18,6 +18,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkActivity
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.RankingActivity
 import com.rjy.xyz.apps.xyzinfo.ui.gps.GpsInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.hardware.ScreenTestActivity
+import com.rjy.xyz.apps.xyzinfo.ui.misc.MiscActivity
 import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
 import com.rjy.xyz.apps.xyzinfo.ui.ram.RamInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
@@ -43,7 +44,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var firstResume = true
     /** 代码生成的硬件测试入口卡片，宫格排版时要一起排。 */
-    private var hardwareCard: android.view.View? = null
+    /** 代码生成的入口卡片列表（硬件测试、杂项），宫格排版要一起排。 */
+    private val extraCards = mutableListOf<android.view.View>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,7 +56,7 @@ class MainActivity : AppCompatActivity() {
 
         renderOverview(DeviceOverviewProvider.load())
         setupNavigation()
-        addHardwareTestEntry()
+        addExtraEntries()
         applyHomeLayoutStyle()
         loadDeviceName()
         setupUpdate()
@@ -208,19 +210,46 @@ class MainActivity : AppCompatActivity() {
      * 用代码生成「硬件测试」入口卡片（避免再复制一大段布局 XML）。
      * 它在 applyHomeLayoutStyle 之前插入，所以宫格模式下也会一起进两列排布。
      */
-    private fun addHardwareTestEntry() {
+    /** 新增两个入口：硬件测试、杂项工具。 */
+    private fun addExtraEntries() {
+        addEntryCard("硬件测试", "屏幕坏点、触摸与多点触控", R.drawable.ic_module_screen) {
+            open(ScreenTestActivity::class.java)
+        }
+        addEntryCard("杂项工具", "反应力测试、随机密码、手电筒", R.drawable.ic_module_benchmark) {
+            open(MiscActivity::class.java)
+        }
+    }
+
+    /**
+     * 生成一张与 XML 里**完全同款**的入口卡片：
+     * 42dp 图标底板（bg_icon_tile）+ 标题（主要色加粗）+ 说明（次要色）+ 右箭头。
+     */
+    private fun addEntryCard(
+        cardTitle: String,
+        cardSubtitle: String,
+        iconRes: Int,
+        onClick: () -> Unit
+    ) {
         val parent = binding.cardGps.parent as? android.view.ViewGroup ?: return
         val density = resources.displayMetrics.density
         val title = android.widget.TextView(this).apply {
-            text = "硬件测试"
-            setTextColor(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.text_primary))
+            text = cardTitle
+            setTextColor(
+                androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.text_primary)
+            )
             textSize = 15f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
         }
         val subtitle = android.widget.TextView(this).apply {
-            text = "屏幕坏点、触摸与多点触控"
-            setTextColor(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
+            text = cardSubtitle
+            setTextColor(
+                androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.text_secondary)
+            )
             textSize = 12f
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (3 * density).toInt() }
         }
         val texts = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
@@ -228,20 +257,36 @@ class MainActivity : AppCompatActivity() {
             addView(subtitle)
         }
         val icon = android.widget.ImageView(this).apply {
-            setImageResource(R.drawable.ic_module_screen)
-            setColorFilter(ThemeColors.accent(this@MainActivity))
+            setImageResource(iconRes)
+            scaleType = android.widget.ImageView.ScaleType.CENTER
+            background = androidx.core.content.ContextCompat.getDrawable(
+                this@MainActivity, R.drawable.bg_icon_tile
+            )
             layoutParams = android.widget.LinearLayout.LayoutParams(
-                (22 * density).toInt(), (22 * density).toInt()
+                (42 * density).toInt(), (42 * density).toInt()
+            )
+        }
+        val chevron = android.widget.ImageView(this).apply {
+            setImageResource(R.drawable.ic_chevron_right)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                (20 * density).toInt(), (20 * density).toInt()
             )
         }
         val row = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding((16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt())
+            setPadding(
+                (16 * density).toInt(), (16 * density).toInt(),
+                (16 * density).toInt(), (16 * density).toInt()
+            )
             addView(icon)
-            addView(texts, android.widget.LinearLayout.LayoutParams(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = (14 * density).toInt()
-            })
+            addView(
+                texts,
+                android.widget.LinearLayout.LayoutParams(
+                    0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f
+                ).apply { marginStart = (14 * density).toInt() }
+            )
+            addView(chevron)
         }
         val card = com.google.android.material.card.MaterialCardView(this).apply {
             layoutParams = android.widget.LinearLayout.LayoutParams(
@@ -249,15 +294,18 @@ class MainActivity : AppCompatActivity() {
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = (12 * density).toInt() }
             radius = 18f * density
-            setCardBackgroundColor(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.surface))
+            setCardBackgroundColor(
+                androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.surface)
+            )
             strokeColor = androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.stroke)
             strokeWidth = (1 * density).toInt()
             cardElevation = 0f
             addView(row)
             isClickable = true
-            setOnClickListener { open(ScreenTestActivity::class.java) }
+            setOnClickListener { onClick() }
         }
-        hardwareCard = card
+        Anim.pressFeedback(card)
+        extraCards += card
         parent.addView(card, (parent.indexOfChild(binding.cardGps) + 1).coerceAtMost(parent.childCount))
     }
 
@@ -272,7 +320,7 @@ class MainActivity : AppCompatActivity() {
         val cards = buildList {
             add(binding.cardCpu); add(binding.cardMemory); add(binding.cardScreen); add(binding.cardBattery)
             add(binding.cardSensor); add(binding.cardTelephony); add(binding.cardSystem); add(binding.cardGps)
-            hardwareCard?.let { add(it) }
+            extraCards.forEach { add(it) }
         }
         val parent = cards.first().parent as? android.view.ViewGroup ?: return
         val anchorIndex = parent.indexOfChild(cards.first())

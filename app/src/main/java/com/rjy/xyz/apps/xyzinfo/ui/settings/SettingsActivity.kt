@@ -18,6 +18,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.UpdateControls
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
  * 设置页：外观开关（液态玻璃底栏 / 丝滑动画）、跑分模式、机型库更新与关于信息。
@@ -152,10 +153,7 @@ class SettingsActivity : AppCompatActivity() {
                 gravity = android.view.Gravity.CENTER
                 setPadding(dp(14f), dp(7f), dp(14f), dp(7f))
                 setTextColor(
-                    ContextCompat.getColor(
-                        this@SettingsActivity,
-                        if (mode == current) R.color.accent else R.color.text_secondary
-                    )
+                    if (mode == current) ThemeColors.accent(this@SettingsActivity) else ContextCompat.getColor(this@SettingsActivity, R.color.text_secondary)
                 )
                 background = ContextCompat.getDrawable(this@SettingsActivity, R.drawable.bg_chip_filter)
                 isSelected = mode == current
@@ -203,10 +201,7 @@ class SettingsActivity : AppCompatActivity() {
                 gravity = android.view.Gravity.CENTER
                 setPadding(dp(14f), dp(7f), dp(14f), dp(7f))
                 setTextColor(
-                    ContextCompat.getColor(
-                        this@SettingsActivity,
-                        if (mode == current) R.color.accent else R.color.text_secondary
-                    )
+                    if (mode == current) ThemeColors.accent(this@SettingsActivity) else ContextCompat.getColor(this@SettingsActivity, R.color.text_secondary)
                 )
                 background = ContextCompat.getDrawable(this@SettingsActivity, R.drawable.bg_chip_filter)
                 isSelected = mode == current

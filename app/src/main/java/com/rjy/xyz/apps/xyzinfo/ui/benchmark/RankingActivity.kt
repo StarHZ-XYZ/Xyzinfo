@@ -349,10 +349,7 @@ class RankingActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
             setPadding(dp(14f), dp(7f), dp(14f), dp(7f))
             setTextColor(
-                ContextCompat.getColor(
-                    this@RankingActivity,
-                    if (selected) R.color.accent else R.color.text_secondary
-                )
+                if (selected) ThemeColors.accent(this@RankingActivity) else ContextCompat.getColor(this@RankingActivity, R.color.text_secondary)
             )
             background = ContextCompat.getDrawable(this@RankingActivity, R.drawable.bg_chip_filter)
             isSelected = selected
