@@ -12,6 +12,7 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.SweepGradient
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
@@ -25,6 +26,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
+import kotlin.math.min
 import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
@@ -401,32 +403,42 @@ class GlassBottomBar @JvmOverloads constructor(
     }
 
     /**
-     * AI 标签的柔光：一圈很淡的蓝紫光，只是"提一下"，不抢视线。
+     * AI 标签的光晕：**描边式光环**（不是一片色块）。
      *
-     * 上一版半径 1.25 倍栏高、中心亮度 110/255，糊成一团还很刺眼；
-     * 现在半径收到 0.85 倍、亮度砍到三分之一左右，并把粉色的比重压低，
-     * 保持"这里有个 AI"的暗示就够，真正做到一眼能认、又不辣眼睛。
+     * 一圈用 SweepGradient 做出来的彩色细环（蓝→紫→粉→蓝），外面再罩一层同色柔光，
+     * 像"发光描边"；呼吸只做很轻的透明度变化。
      */
-    private fun drawAiGlow(canvas: Canvas, h: Float) {
+    private fun drawAiRim(canvas: Canvas, h: Float) {
         if (aiTabIndex !in items.indices) return
         val item = items[aiTabIndex]
         if (item.width <= 0) return
+        val density = resources.displayMetrics.density
         val cx = item.left + item.width / 2f
-        val cy = h * 0.46f
-        val radius = h * (0.85f + 0.05f * glowPulse)
-        val alphaScale = 0.86f + 0.14f * glowPulse
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.shader = RadialGradient(
-            cx, cy, radius,
+        val cy = h * 0.42f
+        val radius = min(item.width * 0.30f, 23f * density)
+        val alphaScale = 0.82f + 0.18f * glowPulse
+
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+        paint.shader = SweepGradient(
+            cx, cy,
             intArrayOf(
-                withAlpha(AI_BLUE, (40 * alphaScale).toInt()),
-                withAlpha(AI_PURPLE, (26 * alphaScale).toInt()),
-                withAlpha(AI_PINK, (12 * alphaScale).toInt()),
-                0x00000000
+                withAlpha(AI_BLUE, (205 * alphaScale).toInt()),
+                withAlpha(AI_PURPLE, (190 * alphaScale).toInt()),
+                withAlpha(AI_PINK, (175 * alphaScale).toInt()),
+                withAlpha(AI_BLUE, (205 * alphaScale).toInt())
             ),
-            floatArrayOf(0f, 0.42f, 0.72f, 1f),
-            Shader.TileMode.CLAMP
+            floatArrayOf(0f, 0.34f, 0.68f, 1f)
         )
+        // 外圈柔光：宽一点、淡一点，做出"发光"的扩散感
+        paint.strokeWidth = 7.5f * density
+        paint.alpha = 52
+        canvas.drawCircle(cx, cy, radius, paint)
+        paint.strokeWidth = 3.5f * density
+        paint.alpha = 110
+        canvas.drawCircle(cx, cy, radius, paint)
+        // 内圈细而清晰的一笔，像描边
+        paint.strokeWidth = 1.8f * density
+        paint.alpha = 255
         canvas.drawCircle(cx, cy, radius, paint)
         paint.shader = null
     }
@@ -457,8 +469,8 @@ class GlassBottomBar @JvmOverloads constructor(
         gridPaint.alpha = 255
         canvas.drawRect(0f, 0f, w, h, gridPaint)
 
-        // 3.5) AI 标签的彩色光晕（画在图标下面、玻璃上面）
-        drawAiGlow(canvas, h)
+        // 3.5) AI 标签的描边光晕（画在图标外面、玻璃上面）
+        drawAiRim(canvas, h)
 
         // 4) 选中项：指示线 + 辉光
         if (selectedIndex != NO_TAB) {
