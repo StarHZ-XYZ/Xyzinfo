@@ -69,10 +69,6 @@ class GlassBottomBar @JvmOverloads constructor(
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = resources.displayMetrics.density
-    }
 
     private val colorIdle = ContextCompat.getColor(context, R.color.text_tertiary)
     private val colorSelected = ContextCompat.getColor(context, R.color.accent)
@@ -284,7 +280,13 @@ class GlassBottomBar @JvmOverloads constructor(
         (background as? GradientDrawable)?.cornerRadius = radius
         elevation = if (docked) 0f else dp(18f)
         tintShader = LinearGradient(0f, 0f, 0f, h.toFloat(), colorTintTop, colorTintBottom, Shader.TileMode.CLAMP)
-        glowShader = RadialGradient(0f, 0f, h * 2.2f, withAlpha(colorLine, 0x66), 0x00000000, Shader.TileMode.CLAMP)
+        // 选中项的柔光晕：中心亮、往外平滑衰减（多段色标，避免出现生硬的圆边）
+        glowShader = RadialGradient(
+            0f, 0f, h * 3.2f,
+            intArrayOf(withAlpha(colorLine, 0x59), withAlpha(colorLine, 0x24), 0x00000000),
+            floatArrayOf(0f, 0.42f, 1f),
+            Shader.TileMode.CLAMP
+        )
         backdrop.requestRefresh(immediate = true)
     }
 
@@ -351,26 +353,14 @@ class GlassBottomBar @JvmOverloads constructor(
                 indicatorCenterX + lineWidth / 2f, lineTop + dp(2f),
                 linePaint
             )
-            // 指示线往下的渐隐辉光
-            linePaint.shader = LinearGradient(
-                0f, lineTop, 0f, lineTop + dp(22f),
-                withAlpha(colorLine, 0x59), 0x00000000, Shader.TileMode.CLAMP
-            )
-            canvas.drawRect(
-                indicatorCenterX - lineWidth * 0.8f, lineTop,
-                indicatorCenterX + lineWidth * 0.8f, lineTop + dp(22f),
-                linePaint
-            )
-            linePaint.shader = null
-
-            // 图标背后的径向辉光
+            // 图标背后的一团柔光晕（不再是带边的光块）
             glowShader?.let { shader ->
                 paint.shader = shader
-                paint.alpha = 90
-                val cy = h * 0.42f
+                paint.alpha = 130
+                val cy = h * 0.46f
                 canvas.save()
                 canvas.translate(indicatorCenterX, cy)
-                canvas.drawCircle(0f, 0f, h * 2.2f, paint)
+                canvas.drawCircle(0f, 0f, h * 3.2f, paint)
                 canvas.restore()
                 paint.alpha = 255
                 paint.shader = null
@@ -384,18 +374,7 @@ class GlassBottomBar @JvmOverloads constructor(
             paint.color = 0
         }
 
-        // 6) 上下的细线
-        linePaint.color = withAlpha(colorBorder, 0x66)
-        canvas.drawRect(0f, 0f, w, dp(1f), linePaint)
-        canvas.drawRect(0f, h - dp(1f), w, h, linePaint)
-
         canvas.restoreToCount(checkpoint)
-
-        // 悬浮预览模式再补一圈描边
-        if (!docked) {
-            borderPaint.color = withAlpha(colorBorder, 0x80)
-            canvas.drawRoundRect(barRect, radius, radius, borderPaint)
-        }
     }
 
     private fun withAlpha(color: Int, alpha: Int): Int =
