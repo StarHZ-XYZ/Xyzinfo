@@ -126,20 +126,38 @@ class OfflineMapView @JvmOverloads constructor(
             drawWidth = image.width * fitScale * zoom
             drawHeight = image.height * fitScale * zoom
 
-            // 关键：把标记点的投影位置摆到视图中心，而不是让地图围绕自己的中心缩放
-            var baseX = 0f
-            var baseY = 0f
+            /*
+             * 把「标记点」摆到视图中心。
+             *
+             * 标记在图片坐标系里的位置是 (drawWidth * fx, drawHeight * fy)，
+             * 想让屏幕坐标等于 width/2，就要 left = width/2 - drawWidth * fx。
+             * 之前写成 width/2 - markerX（少了左边那一项），缩放后标记会被推出屏幕，
+             * 视野正好停在地图自己的中心——经度 0°、纬度 0°，也就是非洲西岸几内亚湾。
+             */
             val lat = latitude
             val lon = longitude
+            var left: Float
+            var top: Float
             if (followPosition && lat != null && lon != null) {
-                val markerX = drawWidth * ((lon + 180.0) / 360.0).toFloat()
-                val markerY = drawHeight * ((90.0 - lat) / 180.0).toFloat()
-                // 只有地图比视图大时才需要平移（世界全貌时本来就看得全）
-                if (drawWidth > width) baseX = width / 2f - markerX
-                if (drawHeight > height) baseY = height / 2f - markerY
+                val fx = ((lon + 180.0) / 360.0).toFloat()
+                val fy = ((90.0 - lat) / 180.0).toFloat()
+                left = width / 2f - drawWidth * fx
+                top = height / 2f - drawHeight * fy
+            } else {
+                left = (width - drawWidth) / 2f + panX
+                top = (height - drawHeight) / 2f + panY
             }
-            val left = (width - drawWidth) / 2f + baseX + panX
-            val top = (height - drawHeight) / 2f + baseY + panY
+            // 边界夹紧：放大后不让地图边缘露进视图里
+            left = if (drawWidth <= width) {
+                (width - drawWidth) / 2f
+            } else {
+                left.coerceIn(width - drawWidth, 0f)
+            }
+            top = if (drawHeight <= height) {
+                (height - drawHeight) / 2f
+            } else {
+                top.coerceIn(height - drawHeight, 0f)
+            }
             destinationRect.set(left, top, left + drawWidth, top + drawHeight)
             sourceRect.set(0, 0, image.width, image.height)
             canvas.drawBitmap(image, sourceRect, destinationRect, bitmapPaint)

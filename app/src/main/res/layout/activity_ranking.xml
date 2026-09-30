@@ -135,6 +135,47 @@
                     android:layout_marginTop="12dp"
                     android:background="@color/divider" />
 
+                <!-- 手动加载：整张榜单有上百行，进页面就自动铺开会让入口明显发顿 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnLoadRanking"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:backgroundTint="@color/accent"
+                        android:text="加载排行榜"
+                        android:textColor="@color/text_on_accent"
+                        android:textSize="14sp"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRefreshRanking"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:text="刷新榜单"
+                        android:textColor="@color/accent"
+                        android:textSize="13sp"
+                        android:visibility="gone"
+                        app:cornerRadius="12dp"
+                        app:strokeColor="@color/accent" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvRankingHint"
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="点「加载排行榜」才会生成榜单；加载一次会缓存，下次进来直接显示" />
+
                 <LinearLayout
                     android:id="@+id/layoutRanking"
                     android:layout_width="match_parent"
