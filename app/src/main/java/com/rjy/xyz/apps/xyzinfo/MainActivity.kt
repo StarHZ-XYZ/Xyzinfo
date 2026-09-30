@@ -7,11 +7,13 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.rjy.xyz.apps.xyzinfo.data.DeviceOverviewProvider
 import com.rjy.xyz.apps.xyzinfo.data.DeviceNameRepository
-import com.rjy.xyz.apps.xyzinfo.data.DeviceNameUpdater
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityMainBinding
+import android.view.View
 import com.rjy.xyz.apps.xyzinfo.model.DeviceOverview
 import com.rjy.xyz.apps.xyzinfo.ui.battery.BatteryInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkActivity
+import com.rjy.xyz.apps.xyzinfo.ui.benchmark.RankingActivity
+import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
 import com.rjy.xyz.apps.xyzinfo.ui.ram.RamInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.sensor.SensorInfoActivity
@@ -19,6 +21,9 @@ import com.rjy.xyz.apps.xyzinfo.ui.soc.SocInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.system.SystemInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.telephony.TelephonyInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
+import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
+import com.rjy.xyz.apps.xyzinfo.ui.common.UpdateControls
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import com.rjy.xyz.apps.xyzinfo.util.Labels
 import androidx.core.content.ContextCompat
@@ -30,51 +35,60 @@ import com.rjy.xyz.apps.xyzinfo.R
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private var firstResume = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarPadding()
+        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_HOME)
 
         renderOverview(DeviceOverviewProvider.load())
         setupNavigation()
         loadDeviceName()
         setupUpdate()
+        playEntrance()
     }
 
-    /** 机型库更新入口：显示当前数据来源与条目数，点按钮从项目仓库拉取最新名单。 */
-    private fun setupUpdate() {
-        showUpdateStatus()
-        binding.btnUpdateDeviceNames.setOnClickListener {
-            binding.btnUpdateDeviceNames.isEnabled = false
-            binding.tvUpdateStatus.setInfoRow("更新状态：正在检查…")
-
-            Thread({
-                val result = DeviceNameUpdater.update(this)
-                runOnUiThread {
-                    if (isFinishing) return@runOnUiThread
-                    binding.btnUpdateDeviceNames.isEnabled = true
-                    binding.tvUpdateStatus.setInfoRow("更新状态：${result.message}")
-                }
-            }, "device-name-update").start()
+    /** 从其它页面返回时重新查一次机型名（机型库可能刚更新过）。 */
+    override fun onResume() {
+        super.onResume()
+        if (firstResume) {
+            firstResume = false
+            return
         }
+        loadDeviceName()
     }
 
-    private fun showUpdateStatus() {
-        Thread({
-            val source = DeviceNameRepository.dataSource(this)
-            DeviceNameRepository.load(this)
-            val entries = DeviceNameRepository.entryCount()
-            val version = DeviceNameUpdater.localVersion(this)
-            runOnUiThread {
-                if (!isFinishing) {
-                    binding.tvUpdateStatus.setInfoRow(
-                        "数据来源：$source ｜ 版本：$version ｜ 已收录：$entries 条"
-                    )
-                }
-            }
-        }, "device-name-status").start()
+    /**
+     * 首页入场：标题先到，卡片依次上浮，最后是更新按钮。
+     *
+     * 只做位移 + 透明度，避免在低端机上做属性动画时掉帧。
+     */
+    private fun playEntrance() {
+        val header = listOf<View>(binding.tvTitle, binding.tvSubTitle)
+        val cards = listOf<View>(
+            binding.cardCpu, binding.cardMemory, binding.cardScreen, binding.cardBattery,
+            binding.cardSensor, binding.cardTelephony, binding.cardSystem, binding.cardBenchmark
+        )
+        Anim.staggerIn(header, step = 60L, travelDp = 10f, duration = Anim.DURATION_MEDIUM)
+        Anim.staggerIn(cards, startDelay = 100L, step = 55L, travelDp = 20f)
+        Anim.staggerIn(
+            listOf(binding.tvUpdateStatus, binding.btnUpdateDeviceNames),
+            startDelay = 260L, step = 60L, travelDp = 14f
+        )
+        Anim.pressFeedback(cards)
+        Anim.pressFeedback(binding.btnUpdateDeviceNames)
+    }
+
+    /** 机型库更新入口：状态展示 + 更新 + 恢复内置（与设置页共用同一套逻辑）。 */
+    private fun setupUpdate() {
+        UpdateControls.refreshStatus(this, binding.tvUpdateStatus)
+        UpdateControls.attachUpdate(this, binding.btnUpdateDeviceNames, binding.tvUpdateStatus) {
+            // 更新成功后立刻用新库重查一次机型名
+            loadDeviceName()
+        }
     }
 
     /**

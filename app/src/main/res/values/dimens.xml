@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 液态玻璃底栏的尺寸：多个文件共用，改一处即可整体调整 -->
+<resources>
+    <dimen name="glass_bar_height">62dp</dimen>
+    <dimen name="glass_bar_radius">26dp</dimen>
+    <dimen name="glass_bar_side_margin">13dp</dimen>
+    <dimen name="glass_bar_bottom_margin">10dp</dimen>
+    <!-- 内容底部需要让开的高度：底栏 + 上下外边距 + 呼吸空间 -->
+    <dimen name="glass_bar_reserved_space">92dp</dimen>
+</resources>

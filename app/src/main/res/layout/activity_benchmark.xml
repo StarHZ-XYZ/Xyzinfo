@@ -1,311 +1,331 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 性能测试页：CPU / GPU 跑分 + 与内置参考机型对比 -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 性能测试页：CPU / GPU 跑分（每个阶段按时长跑满）+ 稳定性 + 排行榜入口 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_main_gradient"
-    android:fillViewport="true"
-    android:scrollbars="none">
+    android:background="@drawable/bg_main_gradient">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="18dp"
-        android:paddingTop="22dp"
-        android:paddingEnd="18dp"
-        android:paddingBottom="36dp">
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none">
 
-        <TextView
-            style="@style/Text.PageTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="性能测试" />
-
-        <TextView
-            style="@style/Text.PageSubtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="CPU 与 GPU 跑分，并与参考机型对比" />
-
-        <!-- 开始跑分 -->
-        <com.google.android.material.card.MaterialCardView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            app:cardBackgroundColor="@color/surface"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/stroke"
-            app:strokeWidth="1dp">
+            android:orientation="vertical"
+            android:paddingStart="18dp"
+            android:paddingTop="22dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="36dp">
 
-            <LinearLayout
+            <TextView
+                style="@style/Text.PageTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="性能测试" />
+
+            <TextView
+                style="@style/Text.PageSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="按时间跑满的多阶段 CPU / GPU 测试" />
+
+            <!-- 开始跑分 -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnStartBenchmark"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:backgroundTint="@color/accent"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp"
-                    android:text="开始跑分"
-                    android:textColor="@color/text_on_accent"
-                    android:textSize="15sp"
-                    app:cornerRadius="14dp" />
-
-                <ProgressBar
-                    android:id="@+id/progressBenchmark"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="6dp"
-                    android:layout_marginTop="14dp"
-                    android:indeterminate="true"
-                    android:indeterminateTint="@color/accent"
-                    android:visibility="gone" />
-
-                <TextView
-                    android:id="@+id/tvBenchmarkStatus"
-                    style="@style/Text.Row"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="点击开始：约 10 秒，会依次测试整数、浮点、压缩、多核与 GPU 渲染" />
-
-                <com.rjy.xyz.apps.xyzinfo.ui.benchmark.GpuCanvasStressView
-                    android:id="@+id/gpuStressView"
-                    android:layout_width="match_parent"
-                    android:layout_height="180dp"
-                    android:layout_marginTop="12dp"
-                    android:visibility="gone" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- 本机成绩 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardBackgroundColor="@color/surface"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/stroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
-
-                <TextView
-                    style="@style/Text.SectionTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="本机成绩" />
-
-                <TextView
-                    style="@style/Text.SectionSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:text="分数越高越好，重复跑分结果基本一致" />
+                android:layout_marginTop="18dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/stroke"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_row_panel"
                     android:orientation="vertical"
-                    android:paddingStart="14dp"
-                    android:paddingTop="4dp"
-                    android:paddingEnd="14dp"
-                    android:paddingBottom="4dp">
+                    android:padding="18dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartBenchmark"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:backgroundTint="@color/accent"
+                        android:paddingTop="12dp"
+                        android:paddingBottom="12dp"
+                        android:text="开始跑分"
+                        android:textColor="@color/text_on_accent"
+                        android:textSize="15sp"
+                        app:cornerRadius="14dp" />
+
+                    <ProgressBar
+                        android:id="@+id/progressBenchmark"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="8dp"
+                        android:layout_marginTop="14dp"
+                        android:max="100"
+                        android:progress="0"
+                        android:progressTint="@color/accent"
+                        android:visibility="gone" />
 
                     <TextView
-                        android:id="@+id/tvCpuSingleScore"
+                        android:id="@+id/tvBenchmarkStatus"
                         style="@style/Text.Row"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:paddingTop="11dp"
-                        android:paddingBottom="11dp"
-                        android:text="CPU 单核：—" />
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="@color/divider" />
+                        android:layout_marginTop="12dp"
+                        android:text="点击开始：标准模式约 1 分 25 秒，会依次测试整数、浮点、压缩、排序、位运算、多核与 GPU" />
 
                     <TextView
-                        android:id="@+id/tvCpuMultiScore"
-                        style="@style/Text.Row"
+                        android:id="@+id/tvBenchmarkStage"
+                        style="@style/Text.SectionSubtitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:paddingTop="11dp"
-                        android:paddingBottom="11dp"
-                        android:text="CPU 多核：—" />
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="@color/divider" />
-
-                    <TextView
-                        android:id="@+id/tvGpuScore"
-                        style="@style/Text.Row"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingTop="11dp"
-                        android:paddingBottom="11dp"
-                        android:text="GPU：—" />
+                        android:layout_marginTop="6dp"
+                        android:text="准备就绪" />
                 </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-                <TextView
-                    android:id="@+id/tvBenchmarkDetail"
-                    style="@style/Text.RawBlock"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_code_panel"
-                    android:padding="14dp"
-                    android:text="原始指标将在跑分后显示" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- 参考对比 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardBackgroundColor="@color/surface"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/stroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
+            <!-- 本机成绩 -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
-
-                <TextView
-                    style="@style/Text.SectionTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="性能排行榜" />
-
-                <TextView
-                    style="@style/Text.SectionSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:text="按多核分数排名：单核 / 多核并排，GPU 单独一列" />
-
-                <TextView
-                    android:id="@+id/tvCompareChip"
-                    style="@style/Text.Row"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_row_panel"
-                    android:padding="14dp"
-                    android:text="本机芯片：—" />
+                android:layout_marginTop="14dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/stroke"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:orientation="horizontal">
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        style="@style/Text.SectionTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="本机成绩" />
 
                     <TextView
                         style="@style/Text.SectionSubtitle"
-                        android:layout_width="30dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="名次" />
+                        android:layout_marginTop="3dp"
+                        android:text="分数在同一刻度上，可直接和排行榜里的参考机型比较" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_row_panel"
+                        android:orientation="vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp">
+
+                        <TextView
+                            android:id="@+id/tvCpuSingleScore"
+                            style="@style/Text.Row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingTop="11dp"
+                            android:paddingBottom="11dp"
+                            android:text="CPU 单核：—" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/divider" />
+
+                        <TextView
+                            android:id="@+id/tvCpuMultiScore"
+                            style="@style/Text.Row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingTop="11dp"
+                            android:paddingBottom="11dp"
+                            android:text="CPU 多核：—" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/divider" />
+
+                        <TextView
+                            android:id="@+id/tvGpuScore"
+                            style="@style/Text.Row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingTop="11dp"
+                            android:paddingBottom="11dp"
+                            android:text="GPU：—" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/divider" />
+
+                        <TextView
+                            android:id="@+id/tvStability"
+                            style="@style/Text.Row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingTop="11dp"
+                            android:paddingBottom="11dp"
+                            android:text="稳定性：—" />
+                    </LinearLayout>
 
                     <TextView
-                        style="@style/Text.SectionSubtitle"
-                        android:layout_width="0dp"
+                        android:id="@+id/tvBenchmarkDetail"
+                        style="@style/Text.RawBlock"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        android:layout_weight="1"
-                        android:text="机型" />
-
-                    <TextView
-                        style="@style/Text.SectionSubtitle"
-                        android:layout_width="46dp"
-                        android:layout_height="wrap_content"
-                        android:gravity="end"
-                        android:text="单核" />
-
-                    <TextView
-                        style="@style/Text.SectionSubtitle"
-                        android:layout_width="50dp"
-                        android:layout_height="wrap_content"
-                        android:gravity="end"
-                        android:text="多核" />
-
-                    <TextView
-                        style="@style/Text.SectionSubtitle"
-                        android:layout_width="46dp"
-                        android:layout_height="wrap_content"
-                        android:gravity="end"
-                        android:text="GPU" />
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_code_panel"
+                        android:padding="14dp"
+                        android:text="各阶段原始指标会在跑分后显示" />
                 </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="6dp"
-                    android:background="@color/divider" />
-
-                <LinearLayout
-                    android:id="@+id/layoutCompare"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:orientation="vertical" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-
-        <!-- 说明 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardBackgroundColor="@color/surface"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/stroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
+            <!-- 阶段明细 -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
+                android:layout_marginTop="14dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/stroke"
+                app:strokeWidth="1dp">
 
-                <TextView
-                    style="@style/Text.SectionTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="说明" />
-
-                <TextView
-                    android:id="@+id/tvBenchmarkNote"
-                    style="@style/Text.Row"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="参考分数是按公开跑分折算的相对指数，仅用于横向比较，不代表官方成绩。跑分受温度、省电模式与后台占用影响，建议插电、关闭省电模式后再测。" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-    </LinearLayout>
-</ScrollView>
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        style="@style/Text.SectionTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="阶段明细" />
+
+                    <TextView
+                        android:id="@+id/tvCompareChip"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_row_panel"
+                        android:padding="14dp"
+                        android:text="本机芯片：—" />
+
+                    <LinearLayout
+                        android:id="@+id/layoutStages"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="vertical" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnOpenRanking"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="查看完整排行榜"
+                        android:textColor="@color/accent"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp"
+                        app:strokeColor="@color/accent" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 说明 -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/stroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        style="@style/Text.SectionTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="说明" />
+
+                    <TextView
+                        android:id="@+id/tvBenchmarkNote"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="每个阶段都跑满固定秒数（标准模式合计 60 秒以上），分数取各项比值的加权几何平均值，单项异常不会把总分带飞。稳定性是长跑后半程与前半程的吞吐比，100 表示完全不掉速。跑分受温度、省电模式与后台占用影响，建议插电、关闭省电模式后再测。" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- GPU 压力测试覆盖层：跑分时才显示，全屏压满填充率 -->
+    <FrameLayout
+        android:id="@+id/viewGpuOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FF0B0E12"
+        android:visibility="gone">
+
+        <com.rjy.xyz.apps.xyzinfo.ui.benchmark.GpuCanvasStressView
+            android:id="@+id/gpuStressView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <TextView
+                android:id="@+id/tvGpuHud"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GPU 压力测试"
+                android:textColor="#FFFFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvGpuScene"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#66000000"
+                android:paddingStart="10dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="6dp"
+                android:text="准备中…"
+                android:textColor="#FFFFFFFF"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

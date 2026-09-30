@@ -10,6 +10,7 @@ import com.rjy.xyz.apps.xyzinfo.model.SensorInfo
 import com.rjy.xyz.apps.xyzinfo.model.ThermalKind
 import com.rjy.xyz.apps.xyzinfo.model.ThermalZone
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
 import com.rjy.xyz.apps.xyzinfo.util.Formats
@@ -27,6 +28,7 @@ class SensorInfoActivity : AppCompatActivity() {
         binding = ActivitySensorInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarPadding()
+        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_HOME)
 
         render(SensorInfoProvider.load(this))
     }

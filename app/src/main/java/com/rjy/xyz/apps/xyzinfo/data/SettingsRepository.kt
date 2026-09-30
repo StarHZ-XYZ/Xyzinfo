@@ -1,0 +1,97 @@
+package com.rjy.xyz.apps.xyzinfo.data
+
+import android.content.Context
+
+/**
+ * 应用设置（SharedPreferences）。
+ *
+ * 目前只有三个开关 + 一份最近一次的跑分成绩：
+ * - 液态玻璃底栏：关掉后底栏完全不创建，页面回到纯内容布局。
+ * - 丝滑动画：关掉后所有入场 / 按压 / 数值动效直接跳到终态（省电、无障碍友好）。
+ * - 深度跑分：把跑分时长从约 1 分钟拉长到约 3 分钟，测持续性能与温度墙。
+ */
+object SettingsRepository {
+
+    private const val PREFS = "xyzinfo_settings"
+
+    private const val KEY_GLASS_BAR = "glass_bottom_bar"
+    private const val KEY_ANIMATIONS = "smooth_animations"
+    private const val KEY_DEEP_BENCHMARK = "deep_benchmark"
+
+    private const val KEY_LAST_SINGLE = "last_single"
+    private const val KEY_LAST_MULTI = "last_multi"
+    private const val KEY_LAST_GPU = "last_gpu"
+    private const val KEY_LAST_AT = "last_at"
+
+    private fun prefs(context: Context) =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    // ---------- 液态玻璃底栏 ----------
+
+    fun glassBottomBarEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_GLASS_BAR, true)
+
+    fun setGlassBottomBarEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_GLASS_BAR, enabled).apply()
+    }
+
+    // ---------- 丝滑动画 ----------
+
+    fun animationsEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_ANIMATIONS, true)
+
+    fun setAnimationsEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_ANIMATIONS, enabled).apply()
+    }
+
+    // ---------- 深度跑分 ----------
+
+    fun deepBenchmarkEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_DEEP_BENCHMARK, false)
+
+    fun setDeepBenchmarkEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_DEEP_BENCHMARK, enabled).apply()
+    }
+
+    // ---------- 最近一次跑分成绩 ----------
+
+    /** 最近一次跑分（用于在排行榜里插入「本机实测」那一行）。 */
+    data class SavedBenchmark(
+        val single: Int,
+        val multi: Int,
+        val gpu: Int?,
+        val timestamp: Long
+    )
+
+    fun saveBenchmark(context: Context, single: Int, multi: Int, gpu: Int?) {
+        prefs(context).edit()
+            .putInt(KEY_LAST_SINGLE, single)
+            .putInt(KEY_LAST_MULTI, multi)
+            .putInt(KEY_LAST_GPU, gpu ?: -1)
+            .putLong(KEY_LAST_AT, System.currentTimeMillis())
+            .apply()
+    }
+
+    fun lastBenchmark(context: Context): SavedBenchmark? {
+        val p = prefs(context)
+        val single = p.getInt(KEY_LAST_SINGLE, -1)
+        val multi = p.getInt(KEY_LAST_MULTI, -1)
+        if (single <= 0 || multi <= 0) return null
+        val gpu = p.getInt(KEY_LAST_GPU, -1)
+        return SavedBenchmark(
+            single = single,
+            multi = multi,
+            gpu = gpu.takeIf { it > 0 },
+            timestamp = p.getLong(KEY_LAST_AT, 0L)
+        )
+    }
+
+    fun clearBenchmark(context: Context) {
+        prefs(context).edit()
+            .remove(KEY_LAST_SINGLE)
+            .remove(KEY_LAST_MULTI)
+            .remove(KEY_LAST_GPU)
+            .remove(KEY_LAST_AT)
+            .apply()
+    }
+}

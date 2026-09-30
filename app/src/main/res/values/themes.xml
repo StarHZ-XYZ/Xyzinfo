@@ -30,9 +30,20 @@
 
         <item name="android:textColorPrimary">@color/text_primary</item>
         <item name="android:textColorSecondary">@color/text_secondary</item>
+
+        <!-- 页面切换统一走自定义转场：淡入 + 轻微位移，避免默认的生硬跳变 -->
+        <item name="android:windowAnimationStyle">@style/Animation.XyzInfo</item>
     </style>
 
     <style name="Theme.XyzInfo" parent="Base.Theme.XyzInfo" />
+
+    <!-- 应用内 Activity 转场动画（打开 / 返回各一组） -->
+    <style name="Animation.XyzInfo" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/activity_enter</item>
+        <item name="android:activityOpenExitAnimation">@anim/activity_exit</item>
+        <item name="android:activityCloseEnterAnimation">@anim/activity_pop_enter</item>
+        <item name="android:activityCloseExitAnimation">@anim/activity_pop_exit</item>
+    </style>
 
     <!-- 页面通用文字样式 -->
     <!-- 下面这些样式名含点号，必须显式 parent="" 关掉“按前缀推断父样式” -->

@@ -6,6 +6,7 @@ import com.rjy.xyz.apps.xyzinfo.data.RamInfoProvider
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityRamInfoBinding
 import com.rjy.xyz.apps.xyzinfo.model.RamInfo
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
 import com.rjy.xyz.apps.xyzinfo.util.Formats
@@ -23,6 +24,7 @@ class RamInfoActivity : AppCompatActivity() {
         binding = ActivityRamInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarPadding()
+        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_HOME)
 
         render(RamInfoProvider.load(this))
     }

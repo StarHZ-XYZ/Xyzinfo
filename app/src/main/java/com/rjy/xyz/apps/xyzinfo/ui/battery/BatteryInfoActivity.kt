@@ -8,6 +8,7 @@ import com.rjy.xyz.apps.xyzinfo.data.BatteryInfoProvider
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityBatteryInfoBinding
 import com.rjy.xyz.apps.xyzinfo.model.BatteryInfo
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
 import com.rjy.xyz.apps.xyzinfo.util.Formats
@@ -34,6 +35,7 @@ class BatteryInfoActivity : AppCompatActivity() {
         binding = ActivityBatteryInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarPadding()
+        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_HOME)
 
         render(BatteryInfoProvider.load(this))
     }

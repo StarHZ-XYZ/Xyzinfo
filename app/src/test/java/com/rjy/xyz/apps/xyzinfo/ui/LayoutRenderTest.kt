@@ -11,6 +11,9 @@ import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.sensor.SensorInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.soc.SocInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.system.SystemInfoActivity
+import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkActivity
+import com.rjy.xyz.apps.xyzinfo.ui.benchmark.RankingActivity
+import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -40,7 +43,10 @@ class LayoutRenderTest {
         "4-screen" to ScreenInfoActivity::class.java,
         "5-battery" to BatteryInfoActivity::class.java,
         "6-sensor" to SensorInfoActivity::class.java,
-        "7-system" to SystemInfoActivity::class.java
+        "7-system" to SystemInfoActivity::class.java,
+        "8-benchmark" to BenchmarkActivity::class.java,
+        "9-ranking" to RankingActivity::class.java,
+        "10-settings" to SettingsActivity::class.java
     )
 
     @Test

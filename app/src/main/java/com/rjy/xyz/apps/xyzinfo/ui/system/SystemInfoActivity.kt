@@ -8,6 +8,7 @@ import com.rjy.xyz.apps.xyzinfo.databinding.ActivitySystemInfoBinding
 import com.rjy.xyz.apps.xyzinfo.model.RomInfo
 import com.rjy.xyz.apps.xyzinfo.model.SystemInfo
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
 import com.rjy.xyz.apps.xyzinfo.util.Formats
@@ -28,6 +29,7 @@ class SystemInfoActivity : AppCompatActivity() {
         binding = ActivitySystemInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarPadding()
+        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_HOME)
 
         render(SystemInfoProvider.load(this))
         renderRom(RomInfoProvider.load())

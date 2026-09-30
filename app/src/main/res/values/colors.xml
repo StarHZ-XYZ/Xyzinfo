@@ -30,6 +30,18 @@
     <color name="status_warning">#FFB26A00</color>
     <color name="status_danger">#FFC94F4A</color>
 
+    <!-- 液态玻璃底栏：轮廓底色 / 染色 / 棱线 / 噪声 / 气泡 -->
+    <color name="glass_fill">#33FFFFFF</color>
+    <color name="glass_tint_top">#4DFFFFFF</color>
+    <color name="glass_tint_bottom">#14FFFFFF</color>
+    <color name="glass_rim_top">#CCFFFFFF</color>
+    <color name="glass_rim_bottom">#1AFFFFFF</color>
+    <color name="glass_bubble">#3DFFFFFF</color>
+    <color name="glass_bubble_rim">#A6FFFFFF</color>
+    <color name="glass_noise">#12FFFFFF</color>
+    <color name="glass_shadow">#1F000000</color>
+    <color name="glass_specular">#B3FFFFFF</color>
+
     <!-- 芯片品牌：前景 / 背景 -->
     <color name="brand_snapdragon_fg">#FFD5241F</color>
     <color name="brand_snapdragon_bg">#FFFDECEB</color>

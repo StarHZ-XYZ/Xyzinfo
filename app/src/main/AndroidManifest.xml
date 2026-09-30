@@ -6,6 +6,11 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- 机型库在线更新：没有 INTERNET 权限时所有网络请求都会被系统直接拒绝，
+         这正是 0.6 及以前「首页更新按钮点了没反应」的原因 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 更新前先判断有没有网络，省得用户对着「正在检查…」白等 -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -34,5 +39,7 @@
         <activity android:name=".ui.system.SystemInfoActivity" />
         <activity android:name=".ui.benchmark.BenchmarkActivity" />
         <activity android:name=".ui.telephony.TelephonyInfoActivity" />
+        <activity android:name=".ui.benchmark.RankingActivity" />
+        <activity android:name=".ui.settings.SettingsActivity" />
     </application>
 </manifest>

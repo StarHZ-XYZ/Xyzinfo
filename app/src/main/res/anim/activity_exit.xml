@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 旧页面被覆盖：淡出 + 反向轻微推走 -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="320"
+    android:interpolator="@interpolator/xyz_accelerate">
+    <alpha
+        android:fromAlpha="1.0"
+        android:toAlpha="0.0" />
+    <translate
+        android:fromXDelta="0"
+        android:toXDelta="-4%p" />
+    <scale
+        android:fromXScale="1.0"
+        android:fromYScale="1.0"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:toXScale="0.99"
+        android:toYScale="0.99" />
+</set>
