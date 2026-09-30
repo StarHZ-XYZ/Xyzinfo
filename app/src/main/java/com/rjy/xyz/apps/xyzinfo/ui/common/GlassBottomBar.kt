@@ -48,6 +48,14 @@ class GlassBottomBar @JvmOverloads constructor(
 
     var onTabSelected: ((index: Int, reselected: Boolean) -> Unit)? = null
 
+    /**
+     * 点击非当前标签时是否在本页先做一次指示块动画。
+     *
+     * 真实页面之间切换时设为 false：这一页马上就要被结束掉，
+     * 在本页先动一遍指示块只会让人看到「按钮乱跳」，动画交给目标页直接呈现即可。
+     */
+    var autoAnimateOnSelect: Boolean = true
+
     private val tabs = mutableListOf<Tab>()
     private val items = mutableListOf<LinearLayout>()
     private val icons = mutableListOf<ImageView>()
@@ -222,10 +230,12 @@ class GlassBottomBar @JvmOverloads constructor(
         if (reselected) {
             pulse()
         } else {
-            val previous = selectedIndex
-            selectedIndex = index
-            applyItemStyles(previous)
-            moveTo(index, Anim.enabled(context))
+            if (autoAnimateOnSelect) {
+                val previous = selectedIndex
+                selectedIndex = index
+                applyItemStyles(previous)
+                moveTo(index, Anim.enabled(context))
+            }
         }
         onTabSelected?.invoke(index, reselected)
     }

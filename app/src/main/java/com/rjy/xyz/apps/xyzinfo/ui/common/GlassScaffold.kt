@@ -107,8 +107,14 @@ object GlassScaffold {
 
         // 玻璃要真的糊东西：把内容视图交给底栏当取样源
         bar.attachBackdrop(content)
-        (content as? android.widget.ScrollView)?.setOnScrollChangeListener { _, _, _, _, _ ->
-            bar.requestBackdropRefresh()
+        bar.autoAnimateOnSelect = false
+        // 滚动时**不做**整页重绘：等停下来 260ms 后再刷新一次模糊层。
+        // 滚动中每帧重绘整页内容是之前卡顿的主因。
+        val blurRefresh = Runnable { bar.requestBackdropRefresh(immediate = true) }
+        val scrollView = content as? android.widget.ScrollView
+        scrollView?.setOnScrollChangeListener { _, _, _, _, _ ->
+            scrollView.removeCallbacks(blurRefresh)
+            scrollView.postDelayed(blurRefresh, 260L)
         }
         content.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             bar.requestBackdropRefresh(immediate = true)
@@ -121,10 +127,18 @@ object GlassScaffold {
             if (index == currentTab) {
                 if (reselected) content.smoothScrollToTop()
             } else {
+                /*
+                 * 平级标签之间切换：先把当前页结束掉，再用 CLEAR_TOP + SINGLE_TOP 打开目标页，
+                 * 让任务栈始终保持成「首页 + 一个标签页」两层。
+                 *
+                 * 之前用 REORDER_TO_FRONT 会把已经存在的页面提到前台，栈会变成
+                 * 「首页 → 设置 → 排行」这种乱序，于是出现「点了首页却弹出别的页面」。
+                 */
                 activity.startActivity(
                     Intent(activity, activityFor(index))
-                        .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 )
+                activity.finish()
             }
         }
         // 底栏创建后每次都要重算一遍（布局完成前拿不到 item 位置）
