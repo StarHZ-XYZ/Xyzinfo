@@ -26,7 +26,9 @@ object DeviceInspector {
     data class Report(
         val score: Int,
         val verdict: String,
-        val findings: List<Finding>
+        val findings: List<Finding>,
+        /** 结论库里命中的总结语句（内置几十条规则，可多条同时命中）。 */
+        val summaries: List<String>
     ) {
         val riskCount: Int get() = findings.count { it.level == EnvironmentCheck.Level.RISK }
         val noticeCount: Int get() = findings.count { it.level == EnvironmentCheck.Level.NOTICE }
@@ -34,6 +36,8 @@ object DeviceInspector {
 
     fun inspect(context: Context): Report {
         val findings = mutableListOf<Finding>()
+        // 命中标记：给最后的结论库用
+        val flags = mutableSetOf<String>()
         var score = 100
 
         // 1) 芯片识别
@@ -46,6 +50,7 @@ object DeviceInspector {
                 EnvironmentCheck.Level.NOTICE
             )
             score -= 8
+            flags += "chip_unknown"
         } else {
             findings += Finding("芯片识别", "已识别为 $chip", EnvironmentCheck.Level.SAFE)
         }
@@ -62,6 +67,7 @@ object DeviceInspector {
                 EnvironmentCheck.Level.NOTICE
             )
             score -= 4
+            flags += "name_unknown"
         } else {
             findings += Finding("机型名称", "机型库命中：$deviceName", EnvironmentCheck.Level.SAFE)
         }
@@ -81,6 +87,7 @@ object DeviceInspector {
                     EnvironmentCheck.Level.NOTICE
                 )
                 score -= 6
+                flags += "ram_gap"
             } else {
                 findings += Finding(
                     "内存容量",
@@ -108,6 +115,7 @@ object DeviceInspector {
                 EnvironmentCheck.Level.NOTICE
             )
             score -= 3 * sensorIssues.size
+            sensorIssues.forEach { flags += "sensor_missing" }
         } else {
             findings += Finding("传感器齐全度", "加速度计 / 陀螺仪 / 磁力计 均在", EnvironmentCheck.Level.SAFE)
         }
@@ -120,6 +128,7 @@ object DeviceInspector {
                 EnvironmentCheck.Level.RISK
             )
             score -= 10
+            flags += "test_keys"
         } else {
             findings += Finding("系统签名", "release-keys，正常零售固件", EnvironmentCheck.Level.SAFE)
         }
@@ -129,6 +138,15 @@ object DeviceInspector {
         if (env != null) {
             env.items.filter { it.level != EnvironmentCheck.Level.SAFE }.forEach { item ->
                 findings += Finding("环境 · ${item.title}", item.evidence, item.level)
+                when {
+                    item.title.contains("root") -> flags += "root"
+                    item.title.contains("SELinux") -> flags += "selinux"
+                    item.title.contains("调试") -> flags += "adb"
+                    item.title.contains("模拟器") -> flags += "emulator"
+                    item.title.contains("Xposed") -> flags += "xposed"
+                    item.title.contains("分身") -> flags += "clone"
+                    item.title.contains("证书") -> flags += "userca"
+                }
             }
             score -= env.riskCount * 12 + env.noticeCount * 3
             if (env.riskCount == 0 && env.noticeCount == 0) {
@@ -153,8 +171,67 @@ object DeviceInspector {
         return Report(
             score = finalScore,
             verdict = verdict,
-            findings = findings.sortedBy { it.level.ordinal * -1 }
+            findings = findings.sortedBy { it.level.ordinal * -1 },
+            summaries = Summaries.pick(flags)
         )
+    }
+
+    /**
+     * 结论库：内置三十多条"这种情况下该说什么"的规则。
+     *
+     * 按命中标记挑句子，可以同时命中多条；一条都没命中时给出"未发现明显问题"的通用结论。
+     */
+    private object Summaries {
+
+        private val rules: List<Pair<String, String>> = listOf(
+            "root" to "发现 root 组件：银行、支付、部分游戏可能拒绝运行；如果你没主动 root 过，建议检查是否刷过第三方固件。",
+            "test_keys" to "系统不是官方 release 签名：常见于开发版固件或第三方 ROM，二手交易时属于需要重点确认的一项。",
+            "selinux" to "SELinux 运行在宽容模式：安全性低于零售机默认状态，通常意味着系统被改动过。",
+            "xposed" to "检测到 Xposed / LSPosed 痕迹：这类框架会改动系统行为，部分应用会因此打不开。",
+            "emulator" to "检测到模拟器特征：当前大概率不是一台真实设备。",
+            "clone" to "检测到分身 / 双开类应用：这类应用会创建独立运行环境，验机结果可能只反映其内部状态。",
+            "userca" to "系统里安装了用户 CA 证书：常见于抓包调试，交易或日常使用前建议清理不认识的证书。",
+            "adb" to "调试相关开关处于打开状态：日常使用建议关闭 USB 调试与开发者选项。",
+            "chip_unknown" to "芯片没能识别：冷门机型可以先更新机型库再试；如果连代号都很奇怪，需要留意是否为山寨机。",
+            "name_unknown" to "机型库没有命中上市机型名：小众品牌或工程机比较常见，也可能是改过型号的机器。",
+            "ram_gap" to "内存实测容量与标称档位差异偏大：建议核对购买配置，避免买到改配或虚标机器。",
+            "sensor_missing" to "传感器有缺失：陀螺仪 / 磁力计缺失会影响指南针、水平仪与部分游戏，千元以上机型通常不带缺。",
+            "storage_low" to "存储剩余空间偏少：清理到 10% 以上更稳妥，否则影响系统更新与读写性能。",
+            "low_hz" to "屏幕刷新率异常偏低：可能处于省电模式，也可能是屏幕更换后识别异常。",
+            "no_camera" to "系统没有注册任何摄像头：如果不是工程机，需要高度警惕。",
+            "no_arm64" to "CPU 不含 arm64-v8a：新应用的兼容性会受影响。",
+            "old_android" to "系统版本较旧：安全补丁可能已停止更新，建议升级系统或谨慎安装来路不明的应用。",
+            "chip_unknown" to "识别不出芯片时，把「SoC 信息」页里的 HARDWARE / BOARD 字段发给卖家核对也是一种办法。",
+            "ram_gap" to "内存差额也可能来自系统预留，但超过 15% 就值得再确认一次。",
+            "sensor_missing" to "建议到「传感器信息」页逐个看数值是否正常跳动；缺项或恒为 0 都要留意。",
+            "test_keys" to "官方零售固件一般是 release-keys，这一条在二手交易里很好用。",
+            "root" to "如果 root 不是你自己做的，建议先备份数据再考虑刷回官方固件。",
+            "userca" to "用户证书配合代理可以解密流量，不认识就直接删掉。",
+            "adb" to "如果你是开发者，忽略这条即可。",
+            "emulator" to "模拟器环境下的硬件参数都是模拟值，不要用它判断真机性能。",
+            "clone" to "分身应用里看到的存储与设备信息往往是虚拟化的，验机请回到主系统再跑一次。",
+            "selinux" to "可以把这一条和其它证据一起对照，判断系统被改动到什么程度。",
+            "old_android" to "老系统上部分新硬件（如高刷、长焦）功能可能被阉割。",
+            "storage_low" to "长期接近写满还会影响闪存寿命，建议保持 15% 以上空闲。",
+            "no_arm64" to "这条通常出现在很早的机型或低端方案上。",
+            "xposed" to "如果你需要用到 SafetyNet / Play Integrity 相关应用，建议先停用框架。",
+            "low_hz" to "若宣传为高刷机型却长期只有 60Hz 以下，值得进一步确认屏幕是否原装。",
+            "no_camera" to "正常手机至少会注册前后两个摄像头，这一条出现请务必核查。",
+            "name_unknown" to "可以用「机型库更新」拉一次最新名单，部分新机型就是这么补上的。"
+        )
+
+        fun pick(flags: Set<String>): List<String> {
+            val hit = rules.filter { flags.contains(it.first) }.map { it.second }.distinct()
+            return if (hit.isEmpty()) {
+                listOf(
+                    "各项检查都没有发现明显异常，这台机器的状态看起来正常。",
+                    "建议连续使用几天后再跑一次验机对比：电池、温度与存储的变化最能反映长期状态。",
+                    "如果这是二手设备，仍建议当面核对包装、发票与机身序列号是否一致。"
+                )
+            } else {
+                hit.take(12)
+            }
+        }
     }
 
     /** 把实测容量吸附到最近的常见容量档（2/3/4/6/8/12/16/18/24/32GB）。 */
