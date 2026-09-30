@@ -97,6 +97,28 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="页面转场、卡片按压、数字滚动、条形图生长等全部动效；关掉更省电" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="14dp"
+                    android:background="@color/divider" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchParticles"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="46dp"
+                    android:text="点击粒子效果"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="每次点击从指尖炸开一簇粒子与一圈波纹，盖满全屏但不影响点击" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

@@ -632,9 +632,9 @@
             android:layout_marginTop="26dp"
             android:text="工具" />
 
-        <!-- 性能测试 -->
+        <!-- GPS 定位（性能测试移到液态玻璃底栏的「跑分」标签，首页不再重复） -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardBenchmark"
+            android:id="@+id/cardGps"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -672,7 +672,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="性能测试"
+                        android:text="GPS 定位"
                         android:textColor="@color/text_primary"
                         android:textSize="15sp"
                         android:textStyle="bold" />
@@ -681,7 +681,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="3dp"
-                        android:text="CPU / GPU 跑分与参考机型对比"
+                        android:text="位置、卫星、内置地图与收音机"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>

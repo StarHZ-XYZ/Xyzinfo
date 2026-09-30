@@ -13,6 +13,7 @@ import com.rjy.xyz.apps.xyzinfo.model.DeviceOverview
 import com.rjy.xyz.apps.xyzinfo.ui.battery.BatteryInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkActivity
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.RankingActivity
+import com.rjy.xyz.apps.xyzinfo.ui.gps.GpsInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
 import com.rjy.xyz.apps.xyzinfo.ui.ram.RamInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
@@ -70,7 +71,7 @@ class MainActivity : AppCompatActivity() {
         val header = listOf<View>(binding.tvTitle, binding.tvSubTitle)
         val cards = listOf<View>(
             binding.cardCpu, binding.cardMemory, binding.cardScreen, binding.cardBattery,
-            binding.cardSensor, binding.cardTelephony, binding.cardSystem, binding.cardBenchmark
+            binding.cardSensor, binding.cardTelephony, binding.cardSystem, binding.cardGps
         )
         Anim.staggerIn(header, step = 60L, travelDp = 10f, duration = Anim.DURATION_MEDIUM)
         Anim.staggerIn(cards, startDelay = 100L, step = 55L, travelDp = 20f)
@@ -165,7 +166,7 @@ class MainActivity : AppCompatActivity() {
         cardSensor.setOnClickListener { open(SensorInfoActivity::class.java) }
         cardTelephony.setOnClickListener { open(TelephonyInfoActivity::class.java) }
         cardSystem.setOnClickListener { open(SystemInfoActivity::class.java) }
-        cardBenchmark.setOnClickListener { open(BenchmarkActivity::class.java) }
+        cardGps.setOnClickListener { open(GpsInfoActivity::class.java) }
     }
 
     private fun open(screen: Class<out Activity>) {

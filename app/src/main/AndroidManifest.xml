@@ -41,5 +41,6 @@
         <activity android:name=".ui.telephony.TelephonyInfoActivity" />
         <activity android:name=".ui.benchmark.RankingActivity" />
         <activity android:name=".ui.settings.SettingsActivity" />
+        <activity android:name=".ui.gps.GpsInfoActivity" />
     </application>
 </manifest>

@@ -127,6 +127,18 @@ object GlassScaffold {
         // 底栏创建后每次都要重算一遍（布局完成前拿不到 item 位置）
         bar.post { bar.setSelectedTab(currentTab, animated = false) }
 
+        // 点击粒子：盖在最上层，但不消费触摸事件
+        if (SettingsRepository.particleEffectEnabled(activity)) {
+            val particles = ParticleOverlay(activity)
+            container.addView(
+                particles,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            )
+        }
+
         activity.setContentView(container)
         ViewCompat.requestApplyInsets(container)
         return bar

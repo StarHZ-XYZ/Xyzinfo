@@ -17,6 +17,7 @@ object SettingsRepository {
     private const val KEY_GLASS_BAR = "glass_bottom_bar"
     private const val KEY_ANIMATIONS = "smooth_animations"
     private const val KEY_DEEP_BENCHMARK = "deep_benchmark"
+    private const val KEY_PARTICLES = "touch_particles"
 
     private const val KEY_LAST_SINGLE = "last_single"
     private const val KEY_LAST_MULTI = "last_multi"
@@ -51,6 +52,15 @@ object SettingsRepository {
 
     fun setDeepBenchmarkEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_DEEP_BENCHMARK, enabled).apply()
+    }
+
+    // ---------- 点击粒子效果 ----------
+
+    fun particleEffectEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_PARTICLES, true)
+
+    fun setParticleEffectEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_PARTICLES, enabled).apply()
     }
 
     // ---------- 最近一次跑分成绩 ----------

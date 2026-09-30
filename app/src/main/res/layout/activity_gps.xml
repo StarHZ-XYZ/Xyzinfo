@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GPS 定位页：实时定位数据 + 内置离线地图（可缩放 / 拖动）+ 收音机探测 -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_main_gradient"
+    android:fillViewport="true"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="18dp"
+        android:paddingTop="22dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="36dp">
+
+        <TextView
+            style="@style/Text.PageTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="GPS 定位" />
+
+        <TextView
+            style="@style/Text.PageSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="实时定位数据、卫星状态与内置离线地图" />
+
+        <!-- 定位状态 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    style="@style/Text.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="定位状态" />
+
+                <TextView
+                    android:id="@+id/tvGpsStatus"
+                    style="@style/Text.Row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_row_panel"
+                    android:padding="14dp"
+                    android:text="状态：等待开始" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnStartGps"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:backgroundTint="@color/accent"
+                    android:text="开始定位"
+                    android:textColor="@color/text_on_accent"
+                    android:textSize="14sp"
+                    app:cornerRadius="12dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCopyCoords"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="复制坐标"
+                    android:textColor="@color/accent"
+                    android:textSize="13sp"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="@color/accent" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 内置地图 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    style="@style/Text.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="内置地图" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="离线世界地图，不联网也能看；可拖动、可缩放" />
+
+                <com.rjy.xyz.apps.xyzinfo.ui.gps.OfflineMapView
+                    android:id="@+id/mapView"
+                    android:layout_width="match_parent"
+                    android:layout_height="260dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_code_panel" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnZoomOut"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="−"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        app:cornerRadius="12dp"
+                        app:strokeColor="@color/stroke" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnZoomIn"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:text="+"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        app:cornerRadius="12dp"
+                        app:strokeColor="@color/stroke" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnMapReset"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1.4"
+                        android:text="回到本机"
+                        android:textColor="@color/accent"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp"
+                        app:strokeColor="@color/accent" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvMapNote"
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="地图来源：维基共享资源（等距圆柱投影世界地图，公有领域）" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 定位数据 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    style="@style/Text.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="定位数据" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_row_panel"
+                    android:orientation="vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp">
+
+                    <TextView
+                        android:id="@+id/tvCoordinate"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="经纬度：—" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:id="@+id/tvCoordinateDms"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="度分秒：—" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:id="@+id/tvSatellites"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="卫星：—" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
+
+                    <TextView
+                        android:id="@+id/tvProvider"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="数据来源：—" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvGpsDetail"
+                    style="@style/Text.RawBlock"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_code_panel"
+                    android:padding="14dp"
+                    android:text="开始定位后显示海拔 / 精度 / 速度 / 方位 / 时间等原始字段" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 卫星天顶图 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    style="@style/Text.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="卫星天顶图" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="正北朝上、方位顺时针；圆心是天顶，最外圈是地平线" />
+
+                <com.rjy.xyz.apps.xyzinfo.ui.gps.SatelliteSkyView
+                    android:id="@+id/skyView"
+                    android:layout_width="match_parent"
+                    android:layout_height="240dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_code_panel" />
+
+                <TextView
+                    android:id="@+id/tvConstellations"
+                    style="@style/Text.Row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_row_panel"
+                    android:padding="14dp"
+                    android:text="星座：等待卫星数据" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="实心 = 参与定位，空心 = 已搜到未参与；数字是卫星编号，光晕越大信号越强" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 收音机 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    style="@style/Text.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="收音机（FM）" />
+
+                <TextView
+                    android:id="@+id/tvRadioStatus"
+                    style="@style/Text.Row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_row_panel"
+                    android:padding="14dp"
+                    android:text="正在检测硬件支持…" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnOpenRadio"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="打开系统收音机"
+                    android:textColor="@color/accent"
+                    android:textSize="13sp"
+                    android:visibility="gone"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="@color/accent" />
+
+                <TextView
+                    android:id="@+id/tvRadioNote"
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Android 没有向第三方 App 开放调频收音机 API（调谐器由厂商 App 走私有 HAL 独占），因此本应用能做的只有探测与拉起系统收音机。" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</ScrollView>

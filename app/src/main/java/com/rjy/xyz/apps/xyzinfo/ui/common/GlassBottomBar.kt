@@ -1,15 +1,14 @@
 package com.rjy.xyz.apps.xyzinfo.ui.common
 
 import android.animation.ArgbEvaluator
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
@@ -19,40 +18,34 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.view.animation.PathInterpolator
-import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
-import kotlin.math.abs
 import kotlin.math.min
-import kotlin.math.sin
 
 /**
- * 液态玻璃底栏。
+ * 高斯模糊底栏：首页 / 跑分 / 排行 / 设置。
  *
- * 视觉上不是一个「半透明色块」，而是照着系统级玻璃材质分七层叠出来的：
+ * 结构很简单，不再搞花活：
+ * 1. [GlassBackdrop] 提供底下那层的实时高斯模糊；
+ * 2. 叠一层上厚下薄的白色染色 + 一圈细边，让文字在任何壁纸上都看得清；
+ * 3. 选中项是一颗白色半透明胶囊指示块，切换时用 easeOutBack 弹一下滑过去；
+ * 4. 图标与文字随选中态做颜色过渡和轻微缩放。
  *
- * 1. **真实背景模糊**：见 [GlassBackdrop]，把底栏背后的内容降采样后模糊再贴回来，
- *    所以滑动列表时能看到文字和卡片在玻璃下面糊着移动；
- * 2. **玻璃染色**：偏白的竖向渐变压在模糊层上，越靠上越亮（模拟厚玻璃）；
- * 3. **磨砂颗粒**：72×72 固定种子噪声，消掉纯色的塑料感；
- * 4. **边缘折射**：模糊层整体放大 8%，靠边的内容被「折」出去一点，形成透镜感；
- * 5. **镜面棱线**：外圈 1.4dp 渐变描边（上亮下暗）+ 顶部一条高光弧 + 底部内阴影；
- * 6. **液态气泡**：选中态是一颗会挤压缩放、后面拖着一小团残影的玻璃泡，
- *    停下来会回弹（easeOutBack + 途中拉伸），而不是生硬地平移一个矩形；
- * 7. **按压镜面高光**：手指按上去的位置有一团跟随的柔光。
+ * 布局用 [LinearLayout] 的 weight 等分，避免手算边距导致的错位；
+ * 指示块的位置在**每次布局完成后都会重新按实际宽度计算**，
+ * 所以旋屏、切页、改开关之后都不会出现「要点两次才对位」。
  */
 class GlassBottomBar @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : FrameLayout(context, attrs, defStyleAttr) {
+) : LinearLayout(context, attrs, defStyleAttr) {
 
     data class Tab(val iconRes: Int, val title: String)
 
-    /** 选中回调：index 为目标标签，reselected 表示点的就是当前页。 */
     var onTabSelected: ((index: Int, reselected: Boolean) -> Unit)? = null
 
     private val tabs = mutableListOf<Tab>()
@@ -63,18 +56,15 @@ class GlassBottomBar @JvmOverloads constructor(
     private val backdrop = GlassBackdrop(this)
     private val barPath = Path()
     private val barRect = RectF()
-    private val bubbleRect = RectF()
+    private val pillRect = RectF()
 
-    private val tintPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val noisePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(1.4f)
+        strokeWidth = dp(1f)
     }
-    private val specularPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val bubblePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val bubbleShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val bubbleRimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pillRimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = dp(1f)
     }
@@ -85,27 +75,21 @@ class GlassBottomBar @JvmOverloads constructor(
     private val colorTintBottom = ContextCompat.getColor(context, R.color.glass_tint_bottom)
     private val colorRimTop = ContextCompat.getColor(context, R.color.glass_rim_top)
     private val colorRimBottom = ContextCompat.getColor(context, R.color.glass_rim_bottom)
-    private val colorNoise = ContextCompat.getColor(context, R.color.glass_noise)
-    private val colorSpecular = ContextCompat.getColor(context, R.color.glass_specular)
-    private val colorBubble = ContextCompat.getColor(context, R.color.glass_bubble)
-    private val colorBubbleRim = ContextCompat.getColor(context, R.color.glass_bubble_rim)
+    private val colorPill = ContextCompat.getColor(context, R.color.glass_bubble)
+    private val colorPillRim = ContextCompat.getColor(context, R.color.glass_bubble_rim)
 
     private var selectedIndex = 0
     private var pillCenterX = 0f
-    private var trailCenterX = 0f
-    /** 0~1：搬运途中被「挤」出去的程度，停下就归零。 */
-    private var squash = 0f
-    private var specularX = 0.5f
-    private var specularAlpha = 0f
-    private var laid = false
     private var appliedStyles = -1
+    private var lastLaidOutWidth = 0
 
     private val colorEvaluator = ArgbEvaluator()
     private val decelerate = PathInterpolator(0.05f, 0.7f, 0.1f, 1f)
     private var moveAnimator: ValueAnimator? = null
 
     init {
-        // 背景只负责轮廓（elevation 阴影靠它），真正的玻璃层次都在 onDraw 里
+        orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = resources.getDimension(R.dimen.glass_bar_height) / 2f
@@ -117,7 +101,7 @@ class GlassBottomBar @JvmOverloads constructor(
         isClickable = true
     }
 
-    // ---------- 对外 ----------
+    // ---------- 对外接口 ----------
 
     fun bind(tabs: List<Tab>, selected: Int, listener: (index: Int, reselected: Boolean) -> Unit) {
         this.tabs.clear()
@@ -127,14 +111,9 @@ class GlassBottomBar @JvmOverloads constructor(
         buildItems()
     }
 
-    /** 由页面骨架注入「背后要取样的内容视图」，玻璃才开始真的模糊。 */
-    fun attachBackdrop(source: View) {
-        backdrop.attachSource(source)
-    }
+    fun attachBackdrop(source: View) = backdrop.attachSource(source)
 
-    fun requestBackdropRefresh(immediate: Boolean = false) {
-        backdrop.requestRefresh(immediate)
-    }
+    fun requestBackdropRefresh(immediate: Boolean = false) = backdrop.requestRefresh(immediate)
 
     fun setSelectedTab(index: Int, animated: Boolean) {
         if (index !in tabs.indices) return
@@ -171,47 +150,19 @@ class GlassBottomBar @JvmOverloads constructor(
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
                 isClickable = true
-                setPadding(0, dp(10f).toInt(), 0, 0)
+                setPadding(0, dp(9f).toInt(), 0, 0)
                 addView(icon)
                 addView(label)
                 setOnClickListener { handleClick(index) }
                 setOnTouchListener { _, event -> handleTouch(event) }
             }
-            addView(item, LayoutParams(0, LayoutParams.MATCH_PARENT))
+            addView(item, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             items += item
             icons += icon
             labels += label
         }
-        applyItemLayout()
         appliedStyles = -1
         applyItemStyles(selectedIndex)
-    }
-
-    /** FrameLayout 没有 weight：按「总宽 / 标签数」显式定宽，再用 leftMargin 排开。 */
-    private fun applyItemLayout() {
-        val count = items.size
-        if (count == 0) return
-        val total = width
-        if (total <= 0) {
-            post { applyItemLayout() }
-            return
-        }
-        val itemWidth = total / count
-        items.forEachIndexed { index, item ->
-            val params = (item.layoutParams as? LayoutParams) ?: LayoutParams(0, LayoutParams.MATCH_PARENT)
-            params.width = itemWidth
-            params.height = LayoutParams.MATCH_PARENT
-            params.gravity = Gravity.START or Gravity.CENTER_VERTICAL
-            params.leftMargin = index * itemWidth
-            item.layoutParams = params
-        }
-        val target = centerOf(selectedIndex)
-        if (target > 0f) {
-            pillCenterX = target
-            trailCenterX = target
-        }
-        requestLayout()
-        invalidate()
     }
 
     private fun applyItemStyles(previous: Int) {
@@ -238,13 +189,12 @@ class GlassBottomBar @JvmOverloads constructor(
                 labels.getOrNull(index)?.setTextColor(target)
             }
 
-            item.animate().cancel()
-            val scale = if (selected) 1.05f else 0.94f
+            val scale = if (selected) 1.05f else 0.95f
             val alpha = if (selected) 1f else 0.85f
-            val lift = if (selected) -dp(1f) else 0f
+            item.animate().cancel()
             if (animated) {
                 item.animate()
-                    .scaleX(scale).scaleY(scale).alpha(alpha).translationY(lift)
+                    .scaleX(scale).scaleY(scale).alpha(alpha)
                     .setDuration(Anim.DURATION_MEDIUM)
                     .setInterpolator(decelerate)
                     .start()
@@ -252,7 +202,6 @@ class GlassBottomBar @JvmOverloads constructor(
                 item.scaleX = scale
                 item.scaleY = scale
                 item.alpha = alpha
-                item.translationY = lift
             }
         }
         appliedStyles = selectedIndex
@@ -272,75 +221,38 @@ class GlassBottomBar @JvmOverloads constructor(
     }
 
     private fun handleTouch(event: MotionEvent): Boolean {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                if (width > 0) specularX = (event.x / width).coerceIn(0f, 1f)
-                specularAlpha = if (event.actionMasked == MotionEvent.ACTION_DOWN) 0.85f else 0.5f
-                invalidate()
-            }
-
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                specularAlpha = 0f
-                invalidate()
-            }
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            backdrop.requestRefresh()
         }
         return false
     }
 
-    /** 再次点当前标签：气泡弹一下。 */
+    /** 再次点当前标签：指示块弹一下。 */
     private fun pulse() {
         if (!Anim.enabled(context)) return
-        ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 460L
-            addUpdateListener {
-                val t = it.animatedValue as Float
-                squash = sin(t * Math.PI).toFloat() * 0.7f
-                invalidate()
-            }
-            addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) {
-                    squash = 0f
-                    invalidate()
-                }
-            })
-            start()
-        }
+        moveTo(selectedIndex, animated = true)
     }
 
     private fun moveTo(index: Int, animated: Boolean) {
         val target = centerOf(index)
         if (target <= 0f) {
+            // 还没完成布局，等布局好了 onLayout 会自己纠正
             post { moveTo(index, animated) }
             return
         }
         moveAnimator?.cancel()
-        val startX = if (pillCenterX == 0f) target else pillCenterX
-        val startTrail = if (trailCenterX == 0f) target else trailCenterX
-
-        if (!animated || !laid) {
+        val startX = if (pillCenterX <= 0f) target else pillCenterX
+        if (!animated || !Anim.enabled(context)) {
             pillCenterX = target
-            trailCenterX = target
-            squash = 0f
             invalidate()
             return
         }
-
         moveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 520L
+            duration = 440L
             addUpdateListener {
-                val t = it.animatedValue as Float
-                pillCenterX = startX + (target - startX) * easeOutBack(t)
-                trailCenterX = startTrail + (target - startTrail) * easeOutCubic(t)
-                // 途中被挤出去，落地时收回来——这就是「液态」的来源
-                squash = sin(t * Math.PI).toFloat()
+                pillCenterX = startX + (target - startX) * easeOutBack(it.animatedValue as Float)
                 invalidate()
             }
-            addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) {
-                    squash = 0f
-                    invalidate()
-                }
-            })
             start()
         }
         backdrop.requestRefresh()
@@ -348,16 +260,37 @@ class GlassBottomBar @JvmOverloads constructor(
 
     private fun centerOf(index: Int): Float {
         val item = items.getOrNull(index) ?: return 0f
-        if (item.right == 0 && item.left == 0) return 0f
-        return (item.left + item.right) / 2f
+        if (item.width <= 0) return 0f
+        return item.left + item.width / 2f
     }
+
+    // ---------- 布局 ----------
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        laid = true
         (background as? GradientDrawable)?.cornerRadius = h / 2f
-        applyItemLayout()
         backdrop.requestRefresh(immediate = true)
+    }
+
+    /**
+     * 每次布局完成后都按真实宽度重算指示块位置。
+     *
+     * 之前只在首次布局算一次，之后宽度变化（换页面、旋屏、改设置后重建）就不再纠正，
+     * 于是出现「要点两次按钮才归位」。
+     */
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        super.onLayout(changed, l, t, r, b)
+        val widthNow = r - l
+        val widthChanged = widthNow != lastLaidOutWidth
+        lastLaidOutWidth = widthNow
+        val animating = moveAnimator?.isRunning == true
+        if (!animating && (changed || widthChanged || pillCenterX <= 0f)) {
+            val target = centerOf(selectedIndex)
+            if (target > 0f && target != pillCenterX) {
+                pillCenterX = target
+                invalidate()
+            }
+        }
     }
 
     override fun onAttachedToWindow() {
@@ -376,150 +309,57 @@ class GlassBottomBar @JvmOverloads constructor(
         val w = width.toFloat()
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
-
-        val capsuleRadius = h / 2f
+        val capsule = h / 2f
         barRect.set(0f, 0f, w, h)
         barPath.reset()
-        barPath.addRoundRect(barRect, capsuleRadius, capsuleRadius, Path.Direction.CW)
+        barPath.addRoundRect(barRect, capsule, capsule, Path.Direction.CW)
 
-        // 1) 背后内容的实时模糊（玻璃的灵魂，没有这层就只是半透明色块）
-        backdrop.draw(canvas, barRect, capsuleRadius, zoom = 1.08f)
+        // 1) 底下那层的高斯模糊
+        backdrop.draw(canvas, barRect, capsule)
 
-        // 2) 玻璃染色：上厚下薄
-        tintPaint.shader = LinearGradient(
+        // 2) 白色染色（上厚下薄）
+        paint.shader = LinearGradient(
             0f, 0f, 0f, h, colorTintTop, colorTintBottom, Shader.TileMode.CLAMP
         )
-        canvas.drawPath(barPath, tintPaint)
-        tintPaint.shader = null
+        canvas.drawPath(barPath, paint)
+        paint.shader = null
 
-        // 3) 磨砂颗粒
-        noisePaint.shader = BitmapShader(noiseTexture, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-        canvas.drawPath(barPath, noisePaint)
-        noisePaint.shader = null
+        // 3) 指示块
+        val itemWidth = items.getOrNull(selectedIndex)?.width ?: 0
+        val pillHalf = (min(itemWidth * 0.62f, dp(86f)) / 2f).coerceAtLeast(dp(24f))
+        val pillHeight = min(h - dp(16f), dp(42f))
+        val top = (h - pillHeight) / 2f
+        pillRect.set(pillCenterX - pillHalf, top, pillCenterX + pillHalf, top + pillHeight)
 
-        // 4) 液态气泡：残影 → 阴影 → 气泡本体 → 气泡的棱线
-        drawBubble(canvas, h, capsuleRadius)
-
-        // 5) 按压位置的镜面高光
-        if (specularAlpha > 0.01f) {
-            specularPaint.shader = RadialGradient(
-                specularX * w, h * 0.5f, w * 0.5f,
-                withAlpha(colorSpecular, (specularAlpha * 150).toInt()),
-                0x00FFFFFF,
-                Shader.TileMode.CLAMP
-            )
-            canvas.drawPath(barPath, specularPaint)
-            specularPaint.shader = null
-        }
-
-        // 6) 棱线：上亮下暗的外圈 + 顶部高光弧
-        rimPaint.shader = LinearGradient(
-            0f, 0f, 0f, h,
-            colorRimTop,
-            colorRimBottom,
+        pillPaint.shader = LinearGradient(
+            0f, top, 0f, top + pillHeight,
+            withAlpha(colorPillRim, 0x4D),
+            withAlpha(colorPill, 0x33),
             Shader.TileMode.CLAMP
         )
-        canvas.save()
+        canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillPaint)
+        pillPaint.shader = null
+        pillPaint.color = colorPill
+        canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillPaint)
+
+        pillRimPaint.shader = LinearGradient(
+            0f, top, 0f, top + pillHeight,
+            colorPillRim, 0x00FFFFFF, Shader.TileMode.CLAMP
+        )
+        canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillRimPaint)
+        pillRimPaint.shader = null
+
+        // 4) 外圈细边
+        borderPaint.shader = LinearGradient(
+            0f, 0f, 0f, h, colorRimTop, colorRimBottom, Shader.TileMode.CLAMP
+        )
+        val checkpoint = canvas.save()
         canvas.clipPath(barPath)
         canvas.drawRoundRect(
-            dp(0.7f), dp(0.7f), w - dp(0.7f), h - dp(0.7f),
-            capsuleRadius, capsuleRadius, rimPaint
+            dp(0.5f), dp(0.5f), w - dp(0.5f), h - dp(0.5f), capsule, capsule, borderPaint
         )
-        canvas.restore()
-        rimPaint.shader = null
-
-        val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        highlightPaint.shader = LinearGradient(
-            0f, 0f, w, 0f,
-            intArrayOf(0x00FFFFFF, withAlpha(colorRimTop, 0xE6), withAlpha(colorRimTop, 0xE6), 0x00FFFFFF),
-            floatArrayOf(0.02f, 0.25f, 0.75f, 0.98f),
-            Shader.TileMode.CLAMP
-        )
-        canvas.drawRoundRect(
-            dp(2f), dp(1.2f), w - dp(2f), dp(2.6f),
-            dp(0.7f), dp(0.7f), highlightPaint
-        )
-    }
-
-    private fun drawBubble(canvas: Canvas, height: Float, capsuleRadius: Float) {
-        val baseHalfWidth = bubbleHalfWidth()
-        val bubbleHeight = min(height - dp(14f), dp(42f))
-        val top = (height - bubbleHeight) / 2f
-        val bottom = top + bubbleHeight
-        val bubbleRadius = bubbleHeight / 2f
-
-        // 拉伸：横向撑开、纵向压扁，形成流体挤压感
-        val stretchHalf = baseHalfWidth * (1f + 0.16f * squash)
-        val squeeze = 1f - 0.10f * squash
-        val stretchTop = top + (bubbleHeight - bubbleHeight * squeeze) / 2f
-        val stretchBottom = stretchTop + bubbleHeight * squeeze
-
-        // 残影：慢半拍跟上来的一小团，制造液体拖尾
-        if (abs(pillCenterX - trailCenterX) > dp(1.5f)) {
-            bubbleShadowPaint.color = withAlpha(colorBubble, 0x33)
-            canvas.drawRoundRect(
-                trailCenterX - baseHalfWidth * 0.88f,
-                top + dp(3f),
-                trailCenterX + baseHalfWidth * 0.88f,
-                bottom - dp(3f),
-                bubbleRadius, bubbleRadius, bubbleShadowPaint
-            )
-        }
-
-        // 气泡下方的柔和投影，让它「浮」在玻璃上
-        bubbleShadowPaint.shader = RadialGradient(
-            pillCenterX, bottom + dp(1f), baseHalfWidth * 1.25f,
-            0x33000000, 0x00000000, Shader.TileMode.CLAMP
-        )
-        canvas.drawRect(
-            pillCenterX - baseHalfWidth * 1.25f,
-            bottom - dp(1f),
-            pillCenterX + baseHalfWidth * 1.25f,
-            bottom + dp(7f),
-            bubbleShadowPaint
-        )
-        bubbleShadowPaint.shader = null
-
-        bubbleRect.set(
-            pillCenterX - stretchHalf,
-            stretchTop,
-            pillCenterX + stretchHalf,
-            stretchBottom
-        )
-        bubblePaint.color = colorBubble
-        canvas.drawRoundRect(
-            bubbleRect,
-            bubbleRadius,
-            bubbleRadius,
-            bubblePaint
-        )
-
-        // 气泡自己的棱线：上亮下透，像一颗凸起的玻璃珠
-        bubbleRimPaint.shader = LinearGradient(
-            0f, stretchTop, 0f, stretchBottom,
-            colorBubbleRim,
-            0x00FFFFFF,
-            Shader.TileMode.CLAMP
-        )
-        canvas.drawRoundRect(bubbleRect, bubbleRadius, bubbleRadius, bubbleRimPaint)
-        bubbleRimPaint.shader = null
-
-        // 气泡顶部的窄高光
-        bubbleRimPaint.shader = null
-        bubblePaint.color = withAlpha(colorBubbleRim, 0x59)
-        canvas.drawRoundRect(
-            pillCenterX - stretchHalf * 0.62f,
-            stretchTop + dp(2.2f),
-            pillCenterX + stretchHalf * 0.62f,
-            stretchTop + dp(3.8f),
-            dp(0.8f), dp(0.8f), bubblePaint
-        )
-    }
-
-    private fun bubbleHalfWidth(): Float {
-        val itemWidth = items.getOrNull(selectedIndex)?.let { it.right - it.left } ?: 0
-        val wanted = if (itemWidth > 0) itemWidth * 0.66f else dp(150f)
-        return min(wanted, dp(88f)) / 2f
+        canvas.restoreToCount(checkpoint)
+        borderPaint.shader = null
     }
 
     private fun withAlpha(color: Int, alpha: Int): Int =
@@ -527,30 +367,10 @@ class GlassBottomBar @JvmOverloads constructor(
 
     private fun dp(value: Float): Float = value * resources.displayMetrics.density
 
-    private fun easeOutCubic(t: Float): Float {
-        val inv = 1f - t
-        return 1f - inv * inv * inv
-    }
-
     private fun easeOutBack(t: Float): Float {
-        val c1 = 1.32f
+        val c1 = 1.20f
         val c3 = c1 + 1f
         val inv = t - 1f
         return 1f + c3 * inv * inv * inv + c1 * inv * inv
-    }
-
-    private companion object {
-        /** 磨砂颗粒：固定种子，保证每次启动纹理一致。 */
-        val noiseTexture: Bitmap by lazy {
-            val size = 72
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val random = java.util.Random(20260930L)
-            val pixels = IntArray(size * size)
-            for (index in pixels.indices) {
-                pixels[index] = (random.nextInt(20) shl 24) or 0x00FFFFFF
-            }
-            bitmap.setPixels(pixels, 0, size, 0, 0, size, size)
-            bitmap
-        }
     }
 }
