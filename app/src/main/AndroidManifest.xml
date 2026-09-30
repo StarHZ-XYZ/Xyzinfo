@@ -9,6 +9,9 @@
     <!-- 机型库在线更新：没有 INTERNET 权限时所有网络请求都会被系统直接拒绝，
          这正是 0.6 及以前「首页更新按钮点了没反应」的原因 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 硬件测试：扬声器/麦克风/摄像头 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
     <!-- 更新前先判断有没有网络，省得用户对着「正在检查…」白等 -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -47,6 +50,7 @@
         <activity android:name=".ui.settings.SettingsActivity" />
         <activity android:name=".ui.gps.GpsInfoActivity" />
         <activity android:name=".ui.misc.MiscActivity" />
+        <activity android:name=".ui.hardware.HardwareMoreActivity" />
         <activity
             android:name=".ui.hardware.ScreenTestActivity"
             android:theme="@style/Theme.XyzInfo" />

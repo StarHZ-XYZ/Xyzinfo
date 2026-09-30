@@ -18,6 +18,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkActivity
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.RankingActivity
 import com.rjy.xyz.apps.xyzinfo.ui.gps.GpsInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.hardware.ScreenTestActivity
+import com.rjy.xyz.apps.xyzinfo.ui.hardware.HardwareMoreActivity
 import com.rjy.xyz.apps.xyzinfo.ui.misc.MiscActivity
 import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
 import com.rjy.xyz.apps.xyzinfo.ui.ram.RamInfoActivity
@@ -217,6 +218,13 @@ class MainActivity : AppCompatActivity() {
         }
         addEntryCard("杂项工具", "反应力测试、随机密码、手电筒", R.drawable.ic_module_benchmark) {
             open(MiscActivity::class.java)
+        }
+        addEntryCard(
+            "硬件测试 · 音频与传感器",
+            "扬声器 / 麦克风 / 振动 / 摄像头 / NFC",
+            R.drawable.ic_module_sensor
+        ) {
+            open(HardwareMoreActivity::class.java)
         }
     }
 
