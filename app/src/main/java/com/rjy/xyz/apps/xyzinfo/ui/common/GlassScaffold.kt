@@ -85,6 +85,28 @@ object GlassScaffold {
 
         val bar = GlassBottomBar(activity)
         bar.docked = true
+        // 四季氛围：铺在内容之上、底栏之下；粒子数很少，掉帧风险低，可随时关掉
+        if (SettingsRepository.seasonEffectEnabled(activity) &&
+            SettingsRepository.animationsEnabled(activity)
+        ) {
+            val season = SeasonOverlay(activity).apply { this.season = Season.current() }
+            container.addView(
+                season,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            )
+            (activity as? androidx.lifecycle.LifecycleOwner)?.lifecycle?.addObserver(
+                androidx.lifecycle.LifecycleEventObserver { _, event ->
+                    when (event) {
+                        androidx.lifecycle.Lifecycle.Event.ON_RESUME -> season.start()
+                        androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> season.stop()
+                        else -> Unit
+                    }
+                }
+            )
+        }
         val barParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             barHeight

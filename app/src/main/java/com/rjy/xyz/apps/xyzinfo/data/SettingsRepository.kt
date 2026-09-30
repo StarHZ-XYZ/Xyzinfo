@@ -21,6 +21,7 @@ object SettingsRepository {
     private const val KEY_BING_WALLPAPER = "bing_wallpaper"
     private const val KEY_WALLPAPER_SCRIM = "wallpaper_scrim"
     private const val KEY_FOLLOW_SYSTEM_COLOR = "follow_system_color"
+    private const val KEY_SEASON_EFFECT = "season_effect"
 
     private const val KEY_LAST_SINGLE = "last_single"
     private const val KEY_LAST_MULTI = "last_multi"
@@ -96,6 +97,16 @@ object SettingsRepository {
 
     fun setFollowSystemColor(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_FOLLOW_SYSTEM_COLOR, enabled).apply()
+    }
+
+    // ---------- 四季氛围效果 ----------
+
+    /** 是否显示四季氛围（雪花 / 枫叶 / 花瓣 / 阳光）。默认关，避免影响老机器流畅度。 */
+    fun seasonEffectEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SEASON_EFFECT, false)
+
+    fun setSeasonEffectEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_SEASON_EFFECT, enabled).apply()
     }
 
     // ---------- 最近一次跑分成绩 ----------
