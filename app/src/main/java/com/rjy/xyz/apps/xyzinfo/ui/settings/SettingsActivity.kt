@@ -5,6 +5,7 @@ import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.rjy.xyz.apps.xyzinfo.data.BingWallpaperRepository
+import com.rjy.xyz.apps.xyzinfo.BuildConfig
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivitySettingsBinding
 import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
@@ -149,13 +150,25 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupAbout() {
+        val version = "${BuildConfig.VERSION_NAME}（构建号 ${BuildConfig.BUILD_NUMBER}）"
         binding.tvAbout.setInfoRow(
             "应用：XYZ-Devinfo 设备检测\n" +
-                "版本：0.7\n" +
+                "版本：$version\n" +
                 "作者：星幻终（RJYZ）\n" +
                 "排行榜数据：极客湾（Geekerwan）公开榜单\n" +
                 "机型库：Google Play 认证设备清单 + 社区补充\n" +
                 "开源协议：MIT"
         )
+        binding.btnOpenGithub.setOnClickListener {
+            Anim.pressFeedback(it)
+            runCatching {
+                startActivity(
+                    android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://github.com/StarHZ-XYZ/Xyzinfo")
+                    )
+                )
+            }.onFailure { Toast.makeText(this, "没有可用的浏览器", Toast.LENGTH_SHORT).show() }
+        }
     }
 }
