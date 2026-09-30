@@ -124,9 +124,9 @@ object SettingsRepository {
 
     // ---------- 主页排版样式 ----------
 
-    /** 主页功能模块是否用宫格（两列）排列；默认 false = 一列列表。 */
+    /** 主页功能模块是否用宫格（两列）排列；**默认开启宫格**。 */
     fun homeGridStyle(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_HOME_GRID, false)
+        prefs(context).getBoolean(KEY_HOME_GRID, true)
 
     fun setHomeGridStyle(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_HOME_GRID, enabled).apply()
