@@ -101,10 +101,12 @@ class ParticleOverlay @JvmOverloads constructor(
                 particle.vx *= 0.985f
                 particle.x += particle.vx * delta
                 particle.y += particle.vy * delta
-                paint.color = withAlpha(particle.color, (particle.life * 210).toInt())
-                paint.setShadowLayer(6f * density, 0f, 0f, withAlpha(particle.color, 90))
+                // 不用 setShadowLayer：那会让每个粒子走软件渲染，是掉帧的大头。
+                // 用「外圈淡 + 内圈实」两层圆模拟柔光，纯硬件绘制。
+                paint.color = withAlpha(particle.color, (particle.life * 70).toInt())
+                canvas.drawCircle(particle.x, particle.y, particle.size * particle.life * 2.2f, paint)
+                paint.color = withAlpha(particle.color, (particle.life * 220).toInt())
                 canvas.drawCircle(particle.x, particle.y, particle.size * particle.life, paint)
-                paint.clearShadowLayer()
             }
             index--
         }

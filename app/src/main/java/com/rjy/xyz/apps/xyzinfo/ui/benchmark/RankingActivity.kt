@@ -177,7 +177,8 @@ class RankingActivity : AppCompatActivity() {
         }
         binding.tvDeviceSummary.setInfoRow(summary)
 
-        val referenceRows = GeekerwanScores.ranked(metric, brand).map { score ->
+        // 只渲染前 90 条：全量 110+ 行会让滚动丢帧，尾部名次意义也不大
+        val referenceRows = GeekerwanScores.ranked(metric, brand).take(90).map { score ->
             RankRow(
                 name = if (score.name == matched?.name) "${score.name}（本机芯片）" else score.name,
                 value = metric.valueOf(score),
@@ -241,7 +242,12 @@ class RankingActivity : AppCompatActivity() {
             }
 
             val fraction = if (max > 0) row.value.toFloat() / max else 0f
-            item.viewBar.growBar(fraction, duration = 520L, delay = (index * 12L).coerceAtMost(320L))
+            item.viewBar.growBar(
+                fraction,
+                duration = 520L,
+                // 只给前 15 行做错峰延迟，避免一次排几百个动画
+                delay = if (index < 15) index * 12L else 0L
+            )
             binding.layoutRanking.addView(item.root)
         }
 

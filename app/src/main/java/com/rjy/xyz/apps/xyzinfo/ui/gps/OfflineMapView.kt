@@ -19,11 +19,11 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * 内置离线地图。
+ * 内置离线地图（等距圆柱投影，1920px 世界地图打包在 assets 里）。
  *
- * 地图是打包在 assets 里的 1920px 等距圆柱投影世界地图，不联网也能用：
- * 经纬度按 `x = (lon + 180) / 360`、`y = (90 - lat) / 180` 直接映射到图片上，
- * 再叠加经纬网、定位标记与精度圈。支持双指缩放 / 拖动，也可以点按钮切换档位。
+ * 关键点是**缩放时的对齐**：放大之后必须让本机位置一直待在视图中心，
+ * 而不是让地图围绕它自己的中心（经度 0°，也就是非洲西岸）放大——
+ * 之前放大后看到非洲、缩小才看到中国，就是这个原因。
  */
 class OfflineMapView @JvmOverloads constructor(
     context: Context,
@@ -32,13 +32,8 @@ class OfflineMapView @JvmOverloads constructor(
 
     private var map: Bitmap? = null
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply { isFilterBitmap = true }
-    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = 1f
-        color = 0x33000000
-    }
+    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val markerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val accuracyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val crosshairPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1.5f * resources.displayMetrics.density
@@ -54,8 +49,16 @@ class OfflineMapView @JvmOverloads constructor(
 
     /** 1 = 整幅世界地图铺满，档位越大越近。 */
     private var zoom = 1f
-    private var offsetX = 0f
-    private var offsetY = 0f
+
+    /** 用户手动拖动产生的偏移；缩放/回到本机时会清零。 */
+    private var panX = 0f
+    private var panY = 0f
+
+    /** 让本机位置保持在视图中心（用户一旦手动拖动就暂时关闭）。 */
+    private var followPosition = true
+
+    private var drawWidth = 0f
+    private var drawHeight = 0f
     private var pulse = 0f
 
     private var lastX = 0f
@@ -72,42 +75,41 @@ class OfflineMapView @JvmOverloads constructor(
         }.getOrNull()
     }
 
-    /**
-     * 更新标记位置。
-     *
-     * @param recenter true 时把视野重新对到本机（缩放到默认档位、清掉平移）
-     */
     fun updatePosition(lat: Double?, lon: Double?, accuracy: Float, recenter: Boolean = false) {
-        val first = latitude == null
         latitude = lat
         longitude = lon
         accuracyMeters = accuracy
-        if ((first || recenter) && lat != null && lon != null) {
+        if (recenter) {
             zoom = DEFAULT_ZOOM
-            offsetX = 0f
-            offsetY = 0f
+            panX = 0f
+            panY = 0f
+            followPosition = true
         }
         invalidate()
     }
 
     fun zoomIn() {
         zoom = min(zoom * 2f, MAX_ZOOM)
+        panX = 0f
+        panY = 0f
+        followPosition = true
         invalidate()
     }
 
     fun zoomOut() {
         zoom = max(zoom / 2f, 1f)
-        if (zoom == 1f) {
-            offsetX = 0f
-            offsetY = 0f
-        }
+        panX = 0f
+        panY = 0f
+        followPosition = true
         invalidate()
     }
 
+    /** 回到本机：恢复默认缩放并让标记回到中心。 */
     fun resetView() {
         zoom = DEFAULT_ZOOM
-        offsetX = 0f
-        offsetY = 0f
+        panX = 0f
+        panY = 0f
+        followPosition = true
         invalidate()
     }
 
@@ -117,14 +119,27 @@ class OfflineMapView @JvmOverloads constructor(
         val height = height.toFloat()
         if (width <= 0f || height <= 0f) return
 
-        drawSurface(canvas, width, height)
+        canvas.drawColor(if (isDark) 0xFF0E1A24.toInt() else 0xFFE8EFF7.toInt())
         val image = map
         if (image != null) {
             val fitScale = min(width / image.width, height / image.height)
-            val drawWidth = image.width * fitScale * zoom
-            val drawHeight = image.height * fitScale * zoom
-            val left = (width - drawWidth) / 2f + offsetX
-            val top = (height - drawHeight) / 2f + offsetY
+            drawWidth = image.width * fitScale * zoom
+            drawHeight = image.height * fitScale * zoom
+
+            // 关键：把标记点的投影位置摆到视图中心，而不是让地图围绕自己的中心缩放
+            var baseX = 0f
+            var baseY = 0f
+            val lat = latitude
+            val lon = longitude
+            if (followPosition && lat != null && lon != null) {
+                val markerX = drawWidth * ((lon + 180.0) / 360.0).toFloat()
+                val markerY = drawHeight * ((90.0 - lat) / 180.0).toFloat()
+                // 只有地图比视图大时才需要平移（世界全貌时本来就看得全）
+                if (drawWidth > width) baseX = width / 2f - markerX
+                if (drawHeight > height) baseY = height / 2f - markerY
+            }
+            val left = (width - drawWidth) / 2f + baseX + panX
+            val top = (height - drawHeight) / 2f + baseY + panY
             destinationRect.set(left, top, left + drawWidth, top + drawHeight)
             sourceRect.set(0, 0, image.width, image.height)
             canvas.drawBitmap(image, sourceRect, destinationRect, bitmapPaint)
@@ -133,15 +148,13 @@ class OfflineMapView @JvmOverloads constructor(
         }
     }
 
-    private fun drawSurface(canvas: Canvas, width: Float, height: Float) {
-        canvas.drawColor(if (isDark) 0xFF0E1A24.toInt() else 0xFFE8EFF7.toInt())
-    }
-
     private val isDark: Boolean
         get() = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
             android.content.res.Configuration.UI_MODE_NIGHT_YES
 
     private fun drawGraticule(canvas: Canvas, rect: RectF) {
+        val density = resources.displayMetrics.density
+        gridPaint.strokeWidth = 1f * density
         gridPaint.color = if (isDark) 0x33FFFFFF else 0x22000000
         for (lon in -180..180 step 30) {
             val x = rect.left + rect.width() * ((lon + 180f) / 360f)
@@ -163,20 +176,18 @@ class OfflineMapView @JvmOverloads constructor(
         val y = rect.top + rect.height() * ((90.0 - lat) / 180.0).toFloat()
         val density = resources.displayMetrics.density
 
-        // 精度圈：把米换成像素（赤道上 1° 经度约 111.32km）
         if (accuracyMeters > 0f) {
             val metersPerPixel = 111_320.0 * 360.0 / rect.width() * cos(Math.toRadians(lat))
-            val radius = (accuracyMeters / metersPerPixel).toFloat().coerceIn(4f * density, rect.width())
-            accuracyPaint.color = withAlpha(colorAccent, 0x33)
-            canvas.drawCircle(x, y, radius, accuracyPaint)
-            accuracyPaint.color = withAlpha(colorAccent, 0x55)
+            val radius = (accuracyMeters / metersPerPixel).toFloat()
+                .coerceIn(4f * density, rect.width())
+            markerPaint.color = withAlpha(colorAccent, 0x33)
+            canvas.drawCircle(x, y, radius, markerPaint)
+            crosshairPaint.color = withAlpha(colorAccent, 0x66)
             canvas.drawCircle(x, y, radius, crosshairPaint)
         }
 
-        // 呼吸光晕
         markerPaint.color = withAlpha(colorAccent, (70 * (1f - pulse)).toInt())
         canvas.drawCircle(x, y, (10f + 16f * pulse) * density, markerPaint)
-
         markerPaint.color = colorAccent
         canvas.drawCircle(x, y, 5.5f * density, markerPaint)
         markerPaint.color = Color.WHITE
@@ -207,9 +218,10 @@ class OfflineMapView @JvmOverloads constructor(
                 val dx = event.x - lastX
                 val dy = event.y - lastY
                 if (zoom > 1f) {
-                    offsetX += dx
-                    offsetY += dy
-                    clampOffsets()
+                    panX += dx
+                    panY += dy
+                    // 用户手动拖动后就不再强制居中，直到点「回到本机」
+                    followPosition = false
                     invalidate()
                 }
                 lastX = event.x
@@ -222,18 +234,12 @@ class OfflineMapView @JvmOverloads constructor(
         return super.onTouchEvent(event)
     }
 
-    private fun clampOffsets() {
-        val limit = 2000f * resources.displayMetrics.density * (zoom - 1f).coerceAtLeast(0f)
-        offsetX = offsetX.coerceIn(-limit, limit)
-        offsetY = offsetY.coerceIn(-limit, limit)
-    }
-
     private fun withAlpha(color: Int, alpha: Int): Int =
         (color and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
 
     private companion object {
         const val MAP_ASSET = "world_map.png"
         const val DEFAULT_ZOOM = 4f
-        const val MAX_ZOOM = 32f
+        const val MAX_ZOOM = 64f
     }
 }

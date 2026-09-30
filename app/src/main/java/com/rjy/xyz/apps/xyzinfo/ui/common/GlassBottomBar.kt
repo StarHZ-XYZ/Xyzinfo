@@ -86,6 +86,11 @@ class GlassBottomBar @JvmOverloads constructor(
     private val colorEvaluator = ArgbEvaluator()
     private val decelerate = PathInterpolator(0.05f, 0.7f, 0.1f, 1f)
     private var moveAnimator: ValueAnimator? = null
+    // 渐变每帧新建会造成 GC 抖动，按尺寸缓存
+    private var tintShader: LinearGradient? = null
+    private var borderShader: LinearGradient? = null
+    private var pillShader: LinearGradient? = null
+    private var pillRimShader: LinearGradient? = null
 
     init {
         orientation = HORIZONTAL
@@ -107,7 +112,8 @@ class GlassBottomBar @JvmOverloads constructor(
         this.tabs.clear()
         this.tabs.addAll(tabs)
         onTabSelected = listener
-        selectedIndex = selected.coerceIn(0, tabs.size - 1)
+        // -1 表示「不在任何标签上」（子页面），此时不高亮任何标签
+        selectedIndex = if (selected in tabs.indices) selected else NO_TAB
         buildItems()
     }
 
@@ -116,11 +122,15 @@ class GlassBottomBar @JvmOverloads constructor(
     fun requestBackdropRefresh(immediate: Boolean = false) = backdrop.requestRefresh(immediate)
 
     fun setSelectedTab(index: Int, animated: Boolean) {
-        if (index !in tabs.indices) return
+        if (index != NO_TAB && index !in tabs.indices) return
         val previous = selectedIndex
         selectedIndex = index
         applyItemStyles(previous)
-        moveTo(index, animated)
+        if (index == NO_TAB) {
+            invalidate()
+        } else {
+            moveTo(index, animated)
+        }
     }
 
     // ---------- 标签 ----------
@@ -229,7 +239,7 @@ class GlassBottomBar @JvmOverloads constructor(
 
     /** 再次点当前标签：指示块弹一下。 */
     private fun pulse() {
-        if (!Anim.enabled(context)) return
+        if (!Anim.enabled(context) || selectedIndex == NO_TAB) return
         moveTo(selectedIndex, animated = true)
     }
 
@@ -269,6 +279,8 @@ class GlassBottomBar @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         (background as? GradientDrawable)?.cornerRadius = h / 2f
+        tintShader = LinearGradient(0f, 0f, 0f, h.toFloat(), colorTintTop, colorTintBottom, Shader.TileMode.CLAMP)
+        borderShader = LinearGradient(0f, 0f, 0f, h.toFloat(), colorRimTop, colorRimBottom, Shader.TileMode.CLAMP)
         backdrop.requestRefresh(immediate = true)
     }
 
@@ -284,7 +296,7 @@ class GlassBottomBar @JvmOverloads constructor(
         val widthChanged = widthNow != lastLaidOutWidth
         lastLaidOutWidth = widthNow
         val animating = moveAnimator?.isRunning == true
-        if (!animating && (changed || widthChanged || pillCenterX <= 0f)) {
+        if (selectedIndex != NO_TAB && !animating && (changed || widthChanged || pillCenterX <= 0f)) {
             val target = centerOf(selectedIndex)
             if (target > 0f && target != pillCenterX) {
                 pillCenterX = target
@@ -318,41 +330,46 @@ class GlassBottomBar @JvmOverloads constructor(
         backdrop.draw(canvas, barRect, capsule)
 
         // 2) 白色染色（上厚下薄）
-        paint.shader = LinearGradient(
-            0f, 0f, 0f, h, colorTintTop, colorTintBottom, Shader.TileMode.CLAMP
-        )
+        paint.shader = tintShader
         canvas.drawPath(barPath, paint)
         paint.shader = null
 
         // 3) 指示块
+        if (selectedIndex == NO_TAB) {
+            paint.shader = null
+            return
+        }
         val itemWidth = items.getOrNull(selectedIndex)?.width ?: 0
         val pillHalf = (min(itemWidth * 0.62f, dp(86f)) / 2f).coerceAtLeast(dp(24f))
         val pillHeight = min(h - dp(16f), dp(42f))
         val top = (h - pillHeight) / 2f
         pillRect.set(pillCenterX - pillHalf, top, pillCenterX + pillHalf, top + pillHeight)
 
-        pillPaint.shader = LinearGradient(
-            0f, top, 0f, top + pillHeight,
-            withAlpha(colorPillRim, 0x4D),
-            withAlpha(colorPill, 0x33),
-            Shader.TileMode.CLAMP
-        )
+        if (pillShader == null || pillRimShader == null) {
+            pillShader = LinearGradient(
+                0f, 0f, 0f, pillHeight,
+                withAlpha(colorPillRim, 0x4D),
+                withAlpha(colorPill, 0x33),
+                Shader.TileMode.CLAMP
+            )
+            pillRimShader = LinearGradient(
+                0f, 0f, 0f, pillHeight,
+                colorPillRim, 0x00FFFFFF,
+                Shader.TileMode.CLAMP
+            )
+        }
+        pillPaint.shader = pillShader
         canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillPaint)
         pillPaint.shader = null
         pillPaint.color = colorPill
         canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillPaint)
 
-        pillRimPaint.shader = LinearGradient(
-            0f, top, 0f, top + pillHeight,
-            colorPillRim, 0x00FFFFFF, Shader.TileMode.CLAMP
-        )
+        pillRimPaint.shader = pillRimShader
         canvas.drawRoundRect(pillRect, pillHeight / 2f, pillHeight / 2f, pillRimPaint)
         pillRimPaint.shader = null
 
         // 4) 外圈细边
-        borderPaint.shader = LinearGradient(
-            0f, 0f, 0f, h, colorRimTop, colorRimBottom, Shader.TileMode.CLAMP
-        )
+        borderPaint.shader = borderShader
         val checkpoint = canvas.save()
         canvas.clipPath(barPath)
         canvas.drawRoundRect(
@@ -372,5 +389,10 @@ class GlassBottomBar @JvmOverloads constructor(
         val c3 = c1 + 1f
         val inv = t - 1f
         return 1f + c3 * inv * inv * inv + c1 * inv * inv
+    }
+
+    private companion object {
+        /** 子页面：底栏不指向任何标签。 */
+        const val NO_TAB = -1
     }
 }

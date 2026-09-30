@@ -38,7 +38,7 @@ class TelephonyInfoActivity : AppCompatActivity() {
         binding = ActivityTelephonyInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarPadding()
-        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_HOME)
+        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_NONE)
 
         binding.btnGrantPermission.setOnClickListener { requestPermissions() }
         render()

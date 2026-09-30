@@ -29,6 +29,9 @@ object GlassScaffold {
     const val TAB_RANKING = 2
     const val TAB_SETTINGS = 3
 
+    /** 子页面（芯片 / 内存 / 屏幕 / 电池 / 传感器 / 系统 / 通信 / GPS）：不属于任何标签。 */
+    const val TAB_NONE = -1
+
     fun tabs(): List<GlassBottomBar.Tab> = listOf(
         GlassBottomBar.Tab(R.drawable.ic_nav_home, "首页"),
         GlassBottomBar.Tab(R.drawable.ic_nav_benchmark, "跑分"),

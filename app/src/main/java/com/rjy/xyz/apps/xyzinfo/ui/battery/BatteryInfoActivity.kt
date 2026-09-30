@@ -35,7 +35,7 @@ class BatteryInfoActivity : AppCompatActivity() {
         binding = ActivityBatteryInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarPadding()
-        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_HOME)
+        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_NONE)
 
         render(BatteryInfoProvider.load(this))
     }

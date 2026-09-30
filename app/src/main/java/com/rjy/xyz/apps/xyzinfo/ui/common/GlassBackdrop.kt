@@ -24,7 +24,7 @@ import kotlin.math.max
  */
 class GlassBackdrop(private val host: View) {
 
-    private val downscale = 4
+    private val downscale = 6
     private val blurRadius = 3
 
     private var source: View? = null
@@ -202,6 +202,7 @@ class GlassBackdrop(private val host: View) {
 
     private companion object {
         const val BLUR_PASSES = 4
-        const val THROTTLE_MILLIS = 80L
+        /** 节流放宽到 220ms：模糊层是背景，刷新太快只会白白重绘整页内容。 */
+        const val THROTTLE_MILLIS = 220L
     }
 }

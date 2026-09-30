@@ -13,6 +13,10 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Looper
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -45,6 +49,40 @@ class GpsInfoActivity : AppCompatActivity() {
     private var bestSnr = 0f
     private var fmApps: List<RadioProbe.FmApp> = emptyList()
     private var hasCenteredOnFix = false
+    private var sensorManager: SensorManager? = null
+    private var headingDegrees: Float? = null
+
+    /** 指南针：用旋转矢量传感器算方位角，再做低通滤波防止抖动。 */
+    private val headingListener = object : SensorEventListener {
+        private val rotationMatrix = FloatArray(9)
+
+        override fun onSensorChanged(event: SensorEvent) {
+            if (event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
+            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+            val orientation = FloatArray(3)
+            SensorManager.getOrientation(rotationMatrix, orientation)
+            val degrees = ((Math.toDegrees(orientation[0].toDouble()) + 360.0) % 360.0).toFloat()
+            // 低通滤波：新值占 20%，避免数字乱跳
+            val previous = headingDegrees
+            val smoothed = if (previous == null) {
+                degrees
+            } else {
+                previous + shortestDelta(previous, degrees) * 0.2f
+            }
+            headingDegrees = (smoothed + 360f) % 360f
+            binding.skyView.setHeading(headingDegrees)
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
+
+    /** 处理 359° → 1° 这类跨 0 点的差值，避免指针绕一大圈。 */
+    private fun shortestDelta(from: Float, to: Float): Float {
+        var delta = to - from
+        while (delta > 180f) delta -= 360f
+        while (delta < -180f) delta += 360f
+        return delta
+    }
 
     private val timeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
 
@@ -111,9 +149,10 @@ class GpsInfoActivity : AppCompatActivity() {
         binding = ActivityGpsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarPadding()
-        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_HOME)
+        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_NONE)
 
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
         binding.btnStartGps.setOnClickListener {
             Anim.pressFeedback(it)
@@ -136,6 +175,20 @@ class GpsInfoActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         stopLocation()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 指南针：有旋转矢量传感器就接上，天顶图会跟着手机朝向转
+        val sensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        if (sensor != null) {
+            sensorManager?.registerListener(headingListener, sensor, SensorManager.SENSOR_DELAY_UI)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager?.unregisterListener(headingListener)
     }
 
     // ---------- 定位 ----------

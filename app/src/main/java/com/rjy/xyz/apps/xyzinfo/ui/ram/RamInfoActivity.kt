@@ -24,7 +24,7 @@ class RamInfoActivity : AppCompatActivity() {
         binding = ActivityRamInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarPadding()
-        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_HOME)
+        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_NONE)
 
         render(RamInfoProvider.load(this))
     }
