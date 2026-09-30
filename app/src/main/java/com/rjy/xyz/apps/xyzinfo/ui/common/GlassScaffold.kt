@@ -91,6 +91,8 @@ object GlassScaffold {
 
         val bar = GlassBottomBar(activity)
         bar.docked = true
+        // 让「大肥鱼」那一格带上 AI 彩色光晕、并且不吃单色 tint
+        bar.aiTabIndex = TAB_FISH
         /*
          * 子页面（芯片 / 内存 / 屏幕 / 电池 / 传感器 / 系统 / 通信 / GPS / 硬件测试 / 杂项）
          * **不显示底栏**：它们是从首页点进去的详情页，底部再飘一条标签栏会让层级认知混乱；

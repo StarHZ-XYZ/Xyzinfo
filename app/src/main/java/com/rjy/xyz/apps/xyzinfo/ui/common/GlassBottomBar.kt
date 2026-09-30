@@ -57,6 +57,14 @@ class GlassBottomBar @JvmOverloads constructor(
     /** 下沉式：直角贴底、无阴影；设置页的活体预览用 false（圆角悬浮）。 */
     var docked: Boolean = false
 
+    /**
+     * AI 标签（大肥鱼）在底栏里的下标。
+     *
+     * 设了之后这一格会：① 图标不上单色 tint（保留鲸鱼本身的颜色）；
+     * ② 背后画一圈像 Gemini 那样的彩色光晕，让人一眼看出这是 AI 入口。
+     */
+    var aiTabIndex: Int = -1
+
     private val tabs = mutableListOf<Tab>()
     private val items = mutableListOf<LinearLayout>()
     private val icons = mutableListOf<ImageView>()
@@ -91,6 +99,8 @@ class GlassBottomBar @JvmOverloads constructor(
     private val colorEvaluator = ArgbEvaluator()
     private val decelerate = PathInterpolator(0.05f, 0.7f, 0.1f, 1f)
     private var moveAnimator: ValueAnimator? = null
+    private var glowAnimator: ValueAnimator? = null
+    private var glowPulse = 0f
     private var tintShader: LinearGradient? = null
     private var glowShader: RadialGradient? = null
 
@@ -184,7 +194,13 @@ class GlassBottomBar @JvmOverloads constructor(
             val changing = index == selectedIndex || index == previous
             val startColor = if (selected) colorIdle else colorSelected
 
-            if (animated && changing && startColor != target) {
+            if (index == aiTabIndex) {
+                // AI 图标保留原色（彩色鲸鱼），只靠透明度区分选中态
+                icons.getOrNull(index)?.let { icon ->
+                    icon.colorFilter = null
+                    icon.alpha = if (selected) 1f else 0.78f
+                }
+            } else if (animated && changing && startColor != target) {
                 ValueAnimator.ofObject(colorEvaluator, startColor, target).apply {
                     duration = Anim.DURATION_MEDIUM
                     addUpdateListener { value ->
@@ -359,11 +375,54 @@ class GlassBottomBar @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         backdrop.requestRefresh(immediate = true)
+        startGlowPulse()
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        glowAnimator?.cancel()
         backdrop.release()
+    }
+
+    /** AI 光晕的呼吸动画（很轻，2.6 秒一个来回）。 */
+    private fun startGlowPulse() {
+        if (!Anim.enabled(context) || glowAnimator != null) return
+        glowAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 2600L
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+            interpolator = android.view.animation.LinearInterpolator()
+            addUpdateListener {
+                glowPulse = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    /** Gemini 风格的多色光晕：蓝 → 紫 → 粉 → 透明。 */
+    private fun drawAiGlow(canvas: Canvas, h: Float) {
+        if (aiTabIndex !in items.indices) return
+        val item = items[aiTabIndex]
+        if (item.width <= 0) return
+        val cx = item.left + item.width / 2f
+        val cy = h * 0.44f
+        val radius = h * (1.25f + 0.12f * glowPulse)
+        val alphaScale = 0.78f + 0.22f * glowPulse
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.shader = RadialGradient(
+            cx, cy, radius,
+            intArrayOf(
+                withAlpha(AI_BLUE, (110 * alphaScale).toInt()),
+                withAlpha(AI_PURPLE, (86 * alphaScale).toInt()),
+                withAlpha(AI_PINK, (58 * alphaScale).toInt()),
+                0x00000000
+            ),
+            floatArrayOf(0f, 0.35f, 0.62f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        canvas.drawCircle(cx, cy, radius, paint)
+        paint.shader = null
     }
 
     // ---------- 绘制 ----------
@@ -391,6 +450,9 @@ class GlassBottomBar @JvmOverloads constructor(
         // 3) 网格底噪
         gridPaint.alpha = 255
         canvas.drawRect(0f, 0f, w, h, gridPaint)
+
+        // 3.5) AI 标签的彩色光晕（画在图标下面、玻璃上面）
+        drawAiGlow(canvas, h)
 
         // 4) 选中项：指示线 + 辉光
         if (selectedIndex != NO_TAB) {
@@ -436,6 +498,11 @@ class GlassBottomBar @JvmOverloads constructor(
     private companion object {
         /** 子页面：底栏不指向任何标签。 */
         const val NO_TAB = -1
+
+        /** Gemini 近似配色：蓝 / 紫 / 粉。 */
+        const val AI_BLUE = 0x4285F4
+        const val AI_PURPLE = 0x9B72CB
+        const val AI_PINK = 0xD96570
 
         /** 网格底噪：48×48 的预渲染 tile，平铺即可，不用每帧画线。 */
         val gridTile: Bitmap by lazy {
