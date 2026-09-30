@@ -240,6 +240,13 @@ class MainActivity : AppCompatActivity() {
         ) {
             open(DeviceInspectActivity::class.java)
         }
+        addEntryCard(
+            "温度监控",
+            "各热区实时温度 + 长期记录与导出",
+            R.drawable.ic_module_sensor
+        ) {
+            open(com.rjy.xyz.apps.xyzinfo.ui.thermal.ThermalActivity::class.java)
+        }
     }
 
     /**

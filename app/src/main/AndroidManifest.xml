@@ -56,6 +56,7 @@
         <activity android:name=".ui.env.EnvironmentCheckActivity" />
         <activity android:name=".ui.inspect.DeviceInspectActivity" />
         <activity android:name=".ui.fish.FishAiActivity" />
+        <activity android:name=".ui.thermal.ThermalActivity" />
         <activity android:name=".ui.hardware.HardwareMoreActivity" />
         <activity
             android:name=".ui.hardware.ScreenTestActivity"
