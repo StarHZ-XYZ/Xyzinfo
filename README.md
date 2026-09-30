@@ -1,109 +1,193 @@
-# XyzInfo（星幻终 设备信息）
+# XyzInfo（星幻终 · 设备信息）
 
-一个基于 Android Studio 开发的 Android 手机硬件参数检测工具。
+一个用 Kotlin 写的 Android 设备信息 / 硬件检测工具：把芯片、内存、屏幕、电池、传感器、通信、
+定位这些散落在系统节点里的参数整理成看得懂的页面，再补上性能测试、硬件测试、环境检测、
+AI 验机解读和温度长期监控。**不需要 root**。
 
-## 当前版本
+* 包名：`com.rjy.xyz.apps.xyzinfo`
+* 当前版本：**v1.0.0**（versionCode 10）
+* 支持：Android 7.0（API 24）及以上，targetSdk 36
+* 更新日志：[CHANGELOG.md](CHANGELOG.md)
 
-v0.5（性能测试 + 芯片库全量补齐 + 系统识别，详见 [CHANGELOG.md](CHANGELOG.md)）
+## 下载安装
 
-## 已实现功能
+到 [Releases](https://github.com/StarHZ-XYZ/Xyzinfo/releases) 下载最新 APK，直接覆盖安装即可，升级保留数据。
 
-- SoC 信息：中文芯片名 / 品牌图标 / 大小核结构 / 每核心频率 / GPU / 图形接口
-- RAM 信息：标称容量与实测总量 / 占用率 / 堆信息 / Swap·ZRAM / 内存类型与 DDR 频率
-- 屏幕信息：分辨率 / 尺寸 / 密度 / 刷新率档位 / 触控 / HDR / 广色域
-- 电池信息：电量 / 容量 / 电流 / 电压 / 温度 / 循环次数（每秒刷新）
-- 传感器信息：热区温度 + 硬件传感器清单
-- 系统信息：版本 / 安全补丁 / Build 标识 / 存储 / Root / Treble
-- 系统识别：澎湃OS、MIUI、ColorOS、realme UI、OxygenOS、OriginOS / Funtouch、One UI、
-  鸿蒙 / EMUI、Flyme、MagicOS、类原生等
-- 性能测试：CPU（单核整数 / 浮点 / 压缩 / 多核）与 GPU（离屏 OpenGL ES）跑分，
-  并与内置的 60 款参考处理器分数对比
-- 深色模式：跟随系统自动切换，全部页面使用同一套语义化配色
+| 包 | 说明 |
+| --- | --- |
+| `XyzInfo-v1.0.0-release.apk` | **加固版**（R8 混淆 + 反调试 + 签名校验），发布用，体积更小 |
+| `XyzInfo-v1.0.0-debug.apk` | 调试版（未混淆），需要抓日志 / 定位问题时用 |
 
-## 界面与配色
+两个包用同一把密钥签名，可以互相覆盖安装。
 
-- 配色定义在 `res/values/colors.xml`（浅色）与 `res/values-night/colors.xml`（深色），
-  布局里只引用 `@color/*`，因此深色模式无需额外代码。
-- 主题在 `res/values/themes.xml` 里只写一份，状态栏图标明暗由 `values-night/bools.xml` 切换。
-- 信息行统一用 `ui/common/InfoRow.kt` 渲染：标签次要色、数值加粗。
+## 功能总览
+
+### 设备信息（首页八个入口）
+
+| 页面 | 内容 |
+| --- | --- |
+| CPU / SoC | 中文芯片名、品牌徽标、大小核结构、逐核心频率、GPU 与图形接口 |
+| RAM | 标称 / 实测容量、占用率、堆信息、Swap / ZRAM、内存类型与 DDR 频率 |
+| 屏幕 | 分辨率、尺寸、密度、刷新率档位、触控、HDR、广色域 |
+| 电池 | 电量、容量、电流、电压、温度、循环次数（每秒刷新） |
+| 传感器与热区 | 硬件传感器清单（含动态传感器标记）+ 热区温度 |
+| 通信 | 基带、运营商、信号强度、小区信息、网络类型 |
+| 系统 | 版本、安全补丁、Build 标识、存储、Root、Treble，以及澎湃 OS / MIUI / ColorOS / OriginOS / One UI / 鸿蒙 等系统识别 |
+| GPS 定位 | 实时定位数据、卫星天顶图 + 指南针、内置多国离线地图、收音机探测 |
+
+### 性能与榜单
+
+* **CPU 测试**：按时间跑满 60 秒以上，8 项负载，输出单核整数 / 浮点 / 压缩 / 多核与稳定性、1% low。
+* **GPU 测试**：离屏 OpenGL ES 压力测试 + 帧率曲线。
+* **内存测试**：顺序带宽、随机访问延迟、分配速率，与 CPU / GPU 同一刻度计分。
+* **排行榜**：数据取自极客湾公开榜单，支持综合 / 单核 / 多核 / GPU 与品牌筛选，本机实测结果插入榜单对比。
+
+### 硬件测试
+
+* 屏幕：坏点纯色循环（白 / 红 / 绿 / 蓝 / 黑 / 灰）、触摸轨迹绘制 + 网格参照、多点触控计数。
+* 扬声器：用 AudioTrack **现场合成** C5-E5-G5-C6 正弦旋律（不打包音频文件），左右声道都出声。
+* 麦克风：AudioRecord 实时电平条 + 峰值。
+* 振动：轻震 / 长震 / 节奏波形，高振幅 + 闹钟用途。
+* 摄像头：比例与角度修正、自动对焦、前后摄与多镜头（广角 / 长焦）切换。
+* NFC：支持与开启状态检测，可跳系统设置。
+* **一键测试**：把上面这些串起来跑一遍。
+
+### 大肥鱼（AI）
+
+底栏正中间的 AI 入口，两种用法：
+
+* **API Key 直连**：填自己的 DeepSeek Key，直接解读本机验机报告（Key 用 AndroidKeyStore 加密存储）。
+* **官方免费版**：在**软件内**用系统 WebView 登录 chat.deepseek.com，登录态保存在本应用里；
+  进页面会自动把验机报告复制到剪贴板，长按输入框粘贴就能提问。
+
+**大肥鱼验机**：13 类检查（芯片 / 机型名 / 内存差额 / 传感器 / 系统签名 / 环境 / 存储 / 刷新率 /
+无线硬件 / 摄像头 / 架构 / 系统版本 / 形态）+ 几十条结论库，最后给一段总结。
+
+图标来自用户提供的原图，由脚本自动矢量化生成（保持 474:349 原比例，栅格化回比 IoU = 1.0000）。
+
+### 温度监控
+
+* 环形温度表 + 大字实时温度，1 小时 / 24 小时 / 7 天 / 30 天曲线。
+* **温度浮窗**：前台服务 + 悬浮窗，每分钟落盘一条 CSV，退出应用也继续记录；浮窗可拖动、通知栏可一键关闭。
+
+### 环境检测
+
+root 痕迹、SELinux、调试状态、模拟器特征、Xposed、分身应用、用户 CA 证书 —— **分级清单 + 逐条证据**，
+不做"吓人式"结论，每条都给出可核验的原始信息。
+
+### 外观与动效
+
+* **底栏**：实时轻微高斯模糊（滚动时内容在玻璃里跟着动）+ 跟手滑动切换 + 手指辉光跟随渐变变色。
+* 四季氛围（雪花 / 枫叶 / 花瓣 / 阳光，默认开启、可手动锁定）、点击粒子效果。
+* 必应每日壁纸（可开关、可换往期、蒙版浓度可调）、主页宫格 / 列表两种样式。
+* 莫奈取色（跟随系统主题色）与深色模式三档（跟随系统 / 浅色 / 深色）。
+* **大肥鱼主题**：不改配色，只在每个页面右下角摆一条大肥鱼，轻轻浮动摆尾，不挡内容、不吃点击。
+* 子页面隐藏底栏、左上角圆形返回按钮；启动动画页 + 开屏预加载（进首页时数据已就绪）。
+
+## 隐私与联网
+
+应用**默认不联网**，也没有广告 / 统计 SDK。只有下面几种情况会联网，且都由你主动触发：
+
+| 操作 | 去向 |
+| --- | --- |
+| 机型库 / 排行榜更新 | 多个公开镜像，只下载数据，不上传任何信息 |
+| 必应每日壁纸 | 必应公开接口 |
+| 「让大肥鱼解读」 | 把**验机报告摘要**发给你自己配置的 DeepSeek API |
+| DeepSeek 免费版页面 | 系统 WebView 打开官方网页，登录信息存在本应用内 |
+
+本地验机、硬件测试、传感器、温度记录都在设备内完成（温度记录存在应用私有目录的 CSV）。
+
+## 安全加固（1.0 起）
+
+* release 打开 **R8 混淆 + 资源压缩**：类名 / 方法名 / 字段名全部重命名并收敛到一个包，
+  去掉行号与源文件名，反编译只剩没有语义的骨架。
+* **调试器检测**：挂上 jdwp 或被 ptrace 直接结束进程。
+* **签名校验**：比对安装包签名证书 SHA-256，改包重签名的版本起不来。
+* **敏感数据加密**：DeepSeek API Key 用 AndroidKeyStore 里的 AES-256-GCM 密钥加密后落盘，
+  密钥由系统保管；旧版明文会自动迁移，迁移前先做「加密 → 解密」自检。
+* 清单加固：`allowBackup=false`、`usesCleartextTraffic=false`、`extractNativeLibs=false`。
+
+> 说明：客户端加固只能抬高逆向成本，做不到"绝对防破解"；需要真正保密的逻辑应该放在服务端。
+
+## 技术栈
+
+* Kotlin（Java 11 兼容级别）+ ViewBinding，**没有 Room / Retrofit 之类的重型依赖**
+* Material 3（`Theme.Material3.DayNight.NoActionBar`），浅色 / 深色两套语义化配色
+* AGP 9 + Gradle 9 构建；Robolectric + JUnit 做 JVM 单元测试（含 19 个页面的渲染自检）
 
 ## 项目结构
 
-重构后按「界面 / 数据 / 模型 / 工具」四层拆分，每个检测页面只负责展示：
-
 ```
 app/src/main/java/com/rjy/xyz/apps/xyzinfo/
-├── MainActivity.kt              首页：设备概要 + 各页面入口
-├── ui/                          界面层（Activity）
-│   ├── soc/SocInfoActivity.kt
-│   ├── ram/RamInfoActivity.kt
-│   ├── screen/ScreenInfoActivity.kt
-│   ├── battery/BatteryInfoActivity.kt
-│   ├── sensor/SensorInfoActivity.kt
-│   └── system/SystemInfoActivity.kt
-├── data/                        数据层：读取系统节点并组装模型
-│   ├── DeviceOverviewProvider.kt
-│   ├── SocInfoProvider.kt
-│   ├── RamInfoProvider.kt
-│   ├── ScreenInfoProvider.kt
-│   ├── BatteryInfoProvider.kt
-│   ├── SensorInfoProvider.kt
-│   ├── SystemInfoProvider.kt
-│   └── soc/SocSpecRepository.kt + soc/SocSpec.kt   SoC 规格库与匹配算法
-├── model/                       模型层：不可变数据类与枚举
-│   ├── DeviceOverview.kt / SocInfo.kt / RamInfo.kt / ScreenInfo.kt
-│   └── BatteryInfo.kt / SensorInfo.kt / SystemInfo.kt
-└── util/                        工具层
-    ├── ProcFs.kt                /proc、/sys 节点读取，统一容错
-    ├── Formats.kt               字节 / 频率 / 温度 / 电流等格式化
-    ├── DeviceFacts.kt           Build 与 /proc/cpuinfo 字段整理
-    └── Labels.kt                枚举值 → 中文文案
+├── MainActivity.kt                 首页：设备概要 + 各页面入口（宫格 / 列表）
+├── XyzInfoApp.kt                   Application：深色模式、莫奈取色、安全防护
+├── ui/                             界面层（每个页面一个 Activity）
+│   ├── splash/                     启动动画 + 开屏预加载
+│   ├── soc/ ram/ screen/ battery/ sensor/ telephony/ system/   七个信息页
+│   ├── gps/                        定位：实时数据 + 卫星天顶图 + 离线地图
+│   ├── benchmark/                  跑分与排行榜
+│   ├── hardware/                   硬件测试（屏幕 / 音频 / 振动 / 摄像头 / NFC）
+│   ├── env/                        环境检测可视化页
+│   ├── inspect/                    大肥鱼验机
+│   ├── fish/                       大肥鱼 AI（API Key / 软件内登录免费版）
+│   ├── thermal/                    温度监控与浮窗服务
+│   ├── misc/                       杂项工具（反应力 / 随机密码 / 手电筒）
+│   ├── settings/ about/            设置、更新日志
+│   └── common/                     底栏、玻璃背景、动效层、主题色等公共组件
+├── data/                           数据层：读系统节点、组装模型、持久化
+│   ├── *Provider.kt                各页面的数据来源
+│   ├── DeviceInspector / EnvironmentCheck     验机与环境检测内核
+│   ├── BrandLogoCatalog / LocalMapRepository / ThermalLogger
+│   ├── SettingsRepository / SecureStore       设置与加密存储
+│   └── SecurityGuard.kt            反调试 / 签名校验
+├── model/                          模型层：不可变数据类与枚举
+└── util/                           /proc、/sys 读取、格式化与中文文案
 ```
 
-数据流单向：`Provider 读取系统 → Model 承载数据 → Activity 渲染文案`。
-界面文案与单位换算全部集中在 `util`，新增机型适配只需要改 `data`。
+数据流单向：`Provider 读系统 → Model 承载 → Activity 渲染`。适配新机型基本只需要改 `data/`。
 
-## 开发环境
+## 编译与测试
 
-- Android Studio
-- Kotlin（Java 11 兼容级别）
-- minSdk 24 / targetSdk 36
-- 已启用 ViewBinding，无额外依赖
+用 Android Studio 打开工程直接运行，或者：
 
-## 编译
-
-用 Android Studio 打开工程直接运行，或执行：
-
-```
-./gradlew assembleDebug
+```bash
+./gradlew assembleDebug          # 调试包
+./gradlew assembleRelease        # 加固包（R8 混淆）
+./gradlew testDebugUnitTest      # JVM 单元测试 + 页面渲染自检
 ```
 
-## 测试
+> 小坑：AGP / Gradle 在**含中文的工程路径**下会报错。如果克隆路径里有中文，
+> 先把工程复制到一个纯英文目录再构建（本仓库就是用一个复制到临时目录的脚本构建的）。
 
-纯逻辑（格式化、SoC 匹配算法、热区归类）有 JVM 单元测试：
+## 版本历史（摘要）
 
-```
-./gradlew testDebugUnitTest
-```
+| 版本 | 主要内容 |
+| --- | --- |
+| **1.0.0** | 大肥鱼验机 / AI 助手（含软件内登录免费版）、温度浮窗与长期曲线、环境检测页、图标矢量化、大肥鱼主题、安全加固 |
+| 0.9.0 | 图标扁平化、莫奈取色全局生效、深色模式三档、硬件测试（屏幕 / 音频 / 振动 / 摄像头 / NFC）、环境检测内核、杂项工具 |
+| 0.8.0 | 必应壁纸、品牌徽标、设备形态识别、四季氛围、内存测试、17 张离线地图 |
+| 0.7.0 | 丝滑动画、底栏重做、CPU / GPU 测试按 60 秒重写、排行榜换极客湾数据、GPS 页 |
+| 0.6 及更早 | 奠基：SoC / RAM / 屏幕 / 电池 / 传感器 / 系统识别、机型库 |
 
-## 项目目标
+完整内容见 [CHANGELOG.md](CHANGELOG.md)。
 
-做一个界面清晰、能持续迭代的手机参数检测工具，并逐步完善硬件识别能力。
+## 已知限制
+
+* 部分机型不允许读取 `/sys/class/thermal`，热区与温度监控会显示"读不到"。
+* 跑分受温度、后台活动与系统调度影响很大，同一台机器不同次结果会有波动，仅供参考。
+* 排行榜数据来自极客湾公开榜单，是**参考值**，不代表官方跑分。
+* 「DeepSeek 免费版」用的是官方网页版，页面策略变化可能影响使用；必要时可用页面里的
+  「用系统浏览器打开」，或者直接配置 API Key。
 
 ## 后续计划
 
-- 布局中的硬编码中文文案下沉到 `strings.xml`
-- SoC 规格库补充更多机型，并把规格数据改成可更新的资源文件
-- 为 `data` 层的解析逻辑补充单元测试
-
-## 截图
-
-后续补充。
+**1.+ / 2.+ 版本敬请期待。**
 
 ## 作者
 
-星幻终(xyz)
+星幻终（xyz）
 
 ## 开源协议
 
-MIT
+MIT。本工具为非官方项目，与任何手机厂商、芯片厂商无隶属关系；识别的机型 / 芯片信息来自公开资料，
+如与官方数据有出入，以官方为准。
