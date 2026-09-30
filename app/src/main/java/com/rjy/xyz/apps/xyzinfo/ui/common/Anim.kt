@@ -228,3 +228,17 @@ fun TextView.animateTextColor(from: Int, to: Int, duration: Long = Anim.DURATION
 fun View.smoothScrollToTop() {
     if (this is ScrollView) smoothScrollTo(0, 0)
 }
+
+/** 大号数字滚动（验机评分这种独立大字用这个，不走 InfoRow 的标签样式）。 */
+fun Anim.countUpText(view: android.widget.TextView, target: Int, duration: Long = 780L) {
+    if (!Anim.enabled(view.context)) {
+        view.text = target.toString()
+        return
+    }
+    android.animation.ValueAnimator.ofInt(0, target).apply {
+        this.duration = duration
+        interpolator = android.view.animation.PathInterpolator(0.05f, 0.7f, 0.1f, 1f)
+        addUpdateListener { view.text = (it.animatedValue as Int).toString() }
+        start()
+    }
+}

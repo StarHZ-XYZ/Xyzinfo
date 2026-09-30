@@ -21,6 +21,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.hardware.ScreenTestActivity
 import com.rjy.xyz.apps.xyzinfo.ui.hardware.HardwareMoreActivity
 import com.rjy.xyz.apps.xyzinfo.ui.misc.MiscActivity
 import com.rjy.xyz.apps.xyzinfo.ui.env.EnvironmentCheckActivity
+import com.rjy.xyz.apps.xyzinfo.ui.inspect.DeviceInspectActivity
 import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
 import com.rjy.xyz.apps.xyzinfo.ui.ram.RamInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
@@ -231,6 +232,13 @@ class MainActivity : AppCompatActivity() {
             R.drawable.ic_module_system
         ) {
             open(EnvironmentCheckActivity::class.java)
+        }
+        addEntryCard(
+            "大肥鱼验机",
+            "汇总全部检测项，一条结论 + 逐条证据",
+            R.drawable.ic_module_benchmark
+        ) {
+            open(DeviceInspectActivity::class.java)
         }
     }
 
