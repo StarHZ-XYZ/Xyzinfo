@@ -12,6 +12,8 @@
     <!-- 硬件测试：扬声器/麦克风/摄像头 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 硬件测试：振动 -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- 更新前先判断有没有网络，省得用户对着「正在检查…」白等 -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 

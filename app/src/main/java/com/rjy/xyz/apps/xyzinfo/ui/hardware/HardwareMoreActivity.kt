@@ -47,6 +47,9 @@ class HardwareMoreActivity : AppCompatActivity() {
     private var audioRecord: AudioRecord? = null
     private var micRunning = false
     private var camera: Camera? = null
+    /** 当前使用的摄像头 id 与全部可选镜头（前摄/后摄/广角/长焦在系统里就是不同 id）。 */
+    private var cameraId = 0
+    private var lensRow: android.widget.LinearLayout? = null
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
@@ -249,19 +252,23 @@ class HardwareMoreActivity : AppCompatActivity() {
     }
 
     private fun vibrate(vibrator: Vibrator, millis: Long) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(
-                VibrationEffect.createOneShot(millis, VibrationEffect.DEFAULT_AMPLITUDE)
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(millis)
+        // 包一层 runCatching：个别机型/系统会把振动当受限能力，抛异常也不该把页面搞崩
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(
+                    VibrationEffect.createOneShot(millis, VibrationEffect.DEFAULT_AMPLITUDE)
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(millis)
+            }
         }
     }
 
     // ---------- 摄像头 ----------
 
     private fun setupCamera() {
+        buildLensButtons()
         binding.btnCamera.setOnClickListener {
             Anim.pressFeedback(it)
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -272,6 +279,62 @@ class HardwareMoreActivity : AppCompatActivity() {
                 permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
             }
         }
+    }
+
+    /**
+     * 枚举设备上的所有摄像头，做成一行可点的镜头按钮。
+     *
+     * 现在的手机把前摄、后摄主摄、超广角、长焦都注册成**独立摄像头 id**，
+     * 旧 Camera API 也能列出来，所以这里直接按 id 全列出来让用户切。
+     */
+    @Suppress("DEPRECATION")
+    private fun buildLensButtons() {
+        val parent = binding.btnCamera.parent as? android.widget.LinearLayout ?: return
+        val count = runCatching { Camera.getNumberOfCameras() }.getOrDefault(0)
+        if (count <= 1) return
+        val density = resources.displayMetrics.density
+        val row = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (10 * density).toInt() }
+        }
+        for (id in 0 until count) {
+            val info = Camera.CameraInfo().also { Camera.getCameraInfo(id, it) }
+            val label = when (info.facing) {
+                Camera.CameraInfo.CAMERA_FACING_FRONT -> "前摄"
+                else -> if (id == 0) "后摄" else "镜头 $id"
+            }
+            val button = com.google.android.material.button.MaterialButton(
+                this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle
+            ).apply {
+                text = label
+                textSize = 12f
+                isAllCaps = false
+                setTextColor(
+                    ContextCompat.getColor(this@HardwareMoreActivity, R.color.text_primary)
+                )
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f
+                ).apply { marginEnd = (6 * density).toInt() }
+                setOnClickListener {
+                    if (cameraId != id) {
+                        cameraId = id
+                        stopCamera()
+                        if (ContextCompat.checkSelfPermission(
+                                this@HardwareMoreActivity, Manifest.permission.CAMERA
+                            ) == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            toggleCamera()
+                        }
+                    }
+                }
+            }
+            row.addView(button)
+        }
+        parent.addView(row, parent.indexOfChild(binding.btnCamera))
+        lensRow = row
     }
 
     @Suppress("DEPRECATION")
@@ -299,17 +362,45 @@ class HardwareMoreActivity : AppCompatActivity() {
     private fun openCamera(surface: SurfaceTexture) {
         if (camera != null) return
         val opened = runCatching {
-            val instance = Camera.open()
+            val instance = Camera.open(cameraId)
+            val info = Camera.CameraInfo().also { Camera.getCameraInfo(cameraId, it) }
+            instance.setDisplayOrientation(displayOrientation(info, cameraId))
             instance.setPreviewTexture(surface)
             instance.startPreview()
             instance
         }.getOrNull()
         if (opened == null) {
-            binding.btnCamera.text = "摄像头打开失败"
+            binding.btnCamera.text = "镜头 $cameraId 打开失败"
             return
         }
         camera = opened
-        binding.btnCamera.text = "关闭预览"
+        binding.btnCamera.text = "关闭预览（当前镜头 $cameraId）"
+    }
+
+    /**
+     * 算预览需要旋转的角度。
+     *
+     * 旧 Camera API 的预览默认是「传感器方向」，竖屏下必然歪，必须自己按
+     * 摄像头方向 + 屏幕旋转角算一遍；前摄还要做镜像处理（公式来自官方文档）。
+     */
+    @Suppress("DEPRECATION")
+    private fun displayOrientation(info: Camera.CameraInfo, id: Int): Int {
+        val rotation = runCatching {
+            (getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager)
+                .defaultDisplay.rotation
+        }.getOrDefault(android.view.Surface.ROTATION_0)
+        val degrees = when (rotation) {
+            android.view.Surface.ROTATION_90 -> 90
+            android.view.Surface.ROTATION_180 -> 180
+            android.view.Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        return if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            val result = (info.orientation + degrees) % 360
+            (360 - result) % 360
+        } else {
+            (info.orientation - degrees + 360) % 360
+        }
     }
 
     @Suppress("DEPRECATION")
