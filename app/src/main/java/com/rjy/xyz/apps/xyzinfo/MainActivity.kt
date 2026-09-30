@@ -287,7 +287,16 @@ class MainActivity : AppCompatActivity() {
         }
         val icon = android.widget.ImageView(this).apply {
             setImageResource(iconRes)
-            scaleType = android.widget.ImageView.ScaleType.CENTER
+            /*
+             * 矢量图标（24dp 内建尺寸）用 CENTER，和 XML 里那些卡片保持一致；
+             * 位图图标（比如大肥鱼那张 512px 的 PNG）必须用 FIT_CENTER，
+             * 否则会按原始像素尺寸居中绘制，在 42dp 底板里被裁得只剩一块。
+             */
+            scaleType = if (drawable is android.graphics.drawable.BitmapDrawable) {
+                android.widget.ImageView.ScaleType.FIT_CENTER
+            } else {
+                android.widget.ImageView.ScaleType.CENTER
+            }
             background = androidx.core.content.ContextCompat.getDrawable(
                 this@MainActivity, R.drawable.bg_icon_tile
             )
