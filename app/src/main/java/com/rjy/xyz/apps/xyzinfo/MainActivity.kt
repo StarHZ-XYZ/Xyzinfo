@@ -232,6 +232,8 @@ class MainActivity : AppCompatActivity() {
                     if (row == 3) 0 else gap / 2
                 )
             }
+            // 统一最小高度：8 张卡片内容差不多，加上这个下限后每一行的高度完全一致
+            card.minimumHeight = (112 * density).toInt()
             grid.addView(card)
         }
         /*
