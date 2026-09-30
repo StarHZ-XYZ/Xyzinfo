@@ -20,7 +20,8 @@ object SettingsRepository {
     private const val KEY_PARTICLES = "touch_particles"
     private const val KEY_BING_WALLPAPER = "bing_wallpaper"
     private const val KEY_WALLPAPER_SCRIM = "wallpaper_scrim"
-    private const val KEY_FOLLOW_SYSTEM_COLOR = "follow_system_color"
+private const val KEY_FOLLOW_SYSTEM_COLOR = "follow_system_color"
+private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
     private const val KEY_SEASON_EFFECT = "season_effect"
     private const val KEY_SEASON_MODE = "season_mode"
     private const val KEY_HOME_GRID = "home_grid_style"
@@ -102,6 +103,22 @@ object SettingsRepository {
 
     fun setFollowSystemColor(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_FOLLOW_SYSTEM_COLOR, enabled).apply()
+    }
+
+    // ---------- 大肥鱼主题（角落装饰） ----------
+
+    /**
+     * 是否开启「大肥鱼主题」。
+     *
+     * 注意：这个主题**不改任何配色**（用户明确要求），只是在每个页面的角落
+     * 摆一条可爱的大肥鱼当装饰（轻微浮动，不挡内容、不吃点击）。
+     * 默认关。
+     */
+    fun deepSeekTheme(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_DEEPSEEK_THEME, false)
+
+    fun setDeepSeekTheme(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_DEEPSEEK_THEME, enabled).apply()
     }
 
     // ---------- 四季氛围效果 ----------

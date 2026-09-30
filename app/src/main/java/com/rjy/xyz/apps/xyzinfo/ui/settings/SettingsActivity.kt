@@ -66,6 +66,18 @@ class SettingsActivity : AppCompatActivity() {
             recreate()
         }
 
+        binding.switchDeepSeekTheme.isChecked = SettingsRepository.deepSeekTheme(this)
+        binding.switchDeepSeekTheme.setOnCheckedChangeListener { _, checked ->
+            SettingsRepository.setDeepSeekTheme(this, checked)
+            Toast.makeText(
+                this,
+                if (checked) "已开启大肥鱼主题：每页角落会有条大肥鱼" else "已关闭大肥鱼主题",
+                Toast.LENGTH_SHORT
+            ).show()
+            // 装饰是建页面时挂上去的，重建一次立即生效
+            recreate()
+        }
+
         binding.switchSeason.isChecked = SettingsRepository.seasonEffectEnabled(this)
         buildDarkModeChips()
         updateSeasonHint()

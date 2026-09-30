@@ -173,6 +173,81 @@ object GlassScaffold {
             marginEnd = sideMargin
             bottomMargin = baseBottomMargin
         }
+
+        /*
+         * 大肥鱼主题：在每个页面的角落摆一条大肥鱼。
+         *
+         * 用户要求得很明确：**不改任何配色**，只是放一条可爱的大肥鱼。
+         * 所以这里只加一个 ImageView：不点用（isClickable=false，触摸事件会穿透到
+         * 下面的列表/滚动视图）、不挡内容（放在底栏上方或右下角、半透明）、
+         * 有动画总开关时做很轻的上下浮动 + 摆尾。
+         */
+        if (SettingsRepository.deepSeekTheme(activity)) {
+            val fishDensity = activity.resources.displayMetrics.density
+            val fishWidth = (56 * fishDensity).toInt()
+            val fishHeight = (fishWidth * 349f / 474f).toInt() // 和矢量图标同比例
+            val fish = android.widget.ImageView(activity).apply {
+                setImageResource(R.drawable.ic_deepseek_fish)
+                scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                alpha = 0.92f
+                isClickable = false
+                isFocusable = false
+                importantForAccessibility =
+                    android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                layoutParams = FrameLayout.LayoutParams(fishWidth, fishHeight).apply {
+                    gravity = Gravity.BOTTOM or Gravity.END
+                    marginEnd = (12 * fishDensity).toInt()
+                    // 有底栏的页面抬到玻璃上方；子页面（没有底栏）就贴着右下角
+                    bottomMargin = if (currentTab == TAB_NONE) {
+                        (18 * fishDensity).toInt()
+                    } else {
+                        reserved + (6 * fishDensity).toInt()
+                    }
+                }
+            }
+            container.addView(fish)
+
+            if (SettingsRepository.animationsEnabled(activity)) {
+                val bob = android.animation.ObjectAnimator.ofFloat(
+                    fish, "translationY", 0f, -5f * fishDensity
+                ).apply {
+                    duration = 1700L
+                    repeatCount = android.animation.ValueAnimator.INFINITE
+                    repeatMode = android.animation.ValueAnimator.REVERSE
+                    interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                }
+                val sway = android.animation.ObjectAnimator.ofFloat(
+                    fish, "rotation", -3.5f, 3.5f
+                ).apply {
+                    duration = 2400L
+                    repeatCount = android.animation.ValueAnimator.INFINITE
+                    repeatMode = android.animation.ValueAnimator.REVERSE
+                    interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                    // 以"尾巴"那一侧为轴轻轻摆，看起来像在游
+                    startDelay = 300L
+                }
+                (activity as? androidx.lifecycle.LifecycleOwner)?.lifecycle?.addObserver(
+                    androidx.lifecycle.LifecycleEventObserver { _, event ->
+                        when (event) {
+                            androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
+                                bob.start()
+                                sway.start()
+                            }
+
+                            androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> {
+                                bob.cancel()
+                                sway.cancel()
+                                fish.translationY = 0f
+                                fish.rotation = 0f
+                            }
+
+                            else -> Unit
+                        }
+                    }
+                )
+            }
+        }
+
         container.addView(bar, barParams)
 
         // 底栏要浮在系统手势条上方：把导航栏高度补进底边距

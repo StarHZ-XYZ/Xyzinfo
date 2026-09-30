@@ -126,6 +126,22 @@
                     android:layout_height="wrap_content"
                     android:text="Android 12 及以上按系统壁纸生成配色，作用于按钮、开关、滑块、水波纹与系统栏；关掉保持应用自己的青绿" />
 
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchDeepSeekTheme"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:minHeight="46dp"
+                    android:text="大肥鱼主题"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="不改配色，只在每个页面的角落摆一条可爱的大肥鱼（轻微浮动，不挡内容也不吃点击）" />
+
                 <TextView
                     style="@style/Text.SectionSubtitle"
                     android:layout_width="match_parent"

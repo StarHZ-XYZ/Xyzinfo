@@ -38,4 +38,5 @@ class XyzInfoApp : Application() {
         if (!SettingsRepository.followSystemColor(this)) return
         DynamicColors.applyToActivitiesIfAvailable(this)
     }
+
 }
