@@ -58,6 +58,10 @@ class DeviceInspectActivity : AppCompatActivity() {
                     report.verdict + "\n风险 " + report.riskCount + " 项 ｜ 注意 " +
                         report.noticeCount + " 项 ｜ 共 " + report.findings.size + " 项检查"
                 )
+                // 结论库：命中的每条都按序号列出来（没命中时是通用结论）
+                binding.tvInspectSummary.text = "【总结】\n" + report.summaries
+                    .mapIndexed { index, line -> "${index + 1}. $line" }
+                    .joinToString("\n\n")
                 render(report.findings)
             }
         }, "xyzinfo-inspect").start()

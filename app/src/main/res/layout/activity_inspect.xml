@@ -81,6 +81,16 @@
                     android:textColor="@color/text_on_accent"
                     android:textSize="14sp"
                     app:cornerRadius="12dp" />
+
+                <TextView
+                    android:id="@+id/tvInspectSummary"
+                    style="@style/Text.Row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_row_panel"
+                    android:padding="14dp"
+                    android:text="正在生成总结…" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
