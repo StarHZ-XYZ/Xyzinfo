@@ -14,6 +14,7 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
+import com.rjy.xyz.apps.xyzinfo.data.LocalMapRepository
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -31,6 +32,8 @@ class OfflineMapView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
     private var map: Bitmap? = null
+    /** 当前使用的地图包（世界 / 国家 / 区域），按定位自动切换。 */
+    private var pack: LocalMapRepository.MapPack = LocalMapRepository.WORLD
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply { isFilterBitmap = true }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val markerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -72,12 +75,26 @@ class OfflineMapView @JvmOverloads constructor(
     }
 
     private fun loadMap() {
-        map = runCatching {
-            context.assets.open(MAP_ASSET).use { BitmapFactory.decodeStream(it) }
-        }.getOrNull()
+        map?.recycle()
+        map = LocalMapRepository.load(context, pack)
     }
 
+    /** 经度 → 图内横向比例（按当前地图包自己的 bbox 换算）。 */
+    private fun fx(lon: Double): Float = ((lon - pack.left) / pack.spanLon).toFloat()
+
+    /** 纬度 → 图内纵向比例。 */
+    private fun fy(lat: Double): Float = ((pack.top - lat) / pack.spanLat).toFloat()
+
+    /** 当前地图包名字（界面提示用）。 */
+    val currentPackLabel: String get() = pack.label
+
     fun updatePosition(lat: Double?, lon: Double?, accuracy: Float, recenter: Boolean = false) {
+        // 位置落在哪个地图包里就用哪张图：国家优先于区域，最后兜底世界地图
+        val target = LocalMapRepository.findFor(lat, lon)
+        if (target.code != pack.code) {
+            pack = target
+            loadMap()
+        }
         latitude = lat
         longitude = lon
         accuracyMeters = accuracy
@@ -141,10 +158,8 @@ class OfflineMapView @JvmOverloads constructor(
             var left: Float
             var top: Float
             if (followPosition && lat != null && lon != null) {
-                val fx = ((lon + 180.0) / 360.0).toFloat()
-                val fy = ((90.0 - lat) / 180.0).toFloat()
-                left = width / 2f - drawWidth * fx
-                top = height / 2f - drawHeight * fy
+                left = width / 2f - drawWidth * fx(lon)
+                top = height / 2f - drawHeight * fy(lat)
             } else {
                 left = (width - drawWidth) / 2f + panX
                 top = (height - drawHeight) / 2f + panY
@@ -218,8 +233,8 @@ class OfflineMapView @JvmOverloads constructor(
     private fun drawMarker(canvas: Canvas, rect: RectF) {
         val lat = latitude ?: return
         val lon = longitude ?: return
-        val x = rect.left + rect.width() * ((lon + 180.0) / 360.0).toFloat()
-        val y = rect.top + rect.height() * ((90.0 - lat) / 180.0).toFloat()
+        val x = rect.left + rect.width() * fx(lon)
+        val y = rect.top + rect.height() * fy(lat)
         val density = resources.displayMetrics.density
 
         if (accuracyMeters > 0f) {
