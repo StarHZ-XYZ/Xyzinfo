@@ -262,22 +262,61 @@ class HardwareMoreActivity : AppCompatActivity() {
      * 这类振动不受"触摸反馈"开关影响。
      */
     private fun vibrate(vibrator: Vibrator, millis: Long, strong: Boolean) {
-        runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val amplitude = if (vibrator.hasAmplitudeControl()) {
-                    if (strong) 255 else 180
-                } else {
-                    VibrationEffect.DEFAULT_AMPLITUDE
-                }
-                vibrateWithAlarmAttributes(
-                    vibrator,
-                    VibrationEffect.createOneShot(millis, amplitude)
-                )
+        val times = if (strong) 2 else 1
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val amplitude = if (vibrator.hasAmplitudeControl()) {
+                if (strong) 255 else 200
             } else {
-                @Suppress("DEPRECATION")
-                vibrator.vibrate(millis)
+                VibrationEffect.DEFAULT_AMPLITUDE
             }
+            val effect = VibrationEffect.createOneShot(millis, amplitude)
+            // 参数设成"重复 times 次"的波形：单次短震动在部分 ROM 上会被吞，重复更容易有感觉
+            val waveform = LongArray(times * 2 - 1).also { array ->
+                for (index in 0 until times) {
+                    array[index * 2] = if (index == 0) 0L else 120L
+                    if (index * 2 + 1 < array.size) array[index * 2 + 1] = millis
+                }
+            }
+            val patternEffect = runCatching {
+                VibrationEffect.createWaveform(waveform, -1)
+            }.getOrNull()
+
+            // 依次尝试：闹钟用途 → 普通 → 传统 pattern（有的 ROM 只认某一种）
+            var done = runCatching {
+                vibrateWithAlarmAttributes(vibrator, patternEffect ?: effect); true
+            }.getOrDefault(false)
+            if (!done) {
+                done = runCatching { vibrator.vibrate(patternEffect ?: effect); true }.getOrDefault(false)
+            }
+            if (!done) {
+                @Suppress("DEPRECATION")
+                runCatching { vibrator.vibrate(waveform, -1) }
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            runCatching { vibrator.vibrate(millis) }
         }
+        reportVibrateState(vibrator)
+    }
+
+    /**
+     * 把振动相关的系统状态显示出来 —— "点了没感觉"很多时候不是应用的问题，
+     * 而是系统处于静音、或者机型不支持振幅控制。
+     */
+    private fun reportVibrateState(vibrator: Vibrator) {
+        val ringer = runCatching {
+            (getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager).ringerMode
+        }.getOrDefault(android.media.AudioManager.RINGER_MODE_NORMAL)
+        val ringerText = when (ringer) {
+            android.media.AudioManager.RINGER_MODE_SILENT -> "静音（系统可能禁止振动）"
+            android.media.AudioManager.RINGER_MODE_VIBRATE -> "振动模式"
+            else -> "响铃"
+        }
+        binding.tvSpeakerState.setInfoRow(
+            "已触发振动 ｜ 马达：" + (if (vibrator.hasVibrator()) "有" else "无") +
+                " ｜ 振幅控制：" + (if (vibrator.hasAmplitudeControl()) "支持" else "不支持") +
+                " ｜ 铃声模式：" + ringerText
+        )
     }
 
     /** 用闹钟用途提交振动：优先级最高，不会被系统的"触摸反馈"开关拦掉。 */
@@ -394,9 +433,11 @@ class HardwareMoreActivity : AppCompatActivity() {
             val instance = Camera.open(cameraId)
             applyFocusMode(instance)
             val info = Camera.CameraInfo().also { Camera.getCameraInfo(cameraId, it) }
-            instance.setDisplayOrientation(displayOrientation(info, cameraId))
+            val rotation = displayOrientation(info, cameraId)
+            instance.setDisplayOrientation(rotation)
             instance.setPreviewTexture(surface)
             instance.startPreview()
+            applyPreviewAspect(instance, rotation)
             // 连续对焦不生效的机型，预览启动后再补一次单次对焦
             runCatching { instance.autoFocus(null) }
             instance
@@ -407,6 +448,29 @@ class HardwareMoreActivity : AppCompatActivity() {
         }
         camera = opened
         binding.btnCamera.text = "关闭预览（当前镜头 $cameraId）"
+    }
+
+    /**
+     * 按摄像头实际的预览比例调整 TextureView 高度。
+     *
+     * 之前高度被写死 220dp，而预览是 4:3 / 16:9，硬拉伸就会"画面畸形"。
+     * 这里读 parameters.previewSize，按宽高比算高度；预览被旋转 90/270 度时比例要倒过来。
+     */
+    @Suppress("DEPRECATION")
+    private fun applyPreviewAspect(instance: Camera, rotation: Int = 0) {
+        val size = runCatching { instance.parameters.previewSize }.getOrNull() ?: return
+        val ratio = if (rotation == 90 || rotation == 270) {
+            size.width.toFloat() / size.height
+        } else {
+            size.height.toFloat() / size.width
+        }
+        binding.textureCamera.post {
+            val width = binding.textureCamera.width
+            if (width <= 0) return@post
+            val params = binding.textureCamera.layoutParams
+            params.height = (width * ratio).toInt()
+            binding.textureCamera.layoutParams = params
+        }
     }
 
     /**
