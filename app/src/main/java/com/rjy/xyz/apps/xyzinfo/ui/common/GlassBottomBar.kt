@@ -106,8 +106,6 @@ class GlassBottomBar @JvmOverloads constructor(
     private var tintShader: LinearGradient? = null
     private var glowShader: RadialGradient? = null
     private var fishGlowShader: RadialGradient? = null
-    private var touchShaderAccent: RadialGradient? = null
-    private var touchShaderAi: RadialGradient? = null
     private var touchRadius = 0f
     /** 手指当前所在的 x（底栏坐标系）与按下辉光强度 0~1。 */
     private var touchX = 0f
@@ -159,10 +157,23 @@ class GlassBottomBar @JvmOverloads constructor(
         icons.clear()
         labels.clear()
         tabs.forEachIndexed { index, tab ->
+            val iconHeight = dp(21f).toInt()
             val icon = ImageView(context).apply {
                 setImageResource(tab.iconRes)
-                setColorFilter(colorIdle)
-                layoutParams = LayoutParams(dp(21f).toInt(), dp(21f).toInt())
+                if (index == aiTabIndex) {
+                    /*
+                     * 大肥鱼用的是"宽比高长"的原图比例（474:349）。
+                     * 如果和别的标签一样塞进 21dp 正方形，它会被压成很小一条，
+                     * 高度只有 15dp 左右，看着就是没对齐。
+                     * 这里给它 28dp 宽的框 + FIT_CENTER：宽度撑开、**高度和其它图标一致**，
+                     * 文字行位置也不变（图标高度仍是 21dp）。
+                     */
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    layoutParams = LayoutParams(dp(28f).toInt(), iconHeight)
+                } else {
+                    setColorFilter(colorIdle)
+                    layoutParams = LayoutParams(iconHeight, iconHeight)
+                }
             }
             val label = TextView(context).apply {
                 text = tab.title
@@ -205,10 +216,11 @@ class GlassBottomBar @JvmOverloads constructor(
             val startColor = if (selected) colorIdle else colorSelected
 
             if (index == aiTabIndex) {
-                // AI 图标保留原色（彩色鲸鱼），只靠透明度区分选中态
+                // AI 图标保留原色（矢量蓝鲸鱼），并且**始终保持满不透明**——
+                // 它本身就是彩色图标，压到 60% 会发灰发脏，反而看不清。
                 icons.getOrNull(index)?.let { icon ->
                     icon.colorFilter = null
-                    icon.alpha = if (selected) 1f else 0.78f
+                    icon.alpha = 1f
                 }
                 // 「大肥鱼」文字始终保留，选中时染成 AI 蓝，和描边呼应
                 labels.getOrNull(index)?.let { label ->
@@ -230,7 +242,7 @@ class GlassBottomBar @JvmOverloads constructor(
                 labels.getOrNull(index)?.setTextColor(target)
             }
 
-            val alpha = if (selected) 1f else 0.6f
+            val alpha = if (index == aiTabIndex || selected) 1f else 0.6f
             val scale = if (selected) 1.04f else 1f
             item.animate().cancel()
             if (animated) {
@@ -406,29 +418,24 @@ class GlassBottomBar @JvmOverloads constructor(
             floatArrayOf(0f, 0.42f, 1f),
             Shader.TileMode.CLAMP
         )
-        /*
-         * 手指辉光：手指按在底栏上，指下浮起一团柔光，颜色**跟着那一格走**——
-         * 滑到大肥鱼那一格就是大肥鱼的蓝紫色，其它格子用主题强调色。
-         * Shader 只建一次，绘制时用 canvas.translate 挪到手指位置。
-         */
+        // 手指辉光的半径（颜色在绘制时按手指位置混合，见 touchShader()）
         touchRadius = (h * 1.35f).coerceAtLeast(w / 5f * 0.8f)
-        touchShaderAccent = RadialGradient(
-            0f, 0f, touchRadius,
-            intArrayOf(withAlpha(colorLine, 0x6E), withAlpha(colorLine, 0x26), 0x00000000),
-            floatArrayOf(0f, 0.45f, 1f),
-            Shader.TileMode.CLAMP
-        )
-        touchShaderAi = RadialGradient(
-            0f, 0f, touchRadius,
-            intArrayOf(withAlpha(AI_BLUE, 0x7A), withAlpha(AI_PURPLE, 0x33), 0x00000000),
-            floatArrayOf(0f, 0.45f, 1f),
-            Shader.TileMode.CLAMP
-        )
+        touchShaderCache = null
+        touchShaderKey = 0
         backdrop.requestRefresh(immediate = true)
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
         super.onLayout(changed, l, t, r, b)
+        // 描边位图要等图标量出尺寸才能生成；没生成就再排一次重绘，
+        // 免得关掉动画时（没有呼吸动画驱动 invalidate）它一直不出现。
+        val iconWidth = icons.getOrNull(aiTabIndex)?.width ?: 0
+        val iconHeight = icons.getOrNull(aiTabIndex)?.height ?: 0
+        if (aiStroke == null ||
+            (iconWidth > 0 && (aiStrokeIconWidth != iconWidth || aiStrokeIconHeight != iconHeight))
+        ) {
+            invalidate()
+        }
         val widthNow = r - l
         val widthChanged = widthNow != lastLaidOutWidth
         lastLaidOutWidth = widthNow
@@ -473,54 +480,158 @@ class GlassBottomBar @JvmOverloads constructor(
     /**
      * AI 图标的**整体描边**（不是外面套一个圆圈）。
      *
-     * 做法：把同一个鲸鱼图案**放大一圈**、染成 AI 配色画在图标下面，
-     * 露出来的那一圈就是"沿轮廓的发光描边"；叠两层（外层蓝、内层紫）做出渐变感，
-     * 再让整体做很轻的呼吸缩放。因为只是把位图放大重绘，硬件加速下也能正常工作
-     * （BlurMaskFilter 在硬件层会被忽略，所以不用它）。
+     * 参照 Gemini 的做法：**贴着图案轮廓的细描边 + 平滑的颜色渐变**，
+     * 不是把图案放大几层叠色块（那种会一圈一圈的色带，看着很突兀）。
+     *
+     * 具体做法：
+     * 1. 先把鲸鱼图案渲染成纯白剪影（只取 alpha 形状）；
+     * 2. 把剪影沿圆周平移一整圈 → 数学上的"膨胀"，得到**真正贴轮廓**的一条细边
+     *    （半径只有 1.15dp，所以是细描边，不是色块）；
+     * 3. 颜色用 **SweepGradient（扫描渐变）**绕图标中心一圈：
+     *    蓝 → 紫 → 粉 → 紫 → 蓝，颜色沿周长连续过渡，没有分段色带；
+     * 4. 外面再补一层半径 2.1dp、alpha 只有 38 的极淡同色辉光，让描边"发光"但不糊。
+     *
+     * 整张描边**预渲染成一张位图**（只在图标尺寸变化时重建），每帧只 drawBitmap 一次，
+     * 硬件加速下稳定可见、开销极低。绘制时机还是父容器 onDraw（在子 View 图标下面）。
      */
     private fun drawAiOutline(canvas: Canvas, h: Float) {
         if (aiTabIndex !in items.indices) return
         val item = items[aiTabIndex]
         val icon = icons.getOrNull(aiTabIndex) ?: return
         if (item.width <= 0 || icon.width <= 0) return
-        val source = aiOutlineDrawable ?: ContextCompat
-            .getDrawable(context, R.drawable.ic_deepseek_fish)
-            ?.also { aiOutlineDrawable = it } ?: return
-
-        // 图标在底栏里的实际中心（item 有 padding，所以要加上 icon 自己的偏移）
+        val stroke = ensureAiStroke(icon.width, icon.height) ?: return
         val cx = item.left + icon.left + icon.width / 2f
         val cy = item.top + icon.top + icon.height / 2f
-        val baseHalf = icon.width / 2f
-        val breath = 1f + 0.05f * glowPulse
-
-        /*
-         * 三层描边，从外到内：粉 → 紫 → 蓝。
-         *
-         * 上一版只用了蓝 1.28× 和紫 1.15×，而且鲸鱼本身也是蓝的，
-         * 叠上去对比度太低、外圈只有 1~3px，所以肉眼几乎看不到。
-         * 现在把倍数拉到 1.55 / 1.38 / 1.22，颜色换成高对比的粉紫蓝，
-         * 最外层还给一个更淡的扩散层，形成明显的"发光描边"。
-         */
-        listOf(
-            Triple(AI_PINK, 1.62f, 60),
-            Triple(AI_PINK, 1.55f, 95),
-            Triple(AI_PURPLE, 1.36f, 150),
-            Triple(AI_BLUE, 1.22f, 210)
-        ).forEach { (color, scale, alpha) ->
-            source.setColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN)
-            val half = baseHalf * scale * breath
-            source.setBounds(
-                (cx - half).toInt(), (cy - half).toInt(),
-                (cx + half).toInt(), (cy + half).toInt()
-            )
-            source.alpha = alpha
-            source.draw(canvas)
-            source.alpha = 255
-        }
-        source.setColorFilter(null)
+        // 很轻的呼吸（±3%），只让描边"活着"，不改变形状
+        val breath = 1f + 0.03f * glowPulse
+        val checkpoint = canvas.save()
+        canvas.scale(breath, breath, cx, cy)
+        paint.shader = null
+        paint.alpha = 255
+        canvas.drawBitmap(stroke, cx - stroke.width / 2f, cy - stroke.height / 2f, paint)
+        canvas.restoreToCount(checkpoint)
     }
 
-    private var aiOutlineDrawable: android.graphics.drawable.Drawable? = null
+    /**
+     * 预渲染 AI 细描边位图：白剪影 → 圆周膨胀 → 扫描渐变上色。
+     * 只有图标尺寸变化时才重建。
+     */
+    private fun ensureAiStroke(iconWidth: Int, iconHeight: Int): Bitmap? {
+        val cached = aiStroke
+        if (cached != null && !cached.isRecycled &&
+            aiStrokeIconWidth == iconWidth && aiStrokeIconHeight == iconHeight
+        ) {
+            return cached
+        }
+        cached?.recycle()
+
+        val pad = dp(3.6f).toInt().coerceAtLeast(3)
+        // 底栏里大肥鱼图标是「宽比高长」的（原图比例），所以描边位图要按图标真实方位算，
+        // 但位图本身用正方形，扫描渐变才是圆的。
+        val boxW = iconWidth + pad * 2
+        val boxH = iconHeight + pad * 2
+        val box = maxOf(boxW, boxH)
+        val offX = (box - boxW) / 2f
+        val offY = (box - boxH) / 2f
+        val source = ContextCompat.getDrawable(context, R.drawable.ic_deepseek_fish) ?: return null
+
+        // 图标在 ImageView 里的实际绘制区域（FIT_CENTER），描边要贴合它
+        val iw = source.intrinsicWidth.takeIf { it > 0 } ?: iconWidth
+        val ih = source.intrinsicHeight.takeIf { it > 0 } ?: iconHeight
+        val fit = minOf(iconWidth.toFloat() / iw, iconHeight.toFloat() / ih)
+        val drawW = iw * fit
+        val drawH = ih * fit
+        val drawLeft = offX + pad + (iconWidth - drawW) / 2f
+        val drawTop = offY + pad + (iconHeight - drawH) / 2f
+        val artRect = android.graphics.RectF(
+            drawLeft, drawTop, drawLeft + drawW, drawTop + drawH
+        )
+
+        // 1) 纯白剪影（只取形状，颜色稍后由扫描渐变统一给）
+        val mask = Bitmap.createBitmap(box, box, Bitmap.Config.ARGB_8888)
+        val maskCanvas = Canvas(mask)
+        source.setColorFilter(android.graphics.Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN)
+        source.setBounds(
+            artRect.left.toInt(), artRect.top.toInt(),
+            artRect.right.toInt(), artRect.bottom.toInt()
+        )
+        source.draw(maskCanvas)
+        source.setColorFilter(null)
+
+        // 2) 膨胀成环：先画纯白的膨胀层，再把剪影挖掉 → 只剩贴着轮廓的一圈
+        val ring = Bitmap.createBitmap(box, box, Bitmap.Config.ARGB_8888)
+        val ringCanvas = Canvas(ring)
+        val whitePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        whitePaint.color = android.graphics.Color.WHITE
+        val src = android.graphics.Rect(0, 0, mask.width, mask.height)
+        // 先铺一层极淡的外辉光（大圈、低透明），再压上细描边
+        whitePaint.alpha = 38
+        scatterRing(ringCanvas, mask, src, whitePaint, dp(2.3f))
+        whitePaint.alpha = 255
+        scatterRing(ringCanvas, mask, src, whitePaint, dp(1.15f))
+        /*
+         * 关键一步：把剪影本身**挖空**。
+         *
+         * 膨胀之后得到的是"整条鱼"，如果不挖空，这层彩色就会垫在鱼身下面；
+         * 而底栏未选中项只有 60% 不透明度，颜色会从鱼身里透出来，把图标糊成一团
+         * （上一版就是这个问题）。挖空之后只剩贴着轮廓的那一圈细边，
+         * 鱼身保持自己的颜色，描边才真的像 Gemini 那样"描"在外面。
+         */
+        val punch = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        punch.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_OUT)
+        ringCanvas.drawBitmap(mask, null, artRect, punch)
+        punch.xfermode = null
+
+        /*
+         * 3) 上色。
+         *
+         * 注意：`canvas.drawBitmap(位图, …, paint)` **不会**用 paint 上的渐变着色器
+         * 给位图重新上色（真机导出的诊断图证明它老老实实画了白色），
+         * 所以这里是先把扫描渐变铺满整张位图，再用描边环当作"蒙版"抠出来（DST_IN）——
+         * 这样描边的颜色才是蓝→紫→粉连续的渐变。
+         */
+        val out = Bitmap.createBitmap(box, box, Bitmap.Config.ARGB_8888)
+        val outCanvas = Canvas(out)
+        val half = box / 2f
+        val gradientPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        gradientPaint.shader = SweepGradient(
+            half, half,
+            intArrayOf(AI_BLUE, AI_PURPLE, AI_PINK, AI_PURPLE, AI_BLUE),
+            floatArrayOf(0f, 0.25f, 0.5f, 0.75f, 1f)
+        )
+        outCanvas.drawRect(0f, 0f, box.toFloat(), box.toFloat(), gradientPaint)
+        val keepPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        keepPaint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN)
+        outCanvas.drawBitmap(ring, 0f, 0f, keepPaint)
+        keepPaint.xfermode = null
+        ring.recycle()
+        mask.recycle()
+
+        aiStroke = out
+        aiStrokeIconWidth = iconWidth
+        aiStrokeIconHeight = iconHeight
+        return out
+    }
+
+    /** 把剪影沿圆周平移一整圈 = 形态学膨胀，得到一条贴着轮廓的边。 */
+    private fun scatterRing(canvas: Canvas, mask: Bitmap, src: android.graphics.Rect, paint: Paint, radius: Float) {
+        if (radius <= 0.4f) return
+        val steps = 40
+        for (i in 0 until steps) {
+            val angle = Math.PI * 2 * i / steps
+            val dx = (radius * kotlin.math.cos(angle)).toInt()
+            val dy = (radius * kotlin.math.sin(angle)).toInt()
+            canvas.drawBitmap(
+                mask, src,
+                android.graphics.Rect(dx, dy, dx + mask.width, dy + mask.height),
+                paint
+            )
+        }
+    }
+
+    private var aiStroke: Bitmap? = null
+    private var aiStrokeIconWidth = 0
+    private var aiStrokeIconHeight = 0
 
     // ---------- 绘制 ----------
 
@@ -551,19 +662,18 @@ class GlassBottomBar @JvmOverloads constructor(
         // 3.5) AI 图标的整体发光描边（放大一圈画在图标下面）
         drawAiOutline(canvas, h)
 
-        // 3.5) 手指辉光：颜色跟着手指所在的那一格走（大肥鱼那一格是 AI 蓝紫）
+        /*
+         * 3.5) 手指辉光：颜色**渐变**着跟着手指走。
+         *
+         * 早先按"落在哪一格"直接切色，手指划过格子边界时颜色会"啪"地一下变蓝，很突兀。
+         * 现在改成按手指到大肥鱼格中心的距离算混合量：
+         *   正中心 = 100% AI 蓝紫；离得越远越低；一格宽以外 = 0%。
+         * 两套 shader 按这个比例互相淡入淡出，于是从首页滑到大肥鱼是一路渐变过去的。
+         */
         if (touchGlow > 0.01f) {
-            val shader = if (indexAt(touchX) == aiTabIndex) touchShaderAi else touchShaderAccent
-            if (shader != null) {
-                paint.shader = shader
-                paint.alpha = (255 * touchGlow).toInt().coerceIn(0, 255)
-                canvas.save()
-                canvas.translate(touchX, h * 0.5f)
-                canvas.drawCircle(0f, 0f, touchRadius, paint)
-                canvas.restore()
-                paint.alpha = 255
-                paint.shader = null
-            }
+            val mix = aiMixAt(touchX)
+            val base = (255 * touchGlow).toInt().coerceIn(0, 255)
+            drawTouchGlow(canvas, h, touchShader(mix), base)
         }
 
         // 4) 选中项：指示线 + 辉光
@@ -598,6 +708,63 @@ class GlassBottomBar @JvmOverloads constructor(
 
     private fun withAlpha(color: Int, alpha: Int): Int =
         (color and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
+
+    /**
+     * 手指位置对应的 AI 配色混合量。
+     *
+     * 大肥鱼格正中心 = 1，离得越远越低，**一格半**宽以外才归零，
+     * 并且用 smoothstep 把两头"抹平"，所以从首页慢慢滑过去是一路渐变过去的，
+     * 不会在格子边界上"啪"地跳成蓝色。
+     */
+    private fun aiMixAt(x: Float): Float {
+        if (aiTabIndex !in items.indices) return 0f
+        val cell = items.firstOrNull()?.width?.toFloat() ?: return 0f
+        if (cell <= 0f) return 0f
+        val center = centerOf(aiTabIndex)
+        if (center <= 0f) return 0f
+        val t = (1f - kotlin.math.abs(x - center) / (cell * 1.5f)).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
+    }
+
+    private fun drawTouchGlow(canvas: Canvas, h: Float, shader: RadialGradient?, alpha: Int) {
+        if (shader == null || alpha <= 0) return
+        paint.shader = shader
+        paint.alpha = alpha.coerceIn(0, 255)
+        canvas.save()
+        canvas.translate(touchX, h * 0.5f)
+        canvas.drawCircle(0f, 0f, touchRadius, paint)
+        canvas.restore()
+        paint.alpha = 255
+        paint.shader = null
+    }
+
+    /**
+     * 手指辉光的着色器：颜色 = 主题强调色 与 大肥鱼蓝紫 **按 [mix] 混合**。
+     *
+     * 以前是两个着色器各画一遍互相淡出，中间那段会叠亮、看起来还是"跳"；
+     * 现在直接把颜色混出来只画一次，颜色随手指连续变化。
+     * 混合量量化到 1/64，避免每帧都重建着色器。
+     */
+    private fun touchShader(mix: Float): RadialGradient {
+        val quantized = (mix * 64f).toInt().coerceIn(0, 64) / 64f
+        val primary = colorEvaluator.evaluate(quantized, colorLine, AI_BLUE) as Int
+        val secondary = colorEvaluator.evaluate(quantized, colorLine, AI_PURPLE) as Int
+        val key = primary * 31 + secondary
+        val cached = touchShaderCache
+        if (cached != null && touchShaderKey == key) return cached
+        val shader = RadialGradient(
+            0f, 0f, touchRadius,
+            intArrayOf(withAlpha(primary, 0x74), withAlpha(secondary, 0x30), 0x00000000),
+            floatArrayOf(0f, 0.45f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        touchShaderCache = shader
+        touchShaderKey = key
+        return shader
+    }
+
+    private var touchShaderCache: RadialGradient? = null
+    private var touchShaderKey = 0
 
     private fun dp(value: Float): Float = value * resources.displayMetrics.density
 

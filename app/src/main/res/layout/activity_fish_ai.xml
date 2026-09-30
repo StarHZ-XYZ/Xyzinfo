@@ -86,7 +86,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="打开 DeepSeek 官方免费版（需登录）"
+                    android:text="在软件内登录 DeepSeek 免费版"
                     android:textColor="?attr/colorPrimary"
                     android:textSize="13sp"
                     app:cornerRadius="12dp"

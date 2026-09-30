@@ -82,7 +82,8 @@ class FishAiActivity : AppCompatActivity() {
                 "还没有可用的 DeepSeek API Key。\n\n" +
                     "两种用法：\n" +
                     "1) 到「设置 → 大肥鱼助手」里填入 API Key，就能在这里直接得到解读；\n" +
-                    "2) 直接用下面的「打开 DeepSeek 官方免费版」，登录后把报告粘过去问。"
+                    "2) 点下面「在软件内登录 DeepSeek 免费版」：报告会自动复制到剪贴板，" +
+                    "登录后长按输入框粘贴就能免费问。"
             return
         }
         val question = binding.etFishQuestion.text?.toString().orEmpty().ifBlank {
@@ -137,9 +138,22 @@ class FishAiActivity : AppCompatActivity() {
         }.getOrElse { "返回格式异常：$body" }
     }
 
+    /**
+     * 免费版：直接在**软件内**用系统 WebView 打开 DeepSeek 官方网页版。
+     *
+     * 用 WebView 而不是跳外部浏览器，是因为登录态（Cookie）会保存在本应用里，
+     * 登录一次之后回来就是已登录状态，免费版可以一直用；
+     * 同时顺手把验机报告复制到剪贴板，进页面长按输入框粘贴就能提问。
+     */
     private fun openWeb() {
         runCatching {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chat.deepseek.com/")))
+            startActivity(
+                Intent(this, DeepSeekWebActivity::class.java)
+                    .putExtra(DeepSeekWebActivity.EXTRA_COPY_REPORT, true)
+            )
+        }.onFailure {
+            // 极端情况下（WebView 被系统禁用）退回到外部浏览器
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DeepSeekWebActivity.URL_DEEPSEEK)))
         }
     }
 }

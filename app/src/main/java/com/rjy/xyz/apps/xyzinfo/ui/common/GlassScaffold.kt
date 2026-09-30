@@ -38,6 +38,7 @@ object GlassScaffold {
     fun tabs(): List<GlassBottomBar.Tab> = listOf(
         GlassBottomBar.Tab(R.drawable.ic_nav_home, "首页"),
         GlassBottomBar.Tab(R.drawable.ic_nav_benchmark, "跑分"),
+        // 大肥鱼图标 = 用户桌面那张图自动矢量化后的 VectorDrawable（ic_deepseek_fish.xml）
         GlassBottomBar.Tab(R.drawable.ic_deepseek_fish, "大肥鱼"),
         GlassBottomBar.Tab(R.drawable.ic_nav_ranking, "排行"),
         GlassBottomBar.Tab(R.drawable.ic_nav_settings, "设置")

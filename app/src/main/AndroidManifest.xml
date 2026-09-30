@@ -61,6 +61,11 @@
         <activity android:name=".ui.env.EnvironmentCheckActivity" />
         <activity android:name=".ui.inspect.DeviceInspectActivity" />
         <activity android:name=".ui.fish.FishAiActivity" />
+        <!-- 大肥鱼 · DeepSeek 免费版（软件内 WebView 登录） -->
+        <activity
+            android:name=".ui.fish.DeepSeekWebActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:hardwareAccelerated="true" />
         <activity android:name=".ui.thermal.ThermalActivity" />
         <service
             android:name=".ui.thermal.ThermalOverlayService"
