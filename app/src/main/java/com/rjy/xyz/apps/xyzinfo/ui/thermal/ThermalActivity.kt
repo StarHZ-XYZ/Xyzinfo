@@ -15,6 +15,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
+import java.util.Locale
 
 /**
  * 温度监控页（数据层 + 实时显示 + 长期记录）。
@@ -56,6 +57,19 @@ class ThermalActivity : AppCompatActivity() {
         binding.root.applySystemBarPadding()
         GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_NONE)
 
+        /*
+         * 按用户要求做减法：页面只保留「大字实时温度 + 曲线」。
+         * - 原来那一长串逐热区数字列表，改成一个大号温度（显示当前最高温 + 是哪个热区）；
+         * - 历史统计那张卡整张隐藏（连卡片一起藏，不留空盒子）。
+         */
+        val density = resources.displayMetrics.density
+        binding.tvThermalNow.textSize = 44f
+        binding.tvThermalNow.gravity = android.view.Gravity.CENTER
+        binding.tvThermalNow.setTextColor(ContextCompat.getColor(this, R.color.accent))
+        binding.tvThermalNow.setPadding(0, (20 * density).toInt(), 0, (20 * density).toInt())
+        binding.tvThermalNow.setLineSpacing(6f * density, 1f)
+        (binding.tvThermalHistory.parent as? android.view.View)?.visibility = android.view.View.GONE
+
         binding.btnToggleLogging.setOnClickListener {
             Anim.pressFeedback(it)
             logging = !logging
@@ -84,7 +98,6 @@ class ThermalActivity : AppCompatActivity() {
             )
         }
         handler.post(refresh)
-        showHistory()
         buildRangeChips()
         renderChart()
     }
@@ -162,9 +175,10 @@ class ThermalActivity : AppCompatActivity() {
         Thread({
             val zones = runCatching { ThermalLogger.readZones() }.getOrDefault(emptyList())
             val text = if (zones.isEmpty()) {
-                "读不到热区（部分机型限制读取 /sys/class/thermal）"
+                "—\n读不到热区（部分机型限制读取 /sys/class/thermal）"
             } else {
-                zones.joinToString("\n") { "${it.name}：${"%.1f".format(it.celsius)} ℃" }
+                val hottest = zones.first()
+                String.format(Locale.US, "%.1f ℃", hottest.celsius) + "\n当前最高温 · " + hottest.name
             }
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
