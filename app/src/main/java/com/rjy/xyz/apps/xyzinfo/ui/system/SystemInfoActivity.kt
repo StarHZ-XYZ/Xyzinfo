@@ -8,6 +8,7 @@ import com.rjy.xyz.apps.xyzinfo.databinding.ActivitySystemInfoBinding
 import com.rjy.xyz.apps.xyzinfo.model.RomInfo
 import com.rjy.xyz.apps.xyzinfo.model.SystemInfo
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.common.AndroidVersionIcon
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
@@ -48,6 +49,18 @@ class SystemInfoActivity : AppCompatActivity() {
         tvSystemSubTitle.text = "系统版本、设备标识、存储与环境总览"
 
         tvAndroidVersion.setInfoRow("Android 版本：${info.androidRelease}")
+        // 给每个安卓版本配上对应的"甜点 / 吉祥物"图标（2.2 ~ 17 全覆盖）
+        tvAndroidVersion.setCompoundDrawablesWithIntrinsicBounds(
+            AndroidVersionIcon.drawable(
+                this@SystemInfoActivity,
+                android.os.Build.VERSION.SDK_INT,
+                (16 * resources.displayMetrics.density).toInt()
+            ),
+            null,
+            null,
+            null
+        )
+        tvAndroidVersion.compoundDrawablePadding = (8 * resources.displayMetrics.density).toInt()
         tvApiLevel.setInfoRow("API 等级：${info.apiLevel}")
         tvBuildId.setInfoRow("Build ID：${info.buildId}")
         tvSecurityPatch.setInfoRow("安全补丁：${info.securityPatch}")
