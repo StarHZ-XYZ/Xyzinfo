@@ -201,6 +201,9 @@ class MainActivity : AppCompatActivity() {
         val gap = (10 * density).toInt()
         val grid = android.widget.GridLayout(this).apply {
             columnCount = 2
+            // 关掉系统默认边距，否则不同行列的间距会不一致
+            useDefaultMargins = false
+            alignmentMode = android.widget.GridLayout.ALIGN_BOUNDS
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -210,15 +213,17 @@ class MainActivity : AppCompatActivity() {
             val row = index / 2
             val column = index % 2
             card.layoutParams = android.widget.GridLayout.LayoutParams().apply {
+                // 宽高都给 0 + 行列都带权重：同行同列严格等宽等高，宫格才整齐
                 width = 0
-                height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-                rowSpec = android.widget.GridLayout.spec(row)
+                height = 0
+                rowSpec = android.widget.GridLayout.spec(row, 1f)
                 columnSpec = android.widget.GridLayout.spec(column, 1f)
+                // 卡片之间统一留 gap，外侧不留边（相邻卡片各出一半，正好等于 gap）
                 setMargins(
                     if (column == 0) 0 else gap / 2,
-                    if (row == 0) 0 else gap,
+                    if (row == 0) 0 else gap / 2,
                     if (column == 1) 0 else gap / 2,
-                    0
+                    if (row == 3) 0 else gap / 2
                 )
             }
             grid.addView(card)
