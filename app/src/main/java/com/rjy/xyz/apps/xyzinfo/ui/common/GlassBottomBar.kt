@@ -403,45 +403,47 @@ class GlassBottomBar @JvmOverloads constructor(
     }
 
     /**
-     * AI 标签的光晕：**描边式光环**（不是一片色块）。
+     * AI 图标的**整体描边**（不是外面套一个圆圈）。
      *
-     * 一圈用 SweepGradient 做出来的彩色细环（蓝→紫→粉→蓝），外面再罩一层同色柔光，
-     * 像"发光描边"；呼吸只做很轻的透明度变化。
+     * 做法：把同一个鲸鱼图案**放大一圈**、染成 AI 配色画在图标下面，
+     * 露出来的那一圈就是"沿轮廓的发光描边"；叠两层（外层蓝、内层紫）做出渐变感，
+     * 再让整体做很轻的呼吸缩放。因为只是把位图放大重绘，硬件加速下也能正常工作
+     * （BlurMaskFilter 在硬件层会被忽略，所以不用它）。
      */
-    private fun drawAiRim(canvas: Canvas, h: Float) {
+    private fun drawAiOutline(canvas: Canvas, h: Float) {
         if (aiTabIndex !in items.indices) return
         val item = items[aiTabIndex]
-        if (item.width <= 0) return
-        val density = resources.displayMetrics.density
-        val cx = item.left + item.width / 2f
-        val cy = h * 0.42f
-        val radius = min(item.width * 0.30f, 23f * density)
-        val alphaScale = 0.82f + 0.18f * glowPulse
+        val icon = icons.getOrNull(aiTabIndex) ?: return
+        if (item.width <= 0 || icon.width <= 0) return
+        val source = aiOutlineDrawable ?: ContextCompat
+            .getDrawable(context, R.drawable.ic_deepseek_fish)
+            ?.also { aiOutlineDrawable = it } ?: return
 
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
-        paint.shader = SweepGradient(
-            cx, cy,
-            intArrayOf(
-                withAlpha(AI_BLUE, (205 * alphaScale).toInt()),
-                withAlpha(AI_PURPLE, (190 * alphaScale).toInt()),
-                withAlpha(AI_PINK, (175 * alphaScale).toInt()),
-                withAlpha(AI_BLUE, (205 * alphaScale).toInt())
-            ),
-            floatArrayOf(0f, 0.34f, 0.68f, 1f)
-        )
-        // 外圈柔光：宽一点、淡一点，做出"发光"的扩散感
-        paint.strokeWidth = 7.5f * density
-        paint.alpha = 52
-        canvas.drawCircle(cx, cy, radius, paint)
-        paint.strokeWidth = 3.5f * density
-        paint.alpha = 110
-        canvas.drawCircle(cx, cy, radius, paint)
-        // 内圈细而清晰的一笔，像描边
-        paint.strokeWidth = 1.8f * density
-        paint.alpha = 255
-        canvas.drawCircle(cx, cy, radius, paint)
-        paint.shader = null
+        // 图标在底栏里的实际中心（item 有 padding，所以要加上 icon 自己的偏移）
+        val cx = item.left + icon.left + icon.width / 2f
+        val cy = item.top + icon.top + icon.height / 2f
+        val baseHalf = icon.width / 2f
+        val breath = 1f + 0.05f * glowPulse
+
+        // 外层偏蓝、内层偏紫，两层露出的部分就是渐变描边
+        listOf(
+            Triple(AI_BLUE, 1.28f, 78),
+            Triple(AI_PURPLE, 1.15f, 105)
+        ).forEach { (color, scale, alpha) ->
+            source.setColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN)
+            val half = baseHalf * scale * breath
+            source.setBounds(
+                (cx - half).toInt(), (cy - half).toInt(),
+                (cx + half).toInt(), (cy + half).toInt()
+            )
+            source.alpha = alpha
+            source.draw(canvas)
+            source.alpha = 255
+        }
+        source.setColorFilter(null)
     }
+
+    private var aiOutlineDrawable: android.graphics.drawable.Drawable? = null
 
     // ---------- 绘制 ----------
 
@@ -469,8 +471,8 @@ class GlassBottomBar @JvmOverloads constructor(
         gridPaint.alpha = 255
         canvas.drawRect(0f, 0f, w, h, gridPaint)
 
-        // 3.5) AI 标签的描边光晕（画在图标外面、玻璃上面）
-        drawAiRim(canvas, h)
+        // 3.5) AI 图标的整体发光描边（放大一圈画在图标下面）
+        drawAiOutline(canvas, h)
 
         // 4) 选中项：指示线 + 辉光
         if (selectedIndex != NO_TAB) {
