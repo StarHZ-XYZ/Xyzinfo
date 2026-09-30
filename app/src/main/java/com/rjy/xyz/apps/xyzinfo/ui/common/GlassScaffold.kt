@@ -73,6 +73,8 @@ object GlassScaffold {
         // Activity 已经 setContentView 过一次，root 现在挂在 decor 的 content 上，
         // 必须先摘下来才能塞进新容器，否则会抛「child already has a parent」。
         (content.parent as? ViewGroup)?.removeView(content)
+        // 必应壁纸必须画在内容**下面**：先铺壁纸 + 蒙版，再加内容
+        applyWallpaper(activity, container, content)
         container.addView(
             content,
             FrameLayout.LayoutParams(
@@ -173,6 +175,43 @@ object GlassScaffold {
         ViewCompat.requestApplyInsets(container)
         animateEntrance(content)
         return bar
+    }
+
+    /**
+     * 必应每日壁纸作为软件背景。
+     *
+     * 可读性的三层保证：
+     * 1. 壁纸之上先压一层半透明蒙版（浅色模式压白、深色模式压黑），浓度由设置里的滑杆控制；
+     * 2. 页面根布局自带的渐变背景要清掉，否则会把壁纸整个盖住；
+     * 3. 所有信息仍然装在**不透明的卡片**里，文字不会直接压在照片上。
+     */
+    private fun applyWallpaper(
+        activity: AppCompatActivity,
+        container: FrameLayout,
+        content: View
+    ) {
+        if (!com.rjy.xyz.apps.xyzinfo.data.SettingsRepository.bingWallpaperEnabled(activity)) return
+        val bitmap = com.rjy.xyz.apps.xyzinfo.data.BingWallpaperRepository.loadBitmap(activity)
+            ?: return
+        container.background = android.graphics.drawable.BitmapDrawable(activity.resources, bitmap)
+            .apply { setGravity(android.view.Gravity.FILL) }
+        content.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+
+        val night = (activity.resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val alpha = (com.rjy.xyz.apps.xyzinfo.data.SettingsRepository.wallpaperScrim(activity) / 100f * 255f).toInt()
+        val scrim = View(activity)
+        scrim.setBackgroundColor(
+            android.graphics.Color.argb(alpha, if (night) 0 else 255, if (night) 0 else 255, if (night) 0 else 255)
+        )
+        container.addView(
+            scrim,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
     }
 
     /**

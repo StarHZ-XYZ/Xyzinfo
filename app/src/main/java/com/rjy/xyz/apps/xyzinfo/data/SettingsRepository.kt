@@ -18,6 +18,8 @@ object SettingsRepository {
     private const val KEY_ANIMATIONS = "smooth_animations"
     private const val KEY_DEEP_BENCHMARK = "deep_benchmark"
     private const val KEY_PARTICLES = "touch_particles"
+    private const val KEY_BING_WALLPAPER = "bing_wallpaper"
+    private const val KEY_WALLPAPER_SCRIM = "wallpaper_scrim"
 
     private const val KEY_LAST_SINGLE = "last_single"
     private const val KEY_LAST_MULTI = "last_multi"
@@ -61,6 +63,28 @@ object SettingsRepository {
 
     fun setParticleEffectEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_PARTICLES, enabled).apply()
+    }
+
+    // ---------- 必应每日壁纸 ----------
+
+    fun bingWallpaperEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_BING_WALLPAPER, false)
+
+    fun setBingWallpaperEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_BING_WALLPAPER, enabled).apply()
+    }
+
+    /**
+     * 蒙版浓度（0~100）。
+     *
+     * 壁纸之上会压一层半透明蒙版，数字越大越"糊"、文字越清楚。
+     * 默认 72：既看得出是壁纸，又能保证标题这类直接压在背景上的文字可读。
+     */
+    fun wallpaperScrim(context: Context): Int =
+        prefs(context).getInt(KEY_WALLPAPER_SCRIM, 72)
+
+    fun setWallpaperScrim(context: Context, value: Int) {
+        prefs(context).edit().putInt(KEY_WALLPAPER_SCRIM, value.coerceIn(45, 92)).apply()
     }
 
     // ---------- 最近一次跑分成绩 ----------

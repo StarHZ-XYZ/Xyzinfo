@@ -1,8 +1,10 @@
 package com.rjy.xyz.apps.xyzinfo.ui.settings
 
 import android.os.Bundle
+import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.rjy.xyz.apps.xyzinfo.data.BingWallpaperRepository
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivitySettingsBinding
 import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
@@ -26,6 +28,7 @@ class SettingsActivity : AppCompatActivity() {
         GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_SETTINGS)
 
         setupAppearance()
+        setupWallpaper()
         setupBenchmark()
         setupData()
         setupAbout()
@@ -49,6 +52,69 @@ class SettingsActivity : AppCompatActivity() {
         binding.glassBarPreview.bind(GlassScaffold.tabs(), GlassScaffold.TAB_SETTINGS) { _, _ -> }
         // 预览也要真的磨砂：拿设置页自己的内容当取样源
         binding.glassBarPreview.attachBackdrop(binding.root)
+    }
+
+    private fun setupWallpaper() {
+        binding.switchWallpaper.isChecked = SettingsRepository.bingWallpaperEnabled(this)
+        binding.switchWallpaper.setOnCheckedChangeListener { _, checked ->
+            SettingsRepository.setBingWallpaperEnabled(this, checked)
+            if (checked && !BingWallpaperRepository.isUpToDate(this)) {
+                binding.tvWallpaperInfo.text = "正在下载必应今日壁纸…"
+                Thread({
+                    val result = BingWallpaperRepository.download(this)
+                    runOnUiThread {
+                        if (isFinishing) return@runOnUiThread
+                        binding.tvWallpaperInfo.text = result.message
+                        recreate()
+                    }
+                }, "bing-wallpaper").start()
+            } else {
+                recreate()
+            }
+        }
+        updateWallpaperInfo()
+
+        val scrim = SettingsRepository.wallpaperScrim(this)
+        binding.seekScrim.progress = scrim - 45
+        binding.tvScrimValue.text = scrimLabel(scrim)
+        binding.seekScrim.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) {
+                if (fromUser) binding.tvScrimValue.text = scrimLabel(value + 45)
+            }
+
+            override fun onStartTrackingTouch(bar: SeekBar?) = Unit
+
+            override fun onStopTrackingTouch(bar: SeekBar?) {
+                SettingsRepository.setWallpaperScrim(this@SettingsActivity, (bar?.progress ?: 27) + 45)
+                recreate()
+            }
+        })
+
+        binding.btnWallpaperNext.setOnClickListener {
+            Anim.pressFeedback(it)
+            binding.tvWallpaperInfo.text = "正在换一张…"
+            Thread({
+                val result = BingWallpaperRepository.download(this, (1..7).random())
+                runOnUiThread {
+                    if (isFinishing) return@runOnUiThread
+                    binding.tvWallpaperInfo.text = result.message
+                    SettingsRepository.setBingWallpaperEnabled(this, true)
+                    recreate()
+                }
+            }, "bing-wallpaper-next").start()
+        }
+    }
+
+    private fun scrimLabel(value: Int): String =
+        "蒙版浓度：$value%（越高文字越清楚，越低越能看到壁纸）"
+
+    private fun updateWallpaperInfo() {
+        val current = BingWallpaperRepository.current(this)
+        binding.tvWallpaperInfo.text = if (current == null) {
+            "还没有下载过壁纸：打开上面的开关会立刻抓取必应当天的图"
+        } else {
+            "当前：${current.date}\n${current.copyright}"
+        }
     }
 
     private fun setupBenchmark() {
