@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowInsetsCompat
 import com.rjy.xyz.apps.xyzinfo.MainActivity
 import com.rjy.xyz.apps.xyzinfo.R
@@ -85,6 +86,55 @@ object GlassScaffold {
 
         val bar = GlassBottomBar(activity)
         bar.docked = true
+        /*
+         * 子页面（芯片 / 内存 / 屏幕 / 电池 / 传感器 / 系统 / 通信 / GPS / 硬件测试 / 杂项）
+         * **不显示底栏**：它们是从首页点进去的详情页，底部再飘一条标签栏会让层级认知混乱；
+         * 取而代之是左上角一个圆形返回按钮。
+         */
+        if (currentTab == TAB_NONE) {
+            bar.visibility = View.GONE
+            val density = activity.resources.displayMetrics.density
+            val size = (42 * density).toInt()
+            val backButton = android.widget.ImageButton(activity).apply {
+                setImageResource(R.drawable.ic_arrow_back)
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                    setColor(ContextCompat.getColor(activity, R.color.surface))
+                    setStroke((1 * density).toInt(), ContextCompat.getColor(activity, R.color.stroke))
+                }
+                imageTintList = android.content.res.ColorStateList.valueOf(
+                    ContextCompat.getColor(activity, R.color.text_primary)
+                )
+                contentDescription = "返回"
+                elevation = 3f * density
+                setOnClickListener { activity.onBackPressedDispatcher.onBackPressed() }
+            }
+            Anim.pressFeedback(backButton)
+            container.addView(
+                backButton,
+                FrameLayout.LayoutParams(size, size).apply {
+                    gravity = Gravity.TOP or Gravity.START
+                    marginStart = (14 * density).toInt()
+                    topMargin = (10 * density).toInt()
+                }
+            )
+            ViewCompat.setOnApplyWindowInsetsListener(backButton) { view, insets ->
+                val top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+                (view.layoutParams as FrameLayout.LayoutParams).topMargin =
+                    (10 * density).toInt() + top
+                insets
+            }
+            // 给标题让出返回按钮的高度
+            val host = (content as? ViewGroup)
+                ?.takeIf { it.childCount > 0 }
+                ?.getChildAt(0) as? ViewGroup
+            host?.setPadding(
+                host.paddingLeft,
+                host.paddingTop + (46 * density).toInt(),
+                host.paddingRight,
+                host.paddingBottom
+            )
+        }
         // 四季氛围：铺在内容之上、底栏之下；粒子数很少，掉帧风险低，可随时关掉
         if (SettingsRepository.seasonEffectEnabled(activity) &&
             SettingsRepository.animationsEnabled(activity)
