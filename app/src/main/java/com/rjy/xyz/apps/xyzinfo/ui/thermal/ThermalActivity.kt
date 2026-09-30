@@ -90,6 +90,11 @@ class ThermalActivity : AppCompatActivity() {
     }
 
     private var rangeHours = 24
+    /**
+     * 页面打开期间的实时采样（每 2 秒一条，内存保留最近 30 分钟）。
+     * 这样一进页面十几秒就能看到曲线在动，不用等"每分钟落盘"攒够数据。
+     */
+    private val liveSamples = mutableListOf<ThermalLogger.Sample>()
 
     /** 时间窗切换：1 小时 / 24 小时 / 7 天 / 30 天。 */
     private fun buildRangeChips() {
@@ -128,7 +133,12 @@ class ThermalActivity : AppCompatActivity() {
         Thread({
             val data = runCatching { ThermalLogger.history(this, rangeHours) }.getOrDefault(emptyList())
             runOnUiThread {
-                if (!isFinishing) binding.thermalChart.setData(data, rangeHours)
+                if (isFinishing) return@runOnUiThread
+                // 历史（每分钟）+ 本次会话实时点（每 2 秒）合并，曲线立刻有内容
+                val cutoff = System.currentTimeMillis() - rangeHours * 3600_000L
+                val merged = (data + liveSamples.filter { it.timestamp >= cutoff })
+                    .sortedBy { it.timestamp }
+                binding.thermalChart.setData(merged, rangeHours)
             }
         }, "xyzinfo-thermal-chart").start()
     }
@@ -157,7 +167,18 @@ class ThermalActivity : AppCompatActivity() {
                 zones.joinToString("\n") { "${it.name}：${"%.1f".format(it.celsius)} ℃" }
             }
             runOnUiThread {
-                if (!isFinishing) binding.tvThermalNow.text = text
+                if (isFinishing) return@runOnUiThread
+                binding.tvThermalNow.text = text
+                // 实时点也喂给曲线，并把内存缓冲限制在 30 分钟内
+                val now = System.currentTimeMillis()
+                zones.forEach { liveSamples += ThermalLogger.Sample(now, it.name, it.celsius) }
+                while (liveSamples.size > MAX_LIVE_SAMPLES) liveSamples.removeAt(0)
+                val cutoff = now - rangeHours * 3600_000L
+                binding.thermalChart.setData(
+                    liveSamples.filter { it.timestamp >= cutoff },
+                    rangeHours,
+                    liveOnly = true
+                )
             }
         }, "xyzinfo-thermal").start()
     }
@@ -186,5 +207,7 @@ class ThermalActivity : AppCompatActivity() {
     private companion object {
         const val REFRESH_MILLIS = 2_000L
         const val LOG_INTERVAL_MILLIS = 60_000L
+        /** 30 分钟 × 每 2 秒一条 ≈ 900 条，够画曲线又不占内存。 */
+        const val MAX_LIVE_SAMPLES = 900
     }
 }

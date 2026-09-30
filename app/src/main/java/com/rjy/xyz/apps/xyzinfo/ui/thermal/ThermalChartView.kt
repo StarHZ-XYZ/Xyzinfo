@@ -57,6 +57,14 @@ class ThermalChartView @JvmOverloads constructor(
         invalidate()
     }
 
+    private var liveOnly = false
+
+    /** [liveOnly] 为 true 时表示这是"打开页面以来的实时采样"，底部文案会相应变化。 */
+    fun setData(list: List<ThermalLogger.Sample>, windowHours: Int, liveOnly: Boolean) {
+        setData(list, windowHours)
+        this.liveOnly = liveOnly
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val density = resources.displayMetrics.density
@@ -73,7 +81,7 @@ class ThermalChartView @JvmOverloads constructor(
 
         if (samples.isEmpty() || plotWidth <= 0 || plotHeight <= 0) {
             textPaint.color = ContextCompat.getColor(context, R.color.text_secondary)
-            canvas.drawText("还没有数据：点「开始记录」跑一会儿再回来", paddingLeft, h / 2f, textPaint)
+            canvas.drawText("正在采样…（每 2 秒一个点，十几秒后曲线就出来了）", paddingLeft, h / 2f, textPaint)
             return
         }
 
@@ -101,6 +109,15 @@ class ThermalChartView @JvmOverloads constructor(
         groups.forEachIndexed { index, entry ->
             val color = palette[index % palette.size]
             linePaint.color = color
+            // 数据点太少就只画点：画线段会看起来像断的
+            if (entry.value.size < 2) {
+                val sample = entry.value.first()
+                val x = paddingLeft + plotWidth * 0.5f
+                val y = paddingTop + plotHeight *
+                    (1f - ((sample.celsius - minTemp) / (maxTemp - minTemp)).toFloat())
+                canvas.drawCircle(x, y, 3.5f * density, linePaint)
+                return@forEachIndexed
+            }
             path.reset()
             var lastX = 0f
             var lastY = 0f
@@ -112,18 +129,26 @@ class ThermalChartView @JvmOverloads constructor(
                 lastY = y
             }
             canvas.drawPath(path, linePaint)
-            // 末尾标一个圆点 + 峰值文字（只标前两条，避免太挤）
-            if (index < 2) {
-                canvas.drawCircle(lastX, lastY, 3f * density, linePaint)
-                val peak = entry.value.maxOf { it.celsius }
-                textPaint.color = color
-                canvas.drawText(
-                    "${entry.key.take(12)} ${String.format(Locale.US, "%.0f°", peak)}",
-                    lastX - 90f * density,
-                    lastY - 5f * density,
-                    textPaint
-                )
-            }
+            canvas.drawCircle(lastX, lastY, 3f * density, linePaint)
+        }
+
+        // 图例放左上角：色块 + 名称 + 峰值，比把文字压在线上清楚
+        var legendY = paddingTop + 10f * density
+        groups.forEachIndexed { index, entry ->
+            val color = palette[index % palette.size]
+            linePaint.color = color
+            canvas.drawLine(
+                paddingLeft + 6f * density, legendY - 3f * density,
+                paddingLeft + 16f * density, legendY - 3f * density,
+                linePaint
+            )
+            textPaint.color = color
+            val peak = entry.value.maxOf { it.celsius }
+            canvas.drawText(
+                entry.key.take(14) + " 峰值 " + String.format(Locale.US, "%.0f°", peak),
+                paddingLeft + 20f * density, legendY, textPaint
+            )
+            legendY += 12f * density
         }
 
         // 时间刻度
@@ -141,9 +166,10 @@ class ThermalChartView @JvmOverloads constructor(
             h - 8f * density,
             textPaint
         )
+        val rangeText = (if (liveOnly) "实时采样" else "最近 ${hours} 小时") + " · ${samples.size} 点"
         canvas.drawText(
-            "最近 ${hours} 小时 · ${samples.size} 个采样点",
-            paddingLeft + plotWidth / 2f - 60f * density,
+            rangeText,
+            paddingLeft + plotWidth / 2f - textPaint.measureText(rangeText) / 2f,
             h - 8f * density,
             textPaint
         )
