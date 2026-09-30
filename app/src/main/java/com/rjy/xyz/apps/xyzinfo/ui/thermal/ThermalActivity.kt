@@ -62,12 +62,6 @@ class ThermalActivity : AppCompatActivity() {
          * - 原来那一长串逐热区数字列表，改成一个大号温度（显示当前最高温 + 是哪个热区）；
          * - 历史统计那张卡整张隐藏（连卡片一起藏，不留空盒子）。
          */
-        val density = resources.displayMetrics.density
-        binding.tvThermalNow.textSize = 44f
-        binding.tvThermalNow.gravity = android.view.Gravity.CENTER
-        binding.tvThermalNow.setTextColor(ContextCompat.getColor(this, R.color.accent))
-        binding.tvThermalNow.setPadding(0, (20 * density).toInt(), 0, (20 * density).toInt())
-        binding.tvThermalNow.setLineSpacing(6f * density, 1f)
         (binding.tvThermalHistory.parent as? android.view.View)?.visibility = android.view.View.GONE
 
         binding.btnToggleLogging.setOnClickListener {
@@ -175,14 +169,17 @@ class ThermalActivity : AppCompatActivity() {
         Thread({
             val zones = runCatching { ThermalLogger.readZones() }.getOrDefault(emptyList())
             val text = if (zones.isEmpty()) {
-                "—\n读不到热区（部分机型限制读取 /sys/class/thermal）"
+                "读不到热区（部分机型限制读取 /sys/class/thermal）"
             } else {
                 val hottest = zones.first()
-                String.format(Locale.US, "%.1f ℃", hottest.celsius) + "\n当前最高温 · " + hottest.name
+                String.format(Locale.US, "%.1f ℃", hottest.celsius) + " · " + hottest.name
             }
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
-                binding.tvThermalNow.text = text
+                // 大号温度交给温度环显示，这里只更新环的数值
+                val hottest = zones.firstOrNull()
+                binding.thermalGauge.setTemperature(hottest?.celsius, hottest?.name.orEmpty())
+                binding.thermalGauge.contentDescription = text
                 // 实时点也喂给曲线，并把内存缓冲限制在 30 分钟内
                 val now = System.currentTimeMillis()
                 zones.forEach { liveSamples += ThermalLogger.Sample(now, it.name, it.celsius) }

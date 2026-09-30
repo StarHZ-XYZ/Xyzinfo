@@ -45,14 +45,10 @@
                 android:orientation="vertical"
                 android:padding="18dp">
 
-                <TextView
-                    android:id="@+id/tvThermalNow"
-                    style="@style/Text.RawBlock"
+                <com.rjy.xyz.apps.xyzinfo.ui.thermal.TemperatureGaugeView
+                    android:id="@+id/thermalGauge"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_code_panel"
-                    android:padding="14dp"
-                    android:text="正在读取热区…" />
+                    android:layout_height="190dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnToggleLogging"
