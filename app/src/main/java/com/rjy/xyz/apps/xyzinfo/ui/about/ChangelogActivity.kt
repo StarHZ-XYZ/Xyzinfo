@@ -9,7 +9,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 
 /**
- * 更新日志页：把所有版本的更新内容与下一版预告写清楚。
+ * 更新日志页：把所有版本的更新内容写清楚，末尾一句「后续版本敬请期待」。
  *
  * 文案直接放在应用里（不依赖网络），随版本一起更新。
  */
@@ -32,12 +32,7 @@ class ChangelogActivity : AppCompatActivity() {
 
     private companion object {
         val CHANGELOG = """
-【1.0 预告 · 开发中】
-· 环境检测“可视化页面”：把 root / SELinux / 调试 / 模拟器 / Xposed / 分身 / 用户 CA 的分级清单与证据做成页面（检测内核已在 0.9 完成）
-· 温度监控浮窗：实时显示各热区温度，并可长期记录温度曲线（1 小时 / 24 小时 / 7 天 / 30 天）
-· DeepSeek 大肥鱼主题：蓝系配色 + 一条游动的大鱼装饰
-· 安卓版本图标：给系统属性页的 2.2 ~ 17 每个版本配上对应的甜点图标
-· 结构调整：单 Activity + 四个 Fragment，彻底消除切标签时的长帧
+后续版本敬请期待。
 
 【0.9.0】
 · App 图标全面重构：扁平化设计，X 为主体、齿轮点缀、青蓝渐变底

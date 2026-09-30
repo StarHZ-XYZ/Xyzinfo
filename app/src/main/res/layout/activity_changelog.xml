@@ -27,7 +27,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="各版本更新内容与下一版预告" />
+            android:text="各版本更新内容 · 后续版本敬请期待" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"

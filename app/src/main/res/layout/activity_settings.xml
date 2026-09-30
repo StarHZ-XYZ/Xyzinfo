@@ -468,7 +468,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="更新日志 / 下个版本预告"
+                    android:text="更新日志 / 后续版本敬请期待"
                     android:textColor="?attr/colorPrimary"
                     android:textSize="13sp"
                     app:cornerRadius="12dp"
