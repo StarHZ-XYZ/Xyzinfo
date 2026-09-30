@@ -1,10 +1,17 @@
 package com.rjy.xyz.apps.xyzinfo.ui.thermal
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.data.ThermalLogger
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityThermalBinding
 import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
@@ -13,7 +20,6 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
 import java.util.Locale
 
@@ -91,9 +97,83 @@ class ThermalActivity : AppCompatActivity() {
                 )
             )
         }
+        binding.btnThermalOverlay.setOnClickListener {
+            Anim.pressFeedback(it)
+            if (ThermalOverlayService.isRunning(this)) {
+                ThermalOverlayService.stop(this)
+                ThermalOverlayService.setRunning(this, false)
+                refreshOverlayButton()
+                toast("温度浮窗已关闭")
+            } else {
+                ensureOverlayPermissionThenStart()
+            }
+        }
+        refreshOverlayButton()
         handler.post(refresh)
         buildRangeChips()
         renderChart()
+    }
+
+    /** 用户从系统授权页返回后是否要继续开启浮窗。 */
+    private var pendingOverlayStart = false
+
+    private fun ensureOverlayPermissionThenStart() {
+        if (!Settings.canDrawOverlays(this)) {
+            pendingOverlayStart = true
+            toast("请先允许「显示在其他应用上层」，返回后会自动继续")
+            runCatching {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                )
+            }
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            // 前台服务的常驻通知需要这个权限（拒绝也能跑，只是通知栏不显示）
+            runCatching {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFICATION)
+            }
+            startOverlayNow()
+            return
+        }
+        startOverlayNow()
+    }
+
+    private fun startOverlayNow() {
+        ThermalOverlayService.start(this)
+        ThermalOverlayService.setRunning(this, true)
+        binding.btnThermalOverlay.postDelayed({ refreshOverlayButton() }, 400L)
+        refreshOverlayButton()
+        toast("温度浮窗已开启")
+    }
+
+    private fun refreshOverlayButton() {
+        val running = ThermalOverlayService.isRunning(this)
+        binding.btnThermalOverlay.text = if (running) "关闭温度浮窗" else "开启温度浮窗"
+        binding.tvOverlayHint.text = when {
+            running -> "浮窗运行中：正在悬浮显示最高温，并每分钟记录一条（退出应用也会继续）。"
+            !Settings.canDrawOverlays(this) -> "需要「显示在其他应用上层」权限：点下面的按钮会跳到系统授权页。"
+            else -> "把当前最高温悬浮在其它应用上面，并每分钟落盘一条记录，退出本页也继续记录。"
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_NOTIFICATION) refreshOverlayButton()
+    }
+
+    private fun toast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
     private var rangeHours = 24
@@ -163,6 +243,13 @@ class ThermalActivity : AppCompatActivity() {
         super.onResume()
         handler.post(refresh)
         if (logging) handler.postDelayed(logTick, LOG_INTERVAL_MILLIS)
+        if (!::binding.isInitialized) return
+        // 从「显示在其他应用上层」授权页回来时刷新按钮；授权成功就接着开浮窗
+        refreshOverlayButton()
+        if (pendingOverlayStart) {
+            pendingOverlayStart = false
+            if (Settings.canDrawOverlays(this)) startOverlayNow()
+        }
     }
 
     private fun refreshNow() {
@@ -220,5 +307,6 @@ class ThermalActivity : AppCompatActivity() {
         const val LOG_INTERVAL_MILLIS = 60_000L
         /** 30 分钟 × 每 2 秒一条 ≈ 900 条，够画曲线又不占内存。 */
         const val MAX_LIVE_SAMPLES = 900
+        const val REQ_NOTIFICATION = 7301
     }
 }
