@@ -28,7 +28,10 @@ object GlassScaffold {
     const val TAB_HOME = 0
     const val TAB_BENCHMARK = 1
     const val TAB_RANKING = 2
-    const val TAB_SETTINGS = 3
+    const val TAB_SETTINGS = 4
+
+    /** 大肥鱼（AI 验机解读）：排在「设置」前面。 */
+    const val TAB_FISH = 3
 
     /** 子页面（芯片 / 内存 / 屏幕 / 电池 / 传感器 / 系统 / 通信 / GPS）：不属于任何标签。 */
     const val TAB_NONE = -1
@@ -37,6 +40,7 @@ object GlassScaffold {
         GlassBottomBar.Tab(R.drawable.ic_nav_home, "首页"),
         GlassBottomBar.Tab(R.drawable.ic_nav_benchmark, "跑分"),
         GlassBottomBar.Tab(R.drawable.ic_nav_ranking, "排行"),
+        GlassBottomBar.Tab(R.drawable.ic_module_deepseek, "大肥鱼"),
         GlassBottomBar.Tab(R.drawable.ic_nav_settings, "设置")
     )
 
@@ -44,6 +48,7 @@ object GlassScaffold {
         TAB_BENCHMARK -> BenchmarkActivity::class.java
         TAB_RANKING -> RankingActivity::class.java
         TAB_SETTINGS -> SettingsActivity::class.java
+        TAB_FISH -> com.rjy.xyz.apps.xyzinfo.ui.fish.FishAiActivity::class.java
         else -> MainActivity::class.java
     }
 

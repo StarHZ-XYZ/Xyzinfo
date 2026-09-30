@@ -24,6 +24,8 @@ object SettingsRepository {
     private const val KEY_SEASON_EFFECT = "season_effect"
     private const val KEY_SEASON_MODE = "season_mode"
     private const val KEY_HOME_GRID = "home_grid_style"
+    private const val KEY_DEEPSEEK_KEY = "deepseek_api_key"
+    private const val KEY_AI_MODE = "ai_mode"
     private const val KEY_DARK_MODE = "dark_mode"
 
     private const val KEY_LAST_SINGLE = "last_single"
@@ -131,6 +133,25 @@ object SettingsRepository {
 
     fun setHomeGridStyle(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_HOME_GRID, enabled).apply()
+    }
+
+    // ---------- 大肥鱼（AI 验机解读）----------
+
+    /** DeepSeek API Key；为空表示还没配置。 */
+    fun deepSeekApiKey(context: Context): String =
+        prefs(context).getString(KEY_DEEPSEEK_KEY, "").orEmpty()
+
+    fun setDeepSeekApiKey(context: Context, key: String) {
+        prefs(context).edit().putString(KEY_DEEPSEEK_KEY, key.trim()).apply()
+    }
+
+    /**
+     * AI 模式：`api` 用自己填的 API Key 直接调用；`web` 走官方免费版（需要登录，跳浏览器/App）。
+     */
+    fun aiMode(context: Context): String = prefs(context).getString(KEY_AI_MODE, "web") ?: "web"
+
+    fun setAiMode(context: Context, mode: String) {
+        prefs(context).edit().putString(KEY_AI_MODE, mode).apply()
     }
 
     // ---------- 深色模式 ----------

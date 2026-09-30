@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  大肥鱼（DeepSeek）风格图标：一条圆滚滚的鲸鱼，DeepSeek 蓝。
+  说明：这是自绘的风格化图形，不是官方 logo 文件。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 鲸身：圆头 + 收窄的尾 -->
+    <path
+        android:fillColor="#FF4D6BFE"
+        android:pathData="M12.2,4.4c4.6,0 8.2,3.2 8.2,7.1 0,1.5 -0.5,2.9 -1.4,4 1.1,0.7 1.8,1.6 2.2,2.6 -1.4,0.3 -2.7,0 -3.8,-0.7 -1.5,0.8 -3.3,1.2 -5.2,1.2 -4.6,0 -8.2,-3.2 -8.2,-7.1S7.6,4.4 12.2,4.4z" />
+    <!-- 尾鳍 -->
+    <path
+        android:fillColor="#FF4D6BFE"
+        android:pathData="M3.2,9.6c1.3,0.2 2.4,0.9 3.1,1.9 -0.9,0.9 -2.1,1.4 -3.5,1.4z" />
+    <!-- 眼睛 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M15.4,9.4a1.5,1.5 0 1 0 0,3 1.5,1.5 0 1 0 0,-3z" />
+    <!-- 喷水 -->
+    <path
+        android:fillColor="#FF4D6BFE"
+        android:pathData="M11.4,1.6 L12.2,3.4 L13.4,2.2 L13.8,4.2 L10.6,4.2 Z" />
+</vector>

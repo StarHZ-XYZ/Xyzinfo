@@ -236,7 +236,7 @@ class MainActivity : AppCompatActivity() {
         addEntryCard(
             "大肥鱼验机",
             "汇总全部检测项，一条结论 + 逐条证据",
-            R.drawable.ic_module_fish
+            R.drawable.ic_module_deepseek
         ) {
             open(DeviceInspectActivity::class.java)
         }
