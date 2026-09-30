@@ -14,6 +14,11 @@ import com.rjy.xyz.apps.xyzinfo.ui.system.SystemInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkActivity
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.RankingActivity
 import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
+import com.rjy.xyz.apps.xyzinfo.ui.hardware.ScreenTestActivity
+import com.rjy.xyz.apps.xyzinfo.ui.hardware.HardwareMoreActivity
+import com.rjy.xyz.apps.xyzinfo.ui.misc.MiscActivity
+import com.rjy.xyz.apps.xyzinfo.ui.about.ChangelogActivity
+import com.rjy.xyz.apps.xyzinfo.ui.gps.GpsInfoActivity
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -47,6 +52,13 @@ class LayoutRenderTest {
         "8-benchmark" to BenchmarkActivity::class.java,
         "9-ranking" to RankingActivity::class.java,
         "10-settings" to SettingsActivity::class.java
+        // 0.9 新增页面：全部纳入渲染自检，用来抓「布局里用了不支持的属性」这类
+        // 只有真正 inflate 才会暴露的崩溃（TextureView 加 background 就是这么发现的）
+        ,"11-gps" to GpsInfoActivity::class.java
+        ,"12-screen-test" to ScreenTestActivity::class.java
+        ,"13-hardware-more" to HardwareMoreActivity::class.java
+        ,"14-misc" to MiscActivity::class.java
+        ,"15-changelog" to ChangelogActivity::class.java
     )
 
     @Test

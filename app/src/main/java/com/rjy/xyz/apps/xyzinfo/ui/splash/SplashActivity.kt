@@ -33,7 +33,25 @@ class SplashActivity : AppCompatActivity() {
         val animated = com.rjy.xyz.apps.xyzinfo.data.SettingsRepository.animationsEnabled(this)
         val duration = if (animated) 1800L else 700L
         playEntrance(animated)
-        binding.root.postDelayed({ goHome(animated) }, duration)
+        /*
+         * 开屏期间把首页要用的数据预加载完，动画放完后首页直接是最终状态，
+         * 不会再先闪一下「未知设备」。规则是「至少放满 duration，且数据必须加载完」：
+         * 数据加载快 → 满 duration 后进首页；加载慢 → 等它加载完再进（并显示在加载什么）。
+         */
+        val startedAt = android.os.SystemClock.elapsedRealtime()
+        Thread({
+            com.rjy.xyz.apps.xyzinfo.data.AppPreloader.warmUp(this) { step ->
+                runOnUiThread {
+                    if (!isFinishing) binding.tvSplashFooter.text = step
+                }
+            }
+            val elapsed = android.os.SystemClock.elapsedRealtime() - startedAt
+            val remaining = (duration - elapsed).coerceAtLeast(0L)
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                binding.root.postDelayed({ goHome(animated) }, remaining)
+            }
+        }, "xyzinfo-preload").start()
     }
 
     private fun playEntrance(animated: Boolean) {
