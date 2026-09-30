@@ -239,12 +239,12 @@ class HardwareMoreActivity : AppCompatActivity() {
             binding.btnVibratePattern.isEnabled = false
             return
         }
-        binding.btnVibrateLight.setOnClickListener { vibrate(vibrator, 60L) }
-        binding.btnVibrateStrong.setOnClickListener { vibrate(vibrator, 600L) }
+        binding.btnVibrateLight.setOnClickListener { vibrate(vibrator, 120L, strong = false) }
+        binding.btnVibrateStrong.setOnClickListener { vibrate(vibrator, 800L, strong = true) }
         binding.btnVibratePattern.setOnClickListener {
             val timings = longArrayOf(0, 120, 100, 120, 100, 300, 150, 120)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createWaveform(timings, -1))
+                vibrateWithAlarmAttributes(vibrator, VibrationEffect.createWaveform(timings, -1))
             } else {
                 @Suppress("DEPRECATION")
                 vibrator.vibrate(timings, -1)
@@ -252,17 +252,45 @@ class HardwareMoreActivity : AppCompatActivity() {
         }
     }
 
-    private fun vibrate(vibrator: Vibrator, millis: Long) {
-        // 包一层 runCatching：个别机型/系统会把振动当受限能力，抛异常也不该把页面搞崩
+    /**
+     * 振动。
+     *
+     * 之前"点了没感觉"的两个原因：
+     * 1. 时长太短（60ms）且用默认振幅，很多 ROM 直接吞掉；
+     * 2. 没指定用途——系统可能按"触摸反馈"处理，而用户往往把触摸反馈关掉了。
+     * 现在：默认振幅改成 180 / 255（支持振幅控制的机器），并用 **USAGE_ALARM** 提交，
+     * 这类振动不受"触摸反馈"开关影响。
+     */
+    private fun vibrate(vibrator: Vibrator, millis: Long, strong: Boolean) {
         runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(
-                    VibrationEffect.createOneShot(millis, VibrationEffect.DEFAULT_AMPLITUDE)
+                val amplitude = if (vibrator.hasAmplitudeControl()) {
+                    if (strong) 255 else 180
+                } else {
+                    VibrationEffect.DEFAULT_AMPLITUDE
+                }
+                vibrateWithAlarmAttributes(
+                    vibrator,
+                    VibrationEffect.createOneShot(millis, amplitude)
                 )
             } else {
                 @Suppress("DEPRECATION")
                 vibrator.vibrate(millis)
             }
+        }
+    }
+
+    /** 用闹钟用途提交振动：优先级最高，不会被系统的"触摸反馈"开关拦掉。 */
+    private fun vibrateWithAlarmAttributes(vibrator: Vibrator, effect: VibrationEffect) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            vibrator.vibrate(effect, attributes)
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(effect)
         }
     }
 
@@ -364,10 +392,13 @@ class HardwareMoreActivity : AppCompatActivity() {
         if (camera != null) return
         val opened = runCatching {
             val instance = Camera.open(cameraId)
+            applyFocusMode(instance)
             val info = Camera.CameraInfo().also { Camera.getCameraInfo(cameraId, it) }
             instance.setDisplayOrientation(displayOrientation(info, cameraId))
             instance.setPreviewTexture(surface)
             instance.startPreview()
+            // 连续对焦不生效的机型，预览启动后再补一次单次对焦
+            runCatching { instance.autoFocus(null) }
             instance
         }.getOrNull()
         if (opened == null) {
@@ -401,6 +432,40 @@ class HardwareMoreActivity : AppCompatActivity() {
             (360 - result) % 360
         } else {
             (info.orientation - degrees + 360) % 360
+        }
+    }
+
+    /**
+     * 打开自动对焦。
+     *
+     * 旧 Camera API 默认不一定开连续对焦，所以之前画面是"糊的、不会自己合焦"。
+     * 按机型的支持列表挑最好的模式（continuous-picture > continuous-video > auto），
+     * 顺便把对焦/测光区域放到画面中心，并触发一次单次对焦。
+     */
+    @Suppress("DEPRECATION")
+    private fun applyFocusMode(instance: Camera) {
+        runCatching {
+            val parameters = instance.parameters
+            val modes = parameters.supportedFocusModes.orEmpty()
+            val preferred = listOf(
+                Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE,
+                Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO,
+                Camera.Parameters.FOCUS_MODE_AUTO,
+                Camera.Parameters.FOCUS_MODE_MACRO
+            ).firstOrNull { modes.contains(it) }
+            if (preferred != null) parameters.focusMode = preferred
+
+            val center = android.graphics.Rect(-150, -150, 150, 150)
+            if (parameters.maxNumFocusAreas > 0) {
+                parameters.focusAreas = listOf(Camera.Area(center, 1000))
+            }
+            if (parameters.maxNumMeteringAreas > 0) {
+                parameters.meteringAreas = listOf(Camera.Area(center, 1000))
+            }
+            instance.parameters = parameters
+            if (preferred == Camera.Parameters.FOCUS_MODE_AUTO) {
+                runCatching { instance.autoFocus(null) }
+            }
         }
     }
 
