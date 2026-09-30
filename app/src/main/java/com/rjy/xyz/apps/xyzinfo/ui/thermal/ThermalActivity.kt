@@ -11,6 +11,10 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import com.rjy.xyz.apps.xyzinfo.R
 
 /**
  * 温度监控页（数据层 + 实时显示 + 长期记录）。
@@ -81,6 +85,52 @@ class ThermalActivity : AppCompatActivity() {
         }
         handler.post(refresh)
         showHistory()
+        buildRangeChips()
+        renderChart()
+    }
+
+    private var rangeHours = 24
+
+    /** 时间窗切换：1 小时 / 24 小时 / 7 天 / 30 天。 */
+    private fun buildRangeChips() {
+        val options = listOf(1 to "1 小时", 24 to "24 小时", 24 * 7 to "7 天", 24 * 30 to "30 天")
+        val density = resources.displayMetrics.density
+        binding.layoutThermalRange.removeAllViews()
+        options.forEach { (hours, label) ->
+            val chip = TextView(this).apply {
+                text = label
+                textSize = 12.5f
+                gravity = android.view.Gravity.CENTER
+                setPadding((12 * density).toInt(), (7 * density).toInt(), (12 * density).toInt(), (7 * density).toInt())
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@ThermalActivity,
+                        if (hours == rangeHours) R.color.accent else R.color.text_secondary
+                    )
+                )
+                background = ContextCompat.getDrawable(this@ThermalActivity, R.drawable.bg_chip_filter)
+                isSelected = hours == rangeHours
+                isClickable = true
+                setOnClickListener {
+                    rangeHours = hours
+                    buildRangeChips()
+                    renderChart()
+                }
+            }
+            chip.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = (6 * density).toInt()
+            }
+            binding.layoutThermalRange.addView(chip)
+        }
+    }
+
+    private fun renderChart() {
+        Thread({
+            val data = runCatching { ThermalLogger.history(this, rangeHours) }.getOrDefault(emptyList())
+            runOnUiThread {
+                if (!isFinishing) binding.thermalChart.setData(data, rangeHours)
+            }
+        }, "xyzinfo-thermal-chart").start()
     }
 
     override fun onPause() {

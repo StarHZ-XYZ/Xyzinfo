@@ -20,6 +20,9 @@ import com.rjy.xyz.apps.xyzinfo.ui.misc.MiscActivity
 import com.rjy.xyz.apps.xyzinfo.ui.about.ChangelogActivity
 import com.rjy.xyz.apps.xyzinfo.ui.gps.GpsInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.env.EnvironmentCheckActivity
+import com.rjy.xyz.apps.xyzinfo.ui.thermal.ThermalActivity
+import com.rjy.xyz.apps.xyzinfo.ui.inspect.DeviceInspectActivity
+import com.rjy.xyz.apps.xyzinfo.ui.fish.FishAiActivity
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -61,6 +64,9 @@ class LayoutRenderTest {
         ,"14-misc" to MiscActivity::class.java
         ,"15-changelog" to ChangelogActivity::class.java
         ,"16-env-check" to EnvironmentCheckActivity::class.java
+        ,"17-inspect" to DeviceInspectActivity::class.java
+        ,"18-fish-ai" to FishAiActivity::class.java
+        ,"19-thermal" to ThermalActivity::class.java
     )
 
     @Test
