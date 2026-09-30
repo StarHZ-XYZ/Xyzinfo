@@ -136,11 +136,12 @@ object GlassScaffold {
         // 玻璃要真的糊东西：把内容视图交给底栏当取样源
         bar.attachBackdrop(content)
         bar.autoAnimateOnSelect = false
-        // 滚动时**不做**整页重绘：等停下来 260ms 后再刷新一次模糊层。
-        // 滚动中每帧重绘整页内容是之前卡顿的主因。
+        // 滚动时按 110ms 节流刷新模糊层（≈9fps），所以底下的内容在玻璃里是"活的"；
+        // 另外停止滚动 260ms 后再补一次全质量刷新，避免停下来时还留着低帧的画面。
         val blurRefresh = Runnable { bar.requestBackdropRefresh(immediate = true) }
         val scrollView = content as? android.widget.ScrollView
         scrollView?.setOnScrollChangeListener { _, _, _, _, _ ->
+            bar.requestBackdropRefresh()
             scrollView.removeCallbacks(blurRefresh)
             scrollView.postDelayed(blurRefresh, 260L)
         }

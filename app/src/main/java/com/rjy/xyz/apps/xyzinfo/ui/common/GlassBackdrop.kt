@@ -24,8 +24,9 @@ import kotlin.math.max
  */
 class GlassBackdrop(private val host: View) {
 
-    private val downscale = 6
-    private val blurRadius = 3
+    /** 实时模糊：降采样 8 倍够用（反正是"轻微"磨砂），每帧重算的成本降到很低。 */
+    private val downscale = 8
+    private val blurRadius = 2
 
     private var source: View? = null
     private var bitmap: Bitmap? = null
@@ -202,7 +203,7 @@ class GlassBackdrop(private val host: View) {
 
     private companion object {
         const val BLUR_PASSES = 4
-        /** 节流放宽到 220ms：模糊层是背景，刷新太快只会白白重绘整页内容。 */
-        const val THROTTLE_MILLIS = 220L
+        /** 节流 110ms ≈ 9fps：滚动时看得出模糊跟着动，又不会把整页重绘拖成卡顿。 */
+        const val THROTTLE_MILLIS = 110L
     }
 }
