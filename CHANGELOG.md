@@ -4,6 +4,21 @@
 
 > 1.+ / 2.+ 版本敬请期待。
 
+### 安全加固（1.0 收尾）
+
+- **release 打开 R8 混淆 + 资源压缩**：类名 / 方法名 / 字段名全部重命名，并用
+  `-repackageclasses` 收敛到一个包，反编译出来只剩没有语义的骨架；去掉行号与源文件名，
+  崩溃堆栈也不再泄露原始结构。布局里反射实例化的自定义控件由 AGP 自动保留，
+  其余（含代码里 new 出来的动效层、数据层）一律混淆。
+- **调试器检测**：挂上 jdwp / 被 ptrace（TracerPid≠0）直接结束进程，不给单步读逻辑的机会。
+- **签名校验**：比对安装包签名证书 SHA-256，反编译改代码再重新签名的包起不来。
+  （开发包一律放行，不挡自己调试。）
+- **敏感数据加密**：DeepSeek API Key 改用 AndroidKeyStore 里的 AES-256-GCM 密钥加密后
+  再落盘，密钥由系统保管、不进应用目录；旧版本存的明文会在首次读取时自动迁移，
+  而且迁移前先做一次「加密 → 解密」自检，确保不会把用户的 Key 弄丢。
+- **清单加固**：`allowBackup=false`（禁止 adb backup 拖走数据）、`usesCleartextTraffic=false`
+  （禁止明文 HTTP）、`extractNativeLibs=false`、release 包 `debuggable=false`。
+
 ### 大肥鱼（AI）
 
 - **底栏新增「大肥鱼」标签，放在正中间**：点进去就是 AI 解读页，可填 DeepSeek API Key 直连，

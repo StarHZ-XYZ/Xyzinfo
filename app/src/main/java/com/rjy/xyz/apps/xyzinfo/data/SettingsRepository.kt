@@ -154,12 +154,43 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
 
     // ---------- 大肥鱼（AI 验机解读）----------
 
-    /** DeepSeek API Key；为空表示还没配置。 */
-    fun deepSeekApiKey(context: Context): String =
-        prefs(context).getString(KEY_DEEPSEEK_KEY, "").orEmpty()
+    /**
+     * DeepSeek API Key；为空表示还没配置。
+     *
+     * 安全加固：库里存的是 AndroidKeyStore 加密后的密文（`v1:...`）。
+     * 老版本直接存的明文会在第一次读取时自动迁移成密文，用户无感。
+     */
+    fun deepSeekApiKey(context: Context): String {
+        val raw = prefs(context).getString(KEY_DEEPSEEK_KEY, "").orEmpty()
+        if (raw.isEmpty()) return ""
+        if (SecureStore.isEncrypted(raw)) return SecureStore.decrypt(raw).orEmpty()
+        /*
+         * 旧明文 → 密文迁移。
+         *
+         * 覆盖之前先做一次「加密 → 解密」自检：确认密钥库在本机可用、而且真的能还原，
+         * 才会把明文替换掉。否则万一某些机型密钥库异常，用户辛苦填的 Key 就找不回来了
+         * ——宁可暂时留着明文，也不能丢数据。
+         */
+        val blob = SecureStore.encrypt(raw)
+        if (blob != null && SecureStore.decrypt(blob) == raw) {
+            prefs(context).edit().putString(KEY_DEEPSEEK_KEY, blob).apply()
+        }
+        return raw
+    }
 
     fun setDeepSeekApiKey(context: Context, key: String) {
-        prefs(context).edit().putString(KEY_DEEPSEEK_KEY, key.trim()).apply()
+        val trimmed = key.trim()
+        if (trimmed.isEmpty()) {
+            prefs(context).edit().remove(KEY_DEEPSEEK_KEY).apply()
+            return
+        }
+        val blob = SecureStore.encrypt(trimmed)
+        if (blob != null && SecureStore.decrypt(blob) == trimmed) {
+            prefs(context).edit().putString(KEY_DEEPSEEK_KEY, blob).apply()
+        } else {
+            // 极端情况下密钥库不可用 / 还原不了：宁可不存，也不把 Key 明文落盘
+            prefs(context).edit().remove(KEY_DEEPSEEK_KEY).apply()
+        }
     }
 
     /**

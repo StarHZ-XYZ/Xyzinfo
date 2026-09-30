@@ -3,6 +3,7 @@ package com.rjy.xyz.apps.xyzinfo
 import android.app.Application
 import android.os.Build
 import com.google.android.material.color.DynamicColors
+import com.rjy.xyz.apps.xyzinfo.data.SecurityGuard
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 
 /**
@@ -19,6 +20,8 @@ class XyzInfoApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // 逆向/二次打包防护：release 包里检测调试器与签名，不通过直接退出
+        SecurityGuard.install(this)
         applyDarkMode()
         applyDynamicColors()
     }
