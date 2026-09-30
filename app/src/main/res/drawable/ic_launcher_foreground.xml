@@ -1,54 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  XYZ-Devinfo 新图标（前景）。
-
-  在原图标（机器人头 + 齿轮 + 星芒）基础上重画：
-  · 主体改成「芯片外壳 + 齿轮环 + 内部 X」——外壳代表硬件检测、齿轮代表参数与性能、
-    内部的 X 对应项目名 XYZ，三件事合成一个图形，比原来更像一个 App 标识；
-  · 四角星芒保留，但收敛成一大一小，减少杂乱；
-  · 白 + 薄荷绿描边，放在渐变底上对比度足够。
-  安全区：内容落在 22~86 之间（自适应图标 72dp 安全区内）。
+  前景：**完全沿用原图标的路径**（机器人头 + 齿轮 + 星芒，一个点都没改），
+  外层缩放/位移也保持原样，确保和原来长得一模一样。
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#000000">
+  <group android:scaleX="0.58"
+      android:scaleY="0.58"
+      android:translateX="5.04"
+      android:translateY="5.04">
     <path
-        android:fillColor="#33FFFFFF"
-        android:pathData="M42,30 L66,30 A12,12 0 0 1 78,42 L78,66 A12,12 0 0 1 66,78 L42,78 A12,12 0 0 1 30,66 L30,42 A12,12 0 0 1 42,30 Z"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="4.2" />
-
-    <path
-        android:pathData="M22,46 L30,46 M22,62 L30,62 M78,46 L86,46 M78,62 L86,62 M46,22 L46,30 M62,22 L62,30 M46,78 L46,86 M62,78 L62,86"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeWidth="4.2" />
-
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M54,41 A13,13 0 1 0 54,67 A13,13 0 1 0 54,41 Z"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="4.2" />
-
-    <path
-        android:pathData="M54,35 L54,38 M54,70 L54,73 M35,54 L38,54 M70,54 L73,54 M40.6,40.6 L42.7,42.7 M65.3,65.3 L67.4,67.4 M67.4,40.6 L65.3,42.7 M42.7,65.3 L40.6,67.4"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeWidth="3.2" />
-
-    <path
-        android:pathData="M48.5,48.5 L59.5,59.5 M59.5,48.5 L48.5,59.5"
-        android:strokeColor="#FF8BF0CE"
-        android:strokeLineCap="round"
-        android:strokeWidth="4.6" />
-
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M78,24 L80.2,31.8 L88,34 L80.2,36.2 L78,44 L75.8,36.2 L68,34 L75.8,31.8 Z" />
-    <path
-        android:fillColor="#FF8BF0CE"
-        android:pathData="M30,70 L31.3,74.7 L36,76 L31.3,77.3 L30,82 L28.7,77.3 L24,76 L28.7,74.7 Z" />
+        android:fillColor="@android:color/white"
+        android:pathData="M17.41,6.59L15,5.5l2.41,-1.09L18.5,2l1.09,2.41L22,5.5l-2.41,1.09L18.5,9L17.41,6.59zM21.28,12.72L20.5,11l-0.78,1.72L18,13.5l1.72,0.78L20.5,16l0.78,-1.72L23,13.5L21.28,12.72zM16.24,14.37l1.94,1.47l-2.5,4.33l-2.24,-0.94c-0.2,0.13 -0.42,0.26 -0.64,0.37L12.5,22h-5l-0.3,-2.41c-0.22,-0.11 -0.43,-0.23 -0.64,-0.37l-2.24,0.94l-2.5,-4.33l1.94,-1.47C3.75,14.25 3.75,14.12 3.75,14s0,-0.25 0.01,-0.37l-1.94,-1.47l2.5,-4.33l2.24,0.94c0.2,-0.13 0.42,-0.26 0.64,-0.37L7.5,6h5l0.3,2.41c0.22,0.11 0.43,0.23 0.64,0.37l2.24,-0.94l2.5,4.33l-1.94,1.47c0.01,0.12 0.01,0.24 0.01,0.37S16.25,14.25 16.24,14.37zM13,14c0,-1.66 -1.34,-3 -3,-3s-3,1.34 -3,3s1.34,3 3,3S13,15.66 13,14z"/>
+  </group>
 </vector>

@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 新图标背景：青绿→深青的对角渐变 + 左上角柔光（去掉原来那层模板网格） -->
+<!--
+  背景：只做两处小改 ——
+  1. 底色从模板蓝绿 #419FAF 换成应用主色青绿（#12A87E → #0E9F76 → #0B7C63 的极浅渐变）；
+  2. 去掉 Android Studio 模板自带的那层网格水印。
+  齿轮/机器人图形一个字没动。
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -10,36 +15,19 @@
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:endX="96"
-                android:endY="108"
-                android:startX="12"
-                android:startY="0"
+                android:endX="88"
+                android:endY="104"
+                android:startX="14"
+                android:startY="4"
                 android:type="linear">
                 <item
-                    android:color="#FF14B98A"
+                    android:color="#FF12A87E"
                     android:offset="0" />
                 <item
                     android:color="#FF0E9F76"
-                    android:offset="0.55" />
+                    android:offset="0.6" />
                 <item
-                    android:color="#FF0A5F73"
-                    android:offset="1" />
-            </gradient>
-        </aapt:attr>
-    </path>
-
-    <path android:pathData="M0,0h108v108h-108z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:centerX="26"
-                android:centerY="22"
-                android:gradientRadius="78"
-                android:type="radial">
-                <item
-                    android:color="#40FFFFFF"
-                    android:offset="0" />
-                <item
-                    android:color="#00FFFFFF"
+                    android:color="#FF0B7C63"
                     android:offset="1" />
             </gradient>
         </aapt:attr>
