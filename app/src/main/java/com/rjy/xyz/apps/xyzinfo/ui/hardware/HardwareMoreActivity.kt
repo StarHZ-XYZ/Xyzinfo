@@ -75,6 +75,10 @@ class HardwareMoreActivity : AppCompatActivity() {
         setupVibrator()
         setupCamera()
         setupNfc()
+        binding.btnOneKeyTest.setOnClickListener {
+            Anim.pressFeedback(it)
+            runOneKeyTest()
+        }
     }
 
     override fun onPause() {
@@ -403,6 +407,118 @@ class HardwareMoreActivity : AppCompatActivity() {
         }
         parent.addView(row, parent.indexOfChild(binding.btnCamera))
         lensRow = row
+    }
+
+    /** 一键测试：自动跑一遍能判定的项目，最后给出通过 / 未通过清单。 */
+    private fun runOneKeyTest() {
+        binding.btnOneKeyTest.isEnabled = false
+        Thread({
+            val lines = mutableListOf<String>()
+            var pass = 0
+            var total = 0
+            fun record(name: String, ok: Boolean, detail: String) {
+                total++
+                if (ok) pass++
+                lines += (if (ok) "✔ " else "✘ ") + name + "：" + detail
+                runOnUiThread {
+                    if (!isFinishing) binding.tvOneKeyResult.text = lines.joinToString("\n")
+                }
+            }
+
+            runCatching {
+                @Suppress("DEPRECATION")
+                val count = Camera.getNumberOfCameras()
+                record("摄像头", count > 0, "系统注册 $count 个")
+            }.onFailure { record("摄像头", false, it.message ?: "查询失败") }
+
+            runCatching {
+                val manager = getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+                val flash = manager.cameraIdList.any { id ->
+                    manager.getCameraCharacteristics(id).get(
+                        android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE
+                    ) == true
+                }
+                record("闪光灯", flash, if (flash) "检测到闪光灯单元" else "机身没有闪光灯")
+            }.onFailure { record("闪光灯", false, it.message ?: "查询失败") }
+
+            runCatching {
+                val adapter = NfcAdapter.getDefaultAdapter(this)
+                record(
+                    "NFC",
+                    adapter != null,
+                    when {
+                        adapter == null -> "没有 NFC 硬件"
+                        adapter.isEnabled -> "支持且已开启"
+                        else -> "支持但处于关闭状态"
+                    }
+                )
+            }.onFailure { record("NFC", false, it.message ?: "查询失败") }
+
+            runCatching {
+                val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                val has = vibrator.hasVibrator()
+                if (has) vibrate(vibrator, 320L, strong = true)
+                record("振动马达", has, if (has) "已振一次（有感觉即正常）" else "没有振动马达")
+            }.onFailure { record("振动马达", false, it.message ?: "触发失败") }
+
+            runCatching {
+                playMelody()
+                Thread.sleep(1000)
+                stopTone()
+                record("扬声器", true, "已播放测试音（听到即正常）")
+            }.onFailure { record("扬声器", false, it.message ?: "播放失败") }
+
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                record("麦克风", false, "未授予录音权限，已跳过")
+            } else {
+                runCatching {
+                    val minBuffer = AudioRecord.getMinBufferSize(
+                        SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
+                    )
+                    val recorder = AudioRecord(
+                        MediaRecorder.AudioSource.MIC, SAMPLE_RATE,
+                        AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
+                        maxOf(minBuffer, SAMPLE_RATE)
+                    )
+                    val buffer = ShortArray(SAMPLE_RATE)
+                    recorder.startRecording()
+                    val read = recorder.read(buffer, 0, buffer.size)
+                    recorder.stop()
+                    recorder.release()
+                    var sum = 0.0
+                    for (i in 0 until maxOf(read, 0)) sum += buffer[i].toDouble() * buffer[i]
+                    val rms = if (read > 0) sqrt(sum / read).toInt() else 0
+                    record("麦克风", read > 0, "采集 $read 点，RMS $rms（说话时数值明显变大）")
+                }.onFailure { record("麦克风", false, it.message ?: "录音失败（可能被占用）") }
+            }
+
+            runCatching {
+                val pm = packageManager
+                val missing = buildList {
+                    if (!pm.hasSystemFeature(PackageManager.FEATURE_SENSOR_ACCELEROMETER)) add("加速度计")
+                    if (!pm.hasSystemFeature(PackageManager.FEATURE_SENSOR_GYROSCOPE)) add("陀螺仪")
+                    if (!pm.hasSystemFeature(PackageManager.FEATURE_SENSOR_COMPASS)) add("磁力计")
+                    if (!pm.hasSystemFeature(PackageManager.FEATURE_SENSOR_LIGHT)) add("光线")
+                }
+                record(
+                    "传感器",
+                    missing.isEmpty(),
+                    if (missing.isEmpty()) "加速度计 / 陀螺仪 / 磁力计 / 光线 齐全"
+                    else "缺少：" + missing.joinToString("、")
+                )
+            }.onFailure { record("传感器", false, it.message ?: "查询失败") }
+
+            val summary = "共 $total 项，通过 $pass 项" +
+                if (pass < total) "，${total - pass} 项需要确认（看 ✘ 行）" else "，全部通过"
+            runOnUiThread {
+                if (!isFinishing) {
+                    binding.btnOneKeyTest.isEnabled = true
+                    binding.tvOneKeyResult.text = summary + "\n\n" + lines.joinToString("\n")
+                }
+            }
+        }, "xyzinfo-onekey").start()
     }
 
     @Suppress("DEPRECATION")

@@ -29,6 +29,59 @@
             android:layout_marginTop="8dp"
             android:text="扬声器 / 麦克风 / 振动 / 摄像头 / NFC" />
 
+        <!-- 一键测试：把能自动判定的项依次跑一遍 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    style="@style/Text.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="一键测试" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="自动依次检查摄像头 / 闪光灯 / NFC / 振动 / 扬声器 / 麦克风 / 传感器" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnOneKeyTest"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:backgroundTint="?attr/colorPrimary"
+                    android:text="开始一键测试（约 5 秒）"
+                    android:textColor="@color/text_on_accent"
+                    android:textSize="14sp"
+                    app:cornerRadius="12dp" />
+
+                <TextView
+                    android:id="@+id/tvOneKeyResult"
+                    style="@style/Text.RawBlock"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_code_panel"
+                    android:padding="14dp"
+                    android:text="点上面的按钮开始；测试期间扬声器会响一下、手机振一下，麦克风会录 1 秒（需要录音权限）。" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- 屏幕测试入口：屏幕测试放在同一页里，不再单独开一个首页栏目 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
