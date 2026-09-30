@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  XYZ-Devinfo 图标（重构版）：**完全用你原图里的三件元素重新编排** ——
+  XYZ-Devinfo 图标（扁平版）。
 
-  · 齿轮：从原图取出来放大成主体，8 个圆头齿 + 外环；
-  · 机器人脸：原图那个机器人头，简化成"天线 + 两只眼睛"嵌进齿轮中心，
-    齿轮环本身就是它的头，含义变成「设备在齿轮里」= 硬件 + 参数；
-  · 星芒：保留原图的星芒，一大（右上）一小（左下）做点缀。
+  思路：**只用色块，不用渐变、不用描边** ——
+  · 白色实心齿轮（圆盘 + 8 个圆头齿）作为唯一主体；
+  · 机器人脸用"镂空"的方式挖在齿轮里（眼睛 + 嘴，颜色与底色一致，所以看起来是挖空的）；
+  · 原来那两个星芒保留成纯白实心，一大一小放右上 / 左下。
 
-  颜色沿用白 + 薄荷绿；底色仍是原图的青绿家族（换成应用的青绿渐变）。
+  元素仍然全部来自原图（齿轮 / 机器人 / 星芒），只是改成了扁平画法。
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -15,35 +15,39 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
+    <!-- 齿轮的八个齿：粗圆头短线，颜色与齿轮一致，叠起来就是实心齿轮 -->
     <path
-        android:fillColor="#00000000"
-        android:pathData="M54,26 A28,28 0 1 0 54,82 A28,28 0 1 0 54,26 Z"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="5.4" />
-
-    <path
-        android:pathData="M54,25 L54,18 M74.5,33.5 L79.5,28.5 M83,54 L90,54 M74.5,74.5 L79.5,79.5 M54,83 L54,90 M33.5,74.5 L28.5,79.5 M25,54 L18,54 M33.5,33.5 L28.5,28.5"
+        android:pathData="M54,22 L54,30 M76.6,31.4 L80.6,27.4 M86,54 L94,54 M76.6,76.6 L80.6,80.6 M54,86 L54,94 M31.4,76.6 L27.4,80.6 M22,54 L30,54 M31.4,31.4 L27.4,27.4"
         android:strokeColor="#FFFFFFFF"
         android:strokeLineCap="round"
-        android:strokeWidth="6.2" />
+        android:strokeWidth="13" />
 
-    <path
-        android:pathData="M54,53 L54,39"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeWidth="4.4" />
-    <path
-        android:fillColor="#FF8BF0CE"
-        android:pathData="M54,33.2 A4.2,4.2 0 1 0 54,41.6 A4.2,4.2 0 1 0 54,33.2 Z" />
-
-    <path
-        android:fillColor="#FF8BF0CE"
-        android:pathData="M45,55 A4.4,4.4 0 1 0 45,63.8 A4.4,4.4 0 1 0 45,55 Z M63,55 A4.4,4.4 0 1 0 63,63.8 A4.4,4.4 0 1 0 63,55 Z" />
-
+    <!-- 齿轮本体：实心圆 -->
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M86,20 L88.4,27.6 L96,30 L88.4,32.4 L86,40 L83.6,32.4 L76,30 L83.6,27.6 Z" />
+        android:pathData="M54,32 A22,22 0 1 0 54,76 A22,22 0 1 0 54,32 Z" />
+
+    <!-- 机器人脸（镂空：颜色 = 底色） -->
     <path
-        android:fillColor="#FF8BF0CE"
-        android:pathData="M24,76 L25.6,81.4 L31,83 L25.6,84.6 L24,90 L22.4,84.6 L17,83 L22.4,81.4 Z" />
+        android:fillColor="#0E9F76"
+        android:pathData="M46,50 A4.8,4.8 0 1 0 46,59.6 A4.8,4.8 0 1 0 46,50 Z M62,50 A4.8,4.8 0 1 0 62,59.6 A4.8,4.8 0 1 0 62,50 Z" />
+    <path
+        android:fillColor="#0E9F76"
+        android:pathData="M48,64 L60,64 A2.6,2.6 0 0 1 60,69.2 L48,69.2 A2.6,2.6 0 0 1 48,64 Z" />
+
+    <!-- 天线：白色杆 + 顶端小球（杆与齿轮同为白色，视觉上连成一体） -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M51.9,22 L56.1,22 L56.1,44 L51.9,44 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,11 A5,5 0 1 0 54,21 A5,5 0 1 0 54,11 Z" />
+
+    <!-- 星芒：一大一小，纯白实心 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M86,22 L88,29 L95,31 L88,33 L86,40 L84,33 L77,31 L84,29 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M23,76 L24.6,81.4 L30,83 L24.6,84.6 L23,90 L21.4,84.6 L16,83 L21.4,81.4 Z" />
 </vector>
