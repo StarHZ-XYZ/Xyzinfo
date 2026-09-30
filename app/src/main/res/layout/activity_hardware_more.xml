@@ -29,6 +29,49 @@
             android:layout_marginTop="8dp"
             android:text="扬声器 / 麦克风 / 振动 / 摄像头 / NFC" />
 
+        <!-- 屏幕测试入口：屏幕测试放在同一页里，不再单独开一个首页栏目 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    style="@style/Text.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="屏幕" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="坏点纯色循环、触摸轨迹、多点触控计数（整屏显示，不带底栏）" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnOpenScreenTest"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:backgroundTint="?attr/colorPrimary"
+                    android:text="打开屏幕测试"
+                    android:textColor="@color/text_on_accent"
+                    android:textSize="14sp"
+                    app:cornerRadius="12dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- 扬声器 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -245,8 +288,7 @@
                     android:id="@+id/textureCamera"
                     android:layout_width="match_parent"
                     android:layout_height="220dp"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_code_panel" />
+                    android:layout_marginTop="12dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCamera"

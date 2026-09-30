@@ -213,18 +213,16 @@ class MainActivity : AppCompatActivity() {
      */
     /** 新增两个入口：硬件测试、杂项工具。 */
     private fun addExtraEntries() {
-        addEntryCard("硬件测试", "屏幕坏点、触摸与多点触控", R.drawable.ic_module_screen) {
-            open(ScreenTestActivity::class.java)
+        // 硬件测试合并成一个入口：屏幕 + 音频 + 传感器，都在同一个页面里
+        addEntryCard(
+            "硬件测试",
+            "屏幕坏点 / 触摸 / 扬声器 / 麦克风 / 振动 / 摄像头 / NFC",
+            R.drawable.ic_module_screen
+        ) {
+            open(HardwareMoreActivity::class.java)
         }
         addEntryCard("杂项工具", "反应力测试、随机密码、手电筒", R.drawable.ic_module_benchmark) {
             open(MiscActivity::class.java)
-        }
-        addEntryCard(
-            "硬件测试 · 音频与传感器",
-            "扬声器 / 麦克风 / 振动 / 摄像头 / NFC",
-            R.drawable.ic_module_sensor
-        ) {
-            open(HardwareMoreActivity::class.java)
         }
     }
 

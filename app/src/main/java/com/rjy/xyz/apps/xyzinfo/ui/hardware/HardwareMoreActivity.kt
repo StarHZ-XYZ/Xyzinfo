@@ -63,6 +63,10 @@ class HardwareMoreActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setupSpeaker()
+        binding.btnOpenScreenTest.setOnClickListener {
+            Anim.pressFeedback(it)
+            startActivity(Intent(this, ScreenTestActivity::class.java))
+        }
         setupMic()
         setupVibrator()
         setupCamera()
