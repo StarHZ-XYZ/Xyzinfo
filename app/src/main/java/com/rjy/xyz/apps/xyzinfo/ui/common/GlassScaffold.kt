@@ -266,6 +266,8 @@ object GlassScaffold {
                 target.paddingRight,
                 target.paddingBottom + reservedPx
             )
+            // 按设备形态自适应排版（平板 / 展开态折叠屏会加宽左右留白、放大标题）
+            AdaptiveLayout.apply(target.context, target)
         } else {
             content.setPadding(
                 content.paddingLeft,

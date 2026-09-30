@@ -48,6 +48,17 @@ class SettingsActivity : AppCompatActivity() {
             recreate()
         }
 
+        binding.switchFollowSystemColor.isChecked = SettingsRepository.followSystemColor(this)
+        binding.switchFollowSystemColor.setOnCheckedChangeListener { _, checked ->
+            SettingsRepository.setFollowSystemColor(this, checked)
+            Toast.makeText(
+                this,
+                if (checked) "已开启莫奈取色，重进应用后完全生效" else "已恢复应用默认配色",
+                Toast.LENGTH_SHORT
+            ).show()
+            recreate()
+        }
+
         // 活体预览：就是首页用的那个底栏组件，点着能直接感受液体指示块
         binding.glassBarPreview.bind(GlassScaffold.tabs(), GlassScaffold.TAB_SETTINGS) { _, _ -> }
         // 预览也要真的磨砂：拿设置页自己的内容当取样源

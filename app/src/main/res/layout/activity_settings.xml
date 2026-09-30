@@ -103,6 +103,28 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="每次点击从指尖炸开一簇粒子与一圈波纹，盖满全屏但不影响点击" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="14dp"
+                    android:background="@color/divider" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchFollowSystemColor"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="46dp"
+                    android:text="跟随系统主题色（莫奈取色）"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Android 12 及以上按系统壁纸生成配色，作用于按钮、开关、滑块、水波纹与系统栏；关掉保持应用自己的青绿" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

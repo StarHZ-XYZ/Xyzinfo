@@ -20,6 +20,7 @@ object SettingsRepository {
     private const val KEY_PARTICLES = "touch_particles"
     private const val KEY_BING_WALLPAPER = "bing_wallpaper"
     private const val KEY_WALLPAPER_SCRIM = "wallpaper_scrim"
+    private const val KEY_FOLLOW_SYSTEM_COLOR = "follow_system_color"
 
     private const val KEY_LAST_SINGLE = "last_single"
     private const val KEY_LAST_MULTI = "last_multi"
@@ -85,6 +86,16 @@ object SettingsRepository {
 
     fun setWallpaperScrim(context: Context, value: Int) {
         prefs(context).edit().putInt(KEY_WALLPAPER_SCRIM, value.coerceIn(45, 92)).apply()
+    }
+
+    // ---------- 莫奈取色 / 跟随系统主题色 ----------
+
+    /** 是否跟随系统主题色（Android 12+ 的动态取色）。默认关，保持应用自己的青绿配色。 */
+    fun followSystemColor(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_FOLLOW_SYSTEM_COLOR, false)
+
+    fun setFollowSystemColor(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_FOLLOW_SYSTEM_COLOR, enabled).apply()
     }
 
     // ---------- 最近一次跑分成绩 ----------

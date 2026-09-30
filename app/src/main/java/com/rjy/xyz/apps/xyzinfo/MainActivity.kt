@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.rjy.xyz.apps.xyzinfo.data.DeviceOverviewProvider
 import com.rjy.xyz.apps.xyzinfo.data.BrandLogoCatalog
+import com.rjy.xyz.apps.xyzinfo.data.DeviceFormDetector
 import com.rjy.xyz.apps.xyzinfo.data.DeviceNameRepository
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityMainBinding
 import android.view.View
@@ -161,7 +162,9 @@ class MainActivity : AppCompatActivity() {
         tvKernelVersion.setInfoRow("Linux 内核：${overview.kernelRelease}")
         tvBrandManufacturer.setInfoRow("品牌：${overview.brand} / ${overview.manufacturer}")
         tvDeviceCode.setInfoRow("设备代号：${overview.deviceCode} / ${overview.product}")
-        tvSystemAbi.setInfoRow("系统架构：${overview.abiLabel}")
+        // 一并显示设备形态：手机 / 平板 / 折叠屏（含展开折叠状态）
+        val form = DeviceFormDetector.detect(this@MainActivity)
+        tvSystemAbi.setInfoRow("系统架构：${overview.abiLabel} ｜ 设备形态：${form.description}")
         tvCpuArch.setInfoRow("CPU架构：${overview.cpuArchitecture}")
     }
 
