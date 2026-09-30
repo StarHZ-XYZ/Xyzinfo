@@ -400,25 +400,31 @@ class GlassBottomBar @JvmOverloads constructor(
         }
     }
 
-    /** Gemini 风格的多色光晕：蓝 → 紫 → 粉 → 透明。 */
+    /**
+     * AI 标签的柔光：一圈很淡的蓝紫光，只是"提一下"，不抢视线。
+     *
+     * 上一版半径 1.25 倍栏高、中心亮度 110/255，糊成一团还很刺眼；
+     * 现在半径收到 0.85 倍、亮度砍到三分之一左右，并把粉色的比重压低，
+     * 保持"这里有个 AI"的暗示就够，真正做到一眼能认、又不辣眼睛。
+     */
     private fun drawAiGlow(canvas: Canvas, h: Float) {
         if (aiTabIndex !in items.indices) return
         val item = items[aiTabIndex]
         if (item.width <= 0) return
         val cx = item.left + item.width / 2f
-        val cy = h * 0.44f
-        val radius = h * (1.25f + 0.12f * glowPulse)
-        val alphaScale = 0.78f + 0.22f * glowPulse
+        val cy = h * 0.46f
+        val radius = h * (0.85f + 0.05f * glowPulse)
+        val alphaScale = 0.86f + 0.14f * glowPulse
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.shader = RadialGradient(
             cx, cy, radius,
             intArrayOf(
-                withAlpha(AI_BLUE, (110 * alphaScale).toInt()),
-                withAlpha(AI_PURPLE, (86 * alphaScale).toInt()),
-                withAlpha(AI_PINK, (58 * alphaScale).toInt()),
+                withAlpha(AI_BLUE, (40 * alphaScale).toInt()),
+                withAlpha(AI_PURPLE, (26 * alphaScale).toInt()),
+                withAlpha(AI_PINK, (12 * alphaScale).toInt()),
                 0x00000000
             ),
-            floatArrayOf(0f, 0.35f, 0.62f, 1f),
+            floatArrayOf(0f, 0.42f, 0.72f, 1f),
             Shader.TileMode.CLAMP
         )
         canvas.drawCircle(cx, cy, radius, paint)
