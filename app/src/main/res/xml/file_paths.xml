@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 分享卡片只通过 FileProvider 暴露这一处缓存目录，别的文件一律不共享。 -->
+<paths>
+    <cache-path
+        name="share_cache"
+        path="share/" />
+    <external-files-path
+        name="share_external"
+        path="share/" />
+</paths>

@@ -64,6 +64,13 @@ class MainActivity : AppCompatActivity() {
         loadDeviceName()
         setupUpdate()
         setupCardFeedback()
+        // 1.0.5：把本机参数画成一张分享卡片
+        binding.btnShareCard.setOnClickListener {
+            Anim.pressFeedback(it)
+            startActivity(
+                android.content.Intent(this, com.rjy.xyz.apps.xyzinfo.ui.share.ShareCardActivity::class.java)
+            )
+        }
     }
 
     /** 从其它页面返回时重新查一次机型名（机型库可能刚更新过）。 */

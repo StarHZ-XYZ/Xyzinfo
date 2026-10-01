@@ -21,6 +21,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- 更新前先判断有没有网络，省得用户对着「正在检查…」白等 -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- 分享卡片保存到相册：Android 9 及以下写公共 Pictures 需要它，10 起走 MediaStore 不再需要 -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <application
         android:name=".XyzInfoApp"
@@ -92,5 +96,18 @@
         <activity
             android:name=".ui.hardware.ScreenTestActivity"
             android:theme="@style/Theme.XyzInfo" />
+        <!-- 设备信息分享卡片（1.0.5）：本地画图 + 保存到相册 / 系统分享 -->
+        <activity
+            android:name=".ui.share.ShareCardActivity"
+            android:exported="false" />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>
