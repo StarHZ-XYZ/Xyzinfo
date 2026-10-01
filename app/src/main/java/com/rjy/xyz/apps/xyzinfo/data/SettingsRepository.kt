@@ -34,6 +34,15 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
     private const val KEY_LAST_GPU = "last_gpu"
     private const val KEY_LAST_AT = "last_at"
 
+    private const val KEY_SPEED_UNIT = "speed_unit"
+    private const val KEY_SPEED_CONNECTIONS = "speed_connections"
+    private const val KEY_SPEED_DOWN = "speed_last_down"
+    private const val KEY_SPEED_UP = "speed_last_up"
+    private const val KEY_SPEED_PING = "speed_last_ping"
+    private const val KEY_SPEED_JITTER = "speed_last_jitter"
+    private const val KEY_SPEED_NODE = "speed_last_node"
+    private const val KEY_SPEED_AT = "speed_last_at"
+
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -251,5 +260,64 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
             .remove(KEY_LAST_GPU)
             .remove(KEY_LAST_AT)
             .apply()
+    }
+
+    // ---------- 网络测速 ----------
+
+    /** 测速单位：`MBPS`（默认，运营商口径）或 `MBS`（下载器口径）。 */
+    fun speedUnit(context: Context): String =
+        prefs(context).getString(KEY_SPEED_UNIT, "MBPS") ?: "MBPS"
+
+    fun setSpeedUnit(context: Context, name: String) {
+        prefs(context).edit().putString(KEY_SPEED_UNIT, name).apply()
+    }
+
+    /** 并行连接数（1 / 4 / 8 / 16），默认 4 条。 */
+    fun speedConnections(context: Context): Int =
+        prefs(context).getInt(KEY_SPEED_CONNECTIONS, 4).coerceIn(1, 16)
+
+    fun setSpeedConnections(context: Context, value: Int) {
+        prefs(context).edit().putInt(KEY_SPEED_CONNECTIONS, value.coerceIn(1, 16)).apply()
+    }
+
+    /** 最近一次测速结果（速度统一存字节/秒，显示时再按单位换算）。 */
+    data class SavedSpeedResult(
+        val downloadBytesPerSecond: Double,
+        val uploadBytesPerSecond: Double?,
+        val pingMs: Double?,
+        val jitterMs: Double?,
+        val serverName: String,
+        val timestamp: Long
+    )
+
+    fun saveSpeedResult(
+        context: Context,
+        downloadBytesPerSecond: Double,
+        uploadBytesPerSecond: Double?,
+        pingMs: Double?,
+        jitterMs: Double?,
+        serverName: String
+    ) {
+        prefs(context).edit()
+            .putString(KEY_SPEED_DOWN, downloadBytesPerSecond.toString())
+            .putString(KEY_SPEED_UP, uploadBytesPerSecond?.toString() ?: "")
+            .putString(KEY_SPEED_PING, pingMs?.toString() ?: "")
+            .putString(KEY_SPEED_JITTER, jitterMs?.toString() ?: "")
+            .putString(KEY_SPEED_NODE, serverName)
+            .putLong(KEY_SPEED_AT, System.currentTimeMillis())
+            .apply()
+    }
+
+    fun lastSpeedResult(context: Context): SavedSpeedResult? {
+        val p = prefs(context)
+        val download = p.getString(KEY_SPEED_DOWN, "")?.toDoubleOrNull() ?: return null
+        return SavedSpeedResult(
+            downloadBytesPerSecond = download,
+            uploadBytesPerSecond = p.getString(KEY_SPEED_UP, "")?.toDoubleOrNull(),
+            pingMs = p.getString(KEY_SPEED_PING, "")?.toDoubleOrNull(),
+            jitterMs = p.getString(KEY_SPEED_JITTER, "")?.toDoubleOrNull(),
+            serverName = p.getString(KEY_SPEED_NODE, "").orEmpty(),
+            timestamp = p.getLong(KEY_SPEED_AT, 0L)
+        )
     }
 }

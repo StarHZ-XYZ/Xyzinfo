@@ -78,6 +78,8 @@
                 android:value="temperature monitor overlay" />
         </service>
         <activity android:name=".ui.hardware.HardwareMoreActivity" />
+        <!-- 网络测速：多台公共节点 + 自动就近 + 并行多线程 -->
+        <activity android:name=".ui.network.NetworkSpeedActivity" />
         <activity
             android:name=".ui.hardware.ScreenTestActivity"
             android:theme="@style/Theme.XyzInfo" />

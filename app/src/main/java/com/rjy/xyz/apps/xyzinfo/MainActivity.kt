@@ -247,6 +247,13 @@ class MainActivity : AppCompatActivity() {
         ) {
             open(com.rjy.xyz.apps.xyzinfo.ui.thermal.ThermalActivity::class.java)
         }
+        addEntryCard(
+            "网络测速",
+            "多台公共节点，自动就近 + 并行多线程，单位可切 Mbps / MB/s",
+            R.drawable.ic_module_network
+        ) {
+            open(com.rjy.xyz.apps.xyzinfo.ui.network.NetworkSpeedActivity::class.java)
+        }
     }
 
     /**
