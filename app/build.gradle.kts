@@ -17,8 +17,8 @@ android {
         applicationId = "com.rjy.xyz.apps.xyzinfo"
         minSdk = 24
         targetSdk = 36
-        versionCode = 17
-        versionName = "1.0.7"
+        versionCode = 18
+        versionName = "1.0.8"
 
         // 构建号：形如 20260930.0412（每次构建都不同，便于区分同一版本的不同构建）
         val buildStamp = SimpleDateFormat("yyyyMMdd.HHmm").format(Date())

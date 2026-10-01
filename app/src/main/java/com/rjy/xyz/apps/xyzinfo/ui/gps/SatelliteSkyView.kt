@@ -73,8 +73,28 @@ class SatelliteSkyView @JvmOverloads constructor(
         Color.parseColor("#2ED573"),
         Color.parseColor("#00C8C8")
     )
-    private val constellationNames = arrayOf("GPS", "SBAS", "GLONASS", "QZSS", "北斗", "伽利略", "IRNSS")
+    /*
+     * 1.0.8：每个卫星系统写清楚「是哪国的、叫什么」。
+     *
+     * 顺序对应 GnssStatus 的星座常量：GPS(1) SBAS(2) GLONASS(3) QZSS(4) BEIDOU(5) GALILEO(6) IRNSS(7)。
+     */
+    private val constellationNames = arrayOf(
+        "GPS（美国）",
+        "SBAS（星基增强）",
+        "GLONASS（俄罗斯）",
+        "QZSS（日本 引路）",
+        "北斗（中国）",
+        "Galileo（欧盟）",
+        "NavIC（印度）"
+    )
+
+    /** 图上的短标：G12 = 美国 GPS 12 号，C06 = 中国北斗 6 号 …… */
     private val constellationPrefixes = arrayOf("G", "S", "R", "J", "C", "E", "I")
+
+    /** 只有一个字母太抽象，这里给更短但看得懂的名字（统计行用）。 */
+    private val constellationShortNames = arrayOf(
+        "GPS", "SBAS", "GLONASS", "QZSS", "北斗", "Galileo", "NavIC"
+    )
 
     fun update(list: List<Satellite>) {
         satellites = list
@@ -100,14 +120,17 @@ class SatelliteSkyView @JvmOverloads constructor(
         satellites.forEach { sv -> counts[sv.constellation] = (counts[sv.constellation] ?: 0) + 1 }
         return counts.entries
             .sortedByDescending { it.value }
-            .joinToString("  ") { (constellation, count) -> "${prefixLabel(constellation)} $count" }
+            .joinToString("  ") { (constellation, count) -> "${shortLabel(constellation)} $count" }
     }
 
-    /** 图例文案，放在视图下方。 */
-    fun legend(): String = "G=GPS  C=北斗  R=GLONASS  E=伽利略  J=QZSS  S=SBAS  I=IRNSS"
+    /** 图例文案，放在视图下方：每个字母对应哪国的哪套系统，都写清楚。 */
+    fun legend(): String =
+        "G=GPS（美国）  C=北斗（中国）  R=GLONASS（俄罗斯）  E=Galileo（欧盟）  " +
+            "J=QZSS（日本）  I=NavIC（印度）  S=SBAS（星基增强）"
 
     /** 星座中文名（供页面拼「各国卫星各有多少」的统计用）。 */
-    fun constellationLabelOf(constellation: Int): String = prefixLabel(constellation)
+    fun constellationLabelOf(constellation: Int): String =
+        constellationNames.getOrElse(constellation - GnssStatus.CONSTELLATION_GPS) { "其它卫星系统" }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -167,35 +190,41 @@ class SatelliteSkyView @JvmOverloads constructor(
             val color = constellationColor(sv.constellation)
             val strength = (sv.snr / 45f).coerceIn(0.15f, 1f)
 
+            /*
+             * 1.0.8：圆点收小一圈。
+             *
+             * 以前光晕最大能画到 12dp、实心点 4.4dp，二三十颗挤在一起就糊成一片。
+             * 现在光晕 6~8dp、实心点 3.6dp，参与定位的环 6dp —— 密度下来了还是分得清。
+             */
             dotPaint.color = withAlpha(color, (70 * strength).toInt())
-            canvas.drawCircle(x, y, (9f + 3f * strength) * density, dotPaint)
+            canvas.drawCircle(x, y, (6f + 2f * strength) * density, dotPaint)
 
             if (sv.usedInFix) {
                 dotPaint.style = Paint.Style.STROKE
-                dotPaint.strokeWidth = 1.6f * density
+                dotPaint.strokeWidth = 1.5f * density
                 dotPaint.color = withAlpha(color, 0xAA)
-                canvas.drawCircle(x, y, 7.5f * density, dotPaint)
+                canvas.drawCircle(x, y, 6f * density, dotPaint)
                 dotPaint.style = Paint.Style.FILL
                 dotPaint.color = color
-                canvas.drawCircle(x, y, 4.4f * density, dotPaint)
+                canvas.drawCircle(x, y, 3.6f * density, dotPaint)
                 dotPaint.color = colorSurface
-                canvas.drawCircle(x, y, 1.6f * density, dotPaint)
+                canvas.drawCircle(x, y, 1.4f * density, dotPaint)
             } else {
                 dotPaint.style = Paint.Style.STROKE
-                dotPaint.strokeWidth = 1.4f * density
+                dotPaint.strokeWidth = 1.3f * density
                 dotPaint.color = withAlpha(color, 0xCC)
-                canvas.drawCircle(x, y, 3.6f * density, dotPaint)
+                canvas.drawCircle(x, y, 3f * density, dotPaint)
                 dotPaint.style = Paint.Style.FILL
             }
-
-            // 标出「是哪颗卫星」：星座代号 + 编号
-            labelPaint.color = if (sv.usedInFix) color else withAlpha(color, 0xAA)
-            labelPaint.isFakeBoldText = sv.usedInFix
-            canvas.drawText(labelOf(sv), x, y - 7.5f * density, labelPaint)
-            labelPaint.isFakeBoldText = false
         }
 
         canvas.restoreToCount(checkpoint)
+
+        /*
+         * 标签在**旋转之外**画：文字跟着罗盘转的话，手机一转字就全歪了。
+         * 位置用同样的变换手算一遍（屏幕角度 = 卫星方位角 − 手机朝向）。
+         */
+        drawLabels(canvas, centerX, centerY, radius, heading)
 
         // 屏幕上方固定不动：代表手机正对的方向
         needlePath.reset()
@@ -226,11 +255,70 @@ class SatelliteSkyView @JvmOverloads constructor(
 
     private fun labelOf(sv: Satellite): String = "${prefixOf(sv.constellation)}${sv.id}"
 
+    /**
+     * 给卫星标「星座代号 + 编号」，并且**不许糊成一片**（1.0.8 去拥挤）。
+     *
+     * 做法：
+     * 1. 参与定位的卫星优先，同组里按信号从强到弱；
+     * 2. 每个标签占一个 24×12dp 的格子（左右各占一格），格子被占就换到圆点下方试；
+     *    上下都占满就**干脆不标** —— 少一个标签也比一坨叠字强；
+     * 3. 标签画在旋转之外，手机怎么转字都是正的。
+     */
+    private fun drawLabels(canvas: Canvas, centerX: Float, centerY: Float, radius: Float, heading: Float) {
+        if (satellites.isEmpty()) return
+        val density = resources.displayMetrics.density
+        val cellWidth = 26f * density
+        val cellHeight = 12f * density
+        val columns = (width / cellWidth).toInt().coerceAtLeast(1)
+        val rows = (height / cellHeight).toInt().coerceAtLeast(1)
+        val occupied = BooleanArray(columns * rows)
+
+        fun takeCell(x: Float, y: Float): Boolean {
+            val column = (x / cellWidth).toInt().coerceIn(0, columns - 1)
+            val row = (y / cellHeight).toInt().coerceIn(0, rows - 1)
+            val range = (column - 1)..(column + 1)
+            if (range.any { it in 0 until columns && occupied[row * columns + it] }) return false
+            range.forEach { if (it in 0 until columns) occupied[row * columns + it] = true }
+            return true
+        }
+
+        val ordered = satellites.sortedWith(
+            compareByDescending<Satellite> { it.usedInFix }.thenByDescending { it.snr }
+        )
+        ordered.forEach { sv ->
+            val elevation = sv.elevation.coerceIn(0f, 90f)
+            // 屏幕角度：画布整体转过 -heading，所以这里也要减掉
+            val screenAzimuth = sv.azimuth - heading
+            val rad = Math.toRadians(screenAzimuth.toDouble())
+            val rho = radius * (1f - elevation / 90f)
+            val x = centerX + rho * sin(rad).toFloat()
+            val y = centerY - rho * cos(rad).toFloat()
+
+            labelPaint.color = if (sv.usedInFix) {
+                constellationColor(sv.constellation)
+            } else {
+                withAlpha(constellationColor(sv.constellation), 0xAA)
+            }
+            labelPaint.isFakeBoldText = sv.usedInFix
+
+            val aboveY = y - 8f * density
+            val belowY = y + 12f * density
+            val textY = when {
+                takeCell(x, aboveY) -> aboveY
+                takeCell(x, belowY) -> belowY
+                else -> null
+            }
+            if (textY != null) canvas.drawText(labelOf(sv), x, textY, labelPaint)
+            labelPaint.isFakeBoldText = false
+        }
+    }
+
     private fun prefixOf(constellation: Int): String =
         constellationPrefixes.getOrElse(constellation - GnssStatus.CONSTELLATION_GPS) { "?" }
 
-    private fun prefixLabel(constellation: Int): String =
-        constellationNames.getOrElse(constellation - GnssStatus.CONSTELLATION_GPS) { "其它" }
+    /** 统计行里的短名（不带国家后缀，太长了排不下）。 */
+    private fun shortLabel(constellation: Int): String =
+        constellationShortNames.getOrElse(constellation - GnssStatus.CONSTELLATION_GPS) { "其它" }
 
     private fun constellationColor(constellation: Int): Int =
         constellationColors.getOrElse(constellation - GnssStatus.CONSTELLATION_GPS) { colorIdle }

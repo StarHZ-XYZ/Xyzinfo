@@ -62,12 +62,18 @@ class GpsInfoActivity : AppCompatActivity() {
             val orientation = FloatArray(3)
             SensorManager.getOrientation(rotationMatrix, orientation)
             val degrees = ((Math.toDegrees(orientation[0].toDouble()) + 360.0) % 360.0).toFloat()
-            // 低通滤波：新值占 20%，避免数字乱跳
+            /*
+             * 低通滤波：新值占 35%。
+             *
+             * 1.0.8 把采样率从 SENSOR_DELAY_UI（约 15Hz）提到 SENSOR_DELAY_GAME（约 50Hz）——
+             * 之前转手机时天顶图是"一格一格"跟过来的，现在跟手了；采样密了以后
+             * 滤波系数也可以放大一点，指针不会因此抖。
+             */
             val previous = headingDegrees
             val smoothed = if (previous == null) {
                 degrees
             } else {
-                previous + shortestDelta(previous, degrees) * 0.2f
+                previous + shortestDelta(previous, degrees) * 0.35f
             }
             headingDegrees = (smoothed + 360f) % 360f
             binding.skyView.setHeading(headingDegrees)
@@ -150,7 +156,8 @@ class GpsInfoActivity : AppCompatActivity() {
                         binding.skyView.constellationLabelOf(entry.key) +
                             " " + entry.value.count { it.usedInFix } + "/" + entry.value.size
                     } +
-                    "\n当前卫星（参与定位）：" + binding.skyView.usedSatelliteLabels()
+                    "\n当前卫星（参与定位）：" + binding.skyView.usedSatelliteLabels() +
+                    "\n代号对照：" + binding.skyView.legend()
             )
             binding.skyView.update(list)
             binding.tvConstellations.setInfoRow("星座：${binding.skyView.constellationSummary()}")
@@ -195,7 +202,8 @@ class GpsInfoActivity : AppCompatActivity() {
         // 指南针：有旋转矢量传感器就接上，天顶图会跟着手机朝向转
         val sensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
         if (sensor != null) {
-            sensorManager?.registerListener(headingListener, sensor, SensorManager.SENSOR_DELAY_UI)
+            // SENSOR_DELAY_GAME（约 50Hz）：指南针要跟手，UI 档（约 15Hz）看着就是一格一格
+            sensorManager?.registerListener(headingListener, sensor, SensorManager.SENSOR_DELAY_GAME)
         }
     }
 

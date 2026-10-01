@@ -6,7 +6,8 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_main_gradient"
     android:fillViewport="true"
-    android:scrollbars="none">
+    android:scrollbars="none"
+    android:overScrollMode="never">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -153,7 +154,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:scrollbars="none">
+                    android:scrollbars="none"
+                    android:overScrollMode="never">
 
                     <LinearLayout
                         android:id="@+id/layoutDarkModeChips"
@@ -189,7 +191,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:scrollbars="none">
+                    android:scrollbars="none"
+                    android:overScrollMode="never">
 
                     <LinearLayout
                         android:id="@+id/layoutSeasonChips"

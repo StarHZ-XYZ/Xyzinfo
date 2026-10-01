@@ -226,7 +226,20 @@ object GlassScaffold {
                 scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
                 alpha = 0.92f
                 isClickable = true
-                isFocusable = true
+                /*
+                 * 1.0.8 修：点一下会冒出一个绿色方框。
+                 *
+                 * 两个原因叠在一起：
+                 * 1. isFocusable = true —— 点过之后这条鱼拿到焦点，系统按主题的
+                 *    focusHighlight 在它外面画了一圈高亮方框（会一直显示到焦点转移，就是"几秒"）；
+                 * 2. 点击时调的 Anim.pressFeedback 会给视图挂一个 RippleDrawable 前景 ——
+                 *    ImageView 没有可裁剪的轮廓，水波纹就变成一个直角矩形闪一下。
+                 *
+                 * 所以：鱼不要焦点、不要默认焦点高亮、不要水波纹前景，按压缩放自己动手做。
+                 */
+                isFocusable = false
+                isFocusableInTouchMode = false
+                defaultFocusHighlightEnabled = false
                 contentDescription = "大肥鱼：点一下它会摆摆尾巴"
                 layoutParams = FrameLayout.LayoutParams(fishWidth, fishHeight).apply {
                     gravity = Gravity.BOTTOM or Gravity.END
@@ -285,7 +298,15 @@ object GlassScaffold {
                  * 顺手来一个轻微的回弹缩放；结束后再让日常动作接着跑。
                  */
                 fish.setOnClickListener { view ->
-                    Anim.pressFeedback(view)
+                    // 不用 pressFeedback：它会给视图加水波纹前景（在这条鱼上就是个绿色方框）
+                    view.animate()
+                        .scaleX(0.94f)
+                        .scaleY(0.94f)
+                        .setDuration(90L)
+                        .withEndAction {
+                            view.animate().scaleX(1f).scaleY(1f).setDuration(140L).start()
+                        }
+                        .start()
                     bob.cancel()
                     sway.cancel()
                     val wag = android.animation.ObjectAnimator.ofFloat(
@@ -300,10 +321,9 @@ object GlassScaffold {
                         duration = 460L
                         interpolator = android.view.animation.AccelerateDecelerateInterpolator()
                     }
-                    val popX = android.animation.ObjectAnimator.ofFloat(fish, "scaleX", 1f, 1.12f, 1f)
-                    val popY = android.animation.ObjectAnimator.ofFloat(fish, "scaleY", 1f, 1.12f, 1f)
                     android.animation.AnimatorSet().apply {
-                        playTogether(wag, hop, popX, popY)
+                        // 缩放交给上面的按压缩放，这里只负责甩尾 + 抬一下
+                        playTogether(wag, hop)
                         addListener(object : android.animation.AnimatorListenerAdapter() {
                             override fun onAnimationEnd(animation: android.animation.Animator) {
                                 fish.rotation = 0f
@@ -323,7 +343,13 @@ object GlassScaffold {
                 }
             } else {
                 // 动画总开关关掉时只给按压反馈，不做动作
-                fish.setOnClickListener { Anim.pressFeedback(it) }
+                fish.setOnClickListener {
+                    it.animate().scaleX(0.94f).scaleY(0.94f).setDuration(90L)
+                        .withEndAction {
+                            it.animate().scaleX(1f).scaleY(1f).setDuration(140L).start()
+                        }
+                        .start()
+                }
             }
         }
 
