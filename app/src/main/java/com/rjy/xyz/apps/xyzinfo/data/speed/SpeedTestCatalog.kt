@@ -30,8 +30,21 @@ object SpeedTestCatalog {
     /** Vultr 官方测速文件（每个机房一个子域，文件名统一）。 */
     private fun vultr(host: String) = "https://$host.vultr.com/vultr.com.100MB.bin"
 
-    /** Linode / Akamai 官方测速文件。 */
-    private fun linode(city: String) = "https://speedtest.$city.linode.com/100MB-$city.bin"
+    /**
+     * Linode / Akamai 的测速站（跑的是 LibreSpeed 内核）。
+     *
+     * 两个端点都实测可用：
+     * - `100MB-<city>.bin`：官方测速大文件，下载用；
+     * - `garbage.php?ckSize=100`：LibreSpeed 的随机数据接口，作为下载备用地址；
+     * - `empty.php`：**上传端点**（POST 任意长度的二进制即可，返回 200）。
+     */
+    private fun linodeDownload(city: String) = listOf(
+        "https://speedtest.$city.linode.com/100MB-$city.bin",
+        "https://speedtest.$city.linode.com/garbage.php?ckSize=100"
+    )
+
+    private fun linodeUpload(city: String) =
+        listOf("https://speedtest.$city.linode.com/empty.php")
 
     /**
      * 高校 / 云厂商镜像站的公开大文件。
@@ -338,7 +351,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 37.5485,
             longitude = -121.9886,
-            downloadUrls = listOf(linode("fremont"))
+            downloadUrls = linodeDownload("fremont"),
+            uploadUrls = linodeUpload("fremont")
         ),
         SpeedTestServer(
             id = "linode-dallas",
@@ -348,7 +362,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 32.7767,
             longitude = -96.7970,
-            downloadUrls = listOf(linode("dallas"))
+            downloadUrls = linodeDownload("dallas"),
+            uploadUrls = linodeUpload("dallas")
         ),
         SpeedTestServer(
             id = "linode-seattle",
@@ -358,7 +373,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 47.6062,
             longitude = -122.3321,
-            downloadUrls = listOf(linode("seattle"))
+            downloadUrls = linodeDownload("seattle"),
+            uploadUrls = linodeUpload("seattle")
         ),
         SpeedTestServer(
             id = "linode-atlanta",
@@ -368,7 +384,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 33.7490,
             longitude = -84.3880,
-            downloadUrls = listOf(linode("atlanta"))
+            downloadUrls = linodeDownload("atlanta"),
+            uploadUrls = linodeUpload("atlanta")
         ),
         SpeedTestServer(
             id = "linode-newark",
@@ -378,7 +395,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 40.7357,
             longitude = -74.1724,
-            downloadUrls = listOf(linode("newark"))
+            downloadUrls = linodeDownload("newark"),
+            uploadUrls = linodeUpload("newark")
         ),
         SpeedTestServer(
             id = "linode-london",
@@ -388,7 +406,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 51.5074,
             longitude = -0.1278,
-            downloadUrls = listOf(linode("london"))
+            downloadUrls = linodeDownload("london"),
+            uploadUrls = linodeUpload("london")
         ),
         SpeedTestServer(
             id = "linode-paris",
@@ -398,7 +417,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 48.8566,
             longitude = 2.3522,
-            downloadUrls = listOf(linode("paris"))
+            downloadUrls = linodeDownload("paris"),
+            uploadUrls = linodeUpload("paris")
         ),
         SpeedTestServer(
             id = "linode-frankfurt",
@@ -408,7 +428,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 50.1109,
             longitude = 8.6821,
-            downloadUrls = listOf(linode("frankfurt"))
+            downloadUrls = linodeDownload("frankfurt"),
+            uploadUrls = linodeUpload("frankfurt")
         ),
         SpeedTestServer(
             id = "linode-sydney",
@@ -418,7 +439,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = -33.8688,
             longitude = 151.2093,
-            downloadUrls = listOf(linode("sydney"))
+            downloadUrls = linodeDownload("sydney"),
+            uploadUrls = linodeUpload("sydney")
         ),
         SpeedTestServer(
             id = "linode-tokyo2",
@@ -428,7 +450,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 35.6762,
             longitude = 139.6503,
-            downloadUrls = listOf(linode("tokyo2"))
+            downloadUrls = linodeDownload("tokyo2"),
+            uploadUrls = linodeUpload("tokyo2")
         ),
         SpeedTestServer(
             id = "linode-singapore",
@@ -438,7 +461,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 1.3521,
             longitude = 103.8198,
-            downloadUrls = listOf(linode("singapore"))
+            downloadUrls = linodeDownload("singapore"),
+            uploadUrls = linodeUpload("singapore")
         ),
         SpeedTestServer(
             id = "linode-mumbai1",
@@ -448,7 +472,8 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 19.0760,
             longitude = 72.8777,
-            downloadUrls = listOf(linode("mumbai1"))
+            downloadUrls = linodeDownload("mumbai1"),
+            uploadUrls = linodeUpload("mumbai1")
         ),
         SpeedTestServer(
             id = "linode-toronto1",
@@ -458,7 +483,114 @@ object SpeedTestCatalog {
             provider = "Akamai Linode",
             latitude = 43.6532,
             longitude = -79.3832,
-            downloadUrls = listOf(linode("toronto1"))
+            downloadUrls = linodeDownload("toronto1"),
+            uploadUrls = linodeUpload("toronto1")
+        ),
+        SpeedTestServer(
+            id = "linode-osaka",
+            name = "Linode 大阪",
+            city = "大阪",
+            countryCode = "JP",
+            provider = "Akamai Linode",
+            latitude = 34.6937,
+            longitude = 135.5023,
+            downloadUrls = linodeDownload("osaka"),
+            uploadUrls = linodeUpload("osaka")
+        ),
+        SpeedTestServer(
+            id = "linode-jakarta",
+            name = "Linode 雅加达",
+            city = "雅加达",
+            countryCode = "ID",
+            provider = "Akamai Linode",
+            latitude = -6.2088,
+            longitude = 106.8456,
+            downloadUrls = linodeDownload("jakarta"),
+            uploadUrls = linodeUpload("jakarta")
+        ),
+        SpeedTestServer(
+            id = "linode-madrid",
+            name = "Linode 马德里",
+            city = "马德里",
+            countryCode = "ES",
+            provider = "Akamai Linode",
+            latitude = 40.4168,
+            longitude = -3.7038,
+            downloadUrls = linodeDownload("madrid"),
+            uploadUrls = linodeUpload("madrid")
+        ),
+        SpeedTestServer(
+            id = "linode-milan",
+            name = "Linode 米兰",
+            city = "米兰",
+            countryCode = "IT",
+            provider = "Akamai Linode",
+            latitude = 45.4642,
+            longitude = 9.1900,
+            downloadUrls = linodeDownload("milan"),
+            uploadUrls = linodeUpload("milan")
+        ),
+        SpeedTestServer(
+            id = "linode-stockholm",
+            name = "Linode 斯德哥尔摩",
+            city = "斯德哥尔摩",
+            countryCode = "SE",
+            provider = "Akamai Linode",
+            latitude = 59.3293,
+            longitude = 18.0686,
+            downloadUrls = linodeDownload("stockholm"),
+            uploadUrls = linodeUpload("stockholm")
+        ),
+        SpeedTestServer(
+            id = "linode-chennai",
+            name = "Linode 金奈",
+            city = "金奈",
+            countryCode = "IN",
+            provider = "Akamai Linode",
+            latitude = 13.0827,
+            longitude = 80.2707,
+            downloadUrls = linodeDownload("chennai"),
+            uploadUrls = linodeUpload("chennai")
+        ),
+        SpeedTestServer(
+            id = "vultr-mxp",
+            name = "Vultr 米兰",
+            city = "米兰",
+            countryCode = "IT",
+            provider = "Vultr",
+            latitude = 45.4642,
+            longitude = 9.1900,
+            downloadUrls = listOf(vultr("mxp-it-ping"))
+        ),
+        SpeedTestServer(
+            id = "vultr-jnb",
+            name = "Vultr 约翰内斯堡",
+            city = "约翰内斯堡",
+            countryCode = "ZA",
+            provider = "Vultr",
+            latitude = -26.2041,
+            longitude = 28.0473,
+            downloadUrls = listOf(vultr("jnb-za-ping"))
+        ),
+        SpeedTestServer(
+            id = "vultr-scl",
+            name = "Vultr 圣地亚哥",
+            city = "圣地亚哥",
+            countryCode = "CL",
+            provider = "Vultr",
+            latitude = -33.4489,
+            longitude = -70.6693,
+            downloadUrls = listOf(vultr("scl-cl-ping"))
+        ),
+        SpeedTestServer(
+            id = "vultr-hon",
+            name = "Vultr 檀香山",
+            city = "檀香山",
+            countryCode = "US",
+            provider = "Vultr",
+            latitude = 21.3069,
+            longitude = -157.8583,
+            downloadUrls = listOf(vultr("hon-hi-us-ping"))
         )
     )
 
@@ -485,5 +617,20 @@ object SpeedTestCatalog {
         )
         val head = preferred.mapNotNull { id -> servers.firstOrNull { it.id == id } }
         return (head + servers.filterNot { it in head }).take(limit.coerceAtLeast(1))
+    }
+
+    /**
+     * 挑一台**支持上传测速**的节点。
+     *
+     * 为什么要专门挑：下载节点满地都是（镜像站、Vultr 都只给下载），但能接收上传的很少 ——
+     * 目前是 Cloudflare 与全部 Linode 节点（跑 LibreSpeed 内核，`empty.php` 接收 POST）。
+     * 测速时如果用户选的节点不支持上传，就自动换成最近的一台能上传的，
+     * 界面会注明"上行用的是哪台"，不再直接显示"该节点只提供下载"。
+     */
+    fun nearestUploadCapable(latitude: Double?, longitude: Double?): SpeedTestServer? {
+        val candidates = servers.filter { it.supportsUpload }
+        if (candidates.isEmpty()) return null
+        if (latitude == null || longitude == null) return candidates.first()
+        return candidates.minByOrNull { it.distanceKm(latitude, longitude) }
     }
 }

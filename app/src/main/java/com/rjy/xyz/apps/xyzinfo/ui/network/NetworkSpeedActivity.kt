@@ -52,6 +52,8 @@ class NetworkSpeedActivity : AppCompatActivity() {
 
     private var geo: GeoLocator.UserGeo? = null
     private var nearby: List<SpeedTestServer> = emptyList()
+    /** 上行阶段用的节点：下载节点不支持上传时会换到这台（记下来给界面显示）。 */
+    private var uploadNode: SpeedTestServer? = null
     private val pingCache = LinkedHashMap<String, Double?>()
     private var selected: SpeedTestServer? = null
 
@@ -157,6 +159,10 @@ class NetworkSpeedActivity : AppCompatActivity() {
                 pingCache.putAll(pings)
                 renderGeo()
                 selectBestNode()
+                // 上行专用节点：按同一套定位挑一台支持上传的（Cloudflare / Linode 系列）
+                uploadNode = SpeedTestCatalog.nearestUploadCapable(
+                    detected?.latitude, detected?.longitude
+                )
                 renderNodeList()
             }
         }, "xyzinfo-speed-discovery").start()
@@ -378,7 +384,8 @@ class NetworkSpeedActivity : AppCompatActivity() {
                     },
                     onUpload = { bps, fraction ->
                         pushToUi(THROTTLE_MS) { onSpeedSample(SpeedTestEngine.Phase.UPLOAD, bps, fraction) }
-                    }
+                    },
+                    uploadServer = uploadNode
                 )
             }.getOrNull()
 
@@ -467,6 +474,9 @@ class NetworkSpeedActivity : AppCompatActivity() {
         summary.append(" ｜ ${report.serverName} ｜ ${report.connections} 连接")
         summary.append(" ｜ 用时 ${(report.durationMs / 1000).coerceAtLeast(1)} 秒")
         report.uploadSkippedReason?.let { summary.append("\n上传：$it") }
+        report.uploadServerName?.let {
+            summary.append("\n上行节点：$it（下载节点不支持上传，自动切换）")
+        }
         binding.tvPhase.text = summary
 
         SettingsRepository.saveSpeedResult(

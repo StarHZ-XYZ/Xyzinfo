@@ -49,6 +49,32 @@ class SpeedTestCatalogTest {
         // 校园镜像只提供下载，不该被标成支持上传（否则界面会显示一个假的上传成绩）
         val tuna = servers.first { it.id == "tuna" }
         assertFalse(tuna.supportsUpload)
+        // 上行节点要够用：Cloudflare + 全部 Linode（LibreSpeed 的 empty.php 接收 POST）
+        val uploadCapable = servers.count { it.supportsUpload }
+        assertTrue("支持上传的节点太少：$uploadCapable", uploadCapable >= 15)
+    }
+
+    @Test
+    fun `每个Linode节点都能测上传`() {
+        val linode = servers.filter { it.provider.contains("Linode") }
+        assertTrue("Linode 节点数异常：${linode.size}", linode.size >= 15)
+        linode.forEach { server ->
+            assertTrue("${server.name} 缺少上传地址", server.supportsUpload)
+            assertTrue(
+                "${server.name} 的上传地址不对：${server.uploadUrls}",
+                server.uploadUrls.any { it.endsWith("/empty.php") }
+            )
+        }
+    }
+
+    @Test
+    fun `总能挑到一台能测上传的节点`() {
+        // 有定位：挑最近的
+        val nearBeijing = SpeedTestCatalog.nearestUploadCapable(39.9, 116.4)
+        assertTrue(nearBeijing != null && nearBeijing.supportsUpload)
+        // 没定位：也要给一台能用的
+        val fallback = SpeedTestCatalog.nearestUploadCapable(null, null)
+        assertTrue(fallback != null && fallback.supportsUpload)
     }
 
     @Test

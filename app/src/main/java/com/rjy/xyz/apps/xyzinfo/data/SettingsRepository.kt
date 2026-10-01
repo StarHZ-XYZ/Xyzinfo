@@ -24,6 +24,7 @@ private const val KEY_FOLLOW_SYSTEM_COLOR = "follow_system_color"
 private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
     private const val KEY_SEASON_EFFECT = "season_effect"
     private const val KEY_SEASON_MODE = "season_mode"
+    private const val KEY_SEASON_GRAVITY = "season_gravity"
     private const val KEY_HOME_GRID = "home_grid_style"
     private const val KEY_DEEPSEEK_KEY = "deepseek_api_key"
     private const val KEY_AI_MODE = "ai_mode"
@@ -156,6 +157,17 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
 
     fun setSeasonMode(context: Context, mode: String) {
         prefs(context).edit().putString(KEY_SEASON_MODE, mode).apply()
+    }
+
+    /**
+     * 四季氛围是否跟随重力：开启后雪花 / 枫叶 / 花瓣会**顺着设备倾斜的方向斜着落**。
+     * 默认开（这是它最好玩的地方），关掉就还是直上直下地掉。
+     */
+    fun seasonGravity(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SEASON_GRAVITY, true)
+
+    fun setSeasonGravity(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_SEASON_GRAVITY, enabled).apply()
     }
 
     // ---------- 主页排版样式 ----------

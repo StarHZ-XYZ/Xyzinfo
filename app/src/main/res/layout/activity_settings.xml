@@ -198,6 +198,23 @@
                         android:orientation="horizontal" />
                 </HorizontalScrollView>
 
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchSeasonGravity"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:minHeight="46dp"
+                    android:text="跟随重力飘落"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvSeasonGravityHint"
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="开启后雪花 / 枫叶 / 花瓣会顺着设备倾斜的方向斜着落（横屏、歪着拿都会跟着变）" />
+
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"

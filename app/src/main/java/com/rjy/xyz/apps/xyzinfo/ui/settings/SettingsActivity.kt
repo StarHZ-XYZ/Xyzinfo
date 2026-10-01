@@ -82,6 +82,12 @@ class SettingsActivity : AppCompatActivity() {
         buildDarkModeChips()
         updateSeasonHint()
         buildSeasonChips()
+        binding.switchSeasonGravity.isChecked = SettingsRepository.seasonGravity(this)
+        binding.tvSeasonGravityHint.alpha = if (binding.switchSeasonGravity.isChecked) 1f else 0.5f
+        binding.switchSeasonGravity.setOnCheckedChangeListener { _, checked ->
+            SettingsRepository.setSeasonGravity(this, checked)
+            binding.tvSeasonGravityHint.alpha = if (checked) 1f else 0.5f
+        }
         binding.switchSeason.setOnCheckedChangeListener { _, checked ->
             SettingsRepository.setSeasonEffectEnabled(this, checked)
             recreate()

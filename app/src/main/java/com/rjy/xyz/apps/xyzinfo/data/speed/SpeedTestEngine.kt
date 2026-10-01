@@ -65,6 +65,8 @@ object SpeedTestEngine {
         val downloadBytesPerSecond: Double,
         val uploadBytesPerSecond: Double?,
         val uploadSkippedReason: String?,
+            /** 上行实际用的节点名（与下载节点不同时会写出来，方便用户理解）。 */
+            val uploadServerName: String?,
         val connections: Int,
         val durationMs: Long
     )
@@ -191,7 +193,12 @@ object SpeedTestEngine {
         onPhase: (Phase) -> Unit,
         onLatency: (Latency?) -> Unit,
         onDownload: (Double, Double) -> Unit,
-        onUpload: (Double, Double) -> Unit
+        onUpload: (Double, Double) -> Unit,
+        /**
+         * 备用上行节点：下载节点不支持上传时（镜像站、Vultr 这类只给下载的），
+         * 上行阶段自动改用这台，而不是直接跳过。
+         */
+        uploadServer: SpeedTestServer? = null
     ): Report {
         val startedAt = System.currentTimeMillis()
 
@@ -209,17 +216,20 @@ object SpeedTestEngine {
 
         var uploadBps: Double? = null
         var skipped: String? = null
+        var uploadServerName: String? = null
+        val uploadTarget = if (server.supportsUpload) server else uploadServer
         if (session.isCancelled) {
             skipped = "已取消"
-        } else if (!server.supportsUpload) {
-            // 校园镜像 / 测速文件服务只提供下载，不接收上传，实话实说
+        } else if (uploadTarget == null) {
+            // 一台能收上传的节点都没有（理论上不会发生），实话实说
             skipped = "该节点只提供下载测速"
         } else {
             onPhase(Phase.UPLOAD)
             uploadBps = runCatching {
-                upload(session, server, connections, uploadMs, onSample = onUpload)
+                upload(session, uploadTarget, connections, uploadMs, onSample = onUpload)
             }.getOrNull()
             if (uploadBps == null) skipped = "上传测速失败（节点未响应）"
+            if (uploadTarget.id != server.id) uploadServerName = uploadTarget.name
         }
 
         onPhase(Phase.FINISHED)
@@ -230,6 +240,7 @@ object SpeedTestEngine {
             downloadBytesPerSecond = downloadBps,
             uploadBytesPerSecond = uploadBps,
             uploadSkippedReason = skipped,
+            uploadServerName = uploadServerName,
             connections = connections,
             durationMs = System.currentTimeMillis() - startedAt
         )

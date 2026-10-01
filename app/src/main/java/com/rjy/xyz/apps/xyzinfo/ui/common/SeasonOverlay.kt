@@ -11,6 +11,10 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -62,7 +66,7 @@ enum class Season(val label: String) {
  * 绘制开销降到原来的十分之一左右。形状也跟着重画了：
  * 雪花是六芒 + 中心圆 + 柔光晕，枫叶是带叶柄的三裂叶，花瓣是双色椭圆，夏天是暖色光斑。
  *
- * 另外限频 30fps（雪花本来就是慢动作），页面切后台立刻停。
+ * 帧率跟随屏幕刷新率（Choreographer 驱动），页面切后台立刻停。
  */
 class SeasonOverlay @JvmOverloads constructor(
     context: Context,
@@ -88,6 +92,30 @@ class SeasonOverlay @JvmOverloads constructor(
     private var running = false
     private var sprite: Bitmap? = null
 
+    /**
+     * 设备倾斜量（加速度计原始读数，已做低通滤波）。
+     *
+     * 只在氛围层运行期间注册监听：页面不可见时绝不占着传感器。
+     */
+    private var rawGravityX = 0f
+    private var rawGravityY = 0f
+    /** 设置缓存：这三个开关原来是**每帧**读一次 SharedPreferences，白白占着主线程。 */
+    private var enabledBySettings = true
+    private var gravityEnabled = true
+    private var settingsCheckedAt = 0L
+    private val sensorManager by lazy {
+        context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+    }
+    private val gravityListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            // 低通滤波：传感器噪声不小，直接用会看到粒子抖
+            rawGravityX += (event.values[0] - rawGravityX) * TILT_SMOOTHING
+            rawGravityY += (event.values[1] - rawGravityY) * TILT_SMOOTHING
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
+
     var season: Season = Season.WINTER
         set(value) {
             if (field != value) {
@@ -111,13 +139,51 @@ class SeasonOverlay @JvmOverloads constructor(
         if (running) return
         running = true
         lastFrameNanos = 0L
-        postInvalidateDelayed(FRAME_INTERVAL_MILLIS)
+        settingsCheckedAt = 0L
+        refreshSettings(force = true)
+        if (gravityEnabled) startGravitySensor()
+        /*
+         * 用 Choreographer 跟着**屏幕刷新率**走（60 / 90 / 120Hz），不再固定 30fps。
+         *
+         * 老写法是 postInvalidateDelayed(33)：一帧 33ms 的定时器落在 120Hz 屏上，
+         * 每两帧才画一次、而且和垂直同步对不齐 —— 看起来就是"帧率低 + 一顿一顿"。
+         * 同理**不能**用固定延时去驱动动画，必须交给系统统一节拍。
+         */
+        postInvalidateOnAnimation()
     }
 
     fun stop() {
         running = false
-        flakes.clear()
+        stopGravitySensor()
+        // 不清空粒子：页面被暂停再回来时，雪花 / 叶子停在原地接着飘，而不是重新生成一批
         invalidate()
+    }
+
+    private fun startGravitySensor() {
+        val manager = sensorManager ?: return
+        val sensor = manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
+        runCatching {
+            manager.registerListener(gravityListener, sensor, SensorManager.SENSOR_DELAY_GAME)
+        }
+    }
+
+    private fun stopGravitySensor() {
+        val manager = sensorManager ?: return
+        runCatching { manager.unregisterListener(gravityListener) }
+    }
+
+    /** 开关状态每秒最多读一次（每帧读 SharedPreferences 是没必要的开销）。 */
+    private fun refreshSettings(force: Boolean = false) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!force && now - settingsCheckedAt < SETTINGS_CHECK_INTERVAL_MILLIS) return
+        settingsCheckedAt = now
+        enabledBySettings = SettingsRepository.animationsEnabled(context) &&
+            SettingsRepository.seasonEffectEnabled(context)
+        val gravityNow = SettingsRepository.seasonGravity(context)
+        if (gravityNow != gravityEnabled) {
+            gravityEnabled = gravityNow
+            if (gravityNow) startGravitySensor() else stopGravitySensor()
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -128,9 +194,8 @@ class SeasonOverlay @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (!running || width <= 0 || height <= 0) return
-        if (!SettingsRepository.animationsEnabled(context) ||
-            !SettingsRepository.seasonEffectEnabled(context)
-        ) {
+        refreshSettings()
+        if (!enabledBySettings) {
             running = false
             return
         }
@@ -144,15 +209,36 @@ class SeasonOverlay @JvmOverloads constructor(
         else ((now - lastFrameNanos) / 1e9).toFloat().coerceAtMost(0.06f)
         lastFrameNanos = now
 
+        /*
+         * 重力：设备往哪边歪，粒子就往哪边**斜着落**（不是慢慢横移）。
+         *
+         * tilt 是下落方向相对竖直方向的偏角（往右歪为正），所以速度分量就是
+         * (sin(tilt), cos(tilt)) —— 完全放平 / 竖直时 tilt = 0，仍是原来的直落。
+         * 贴图也一起倾斜同样的角度，叶子 / 雪花"顺着重力倒"的观感非常直接。
+         */
+        val tiltEnabled = gravityEnabled
+        val tilt = if (tiltEnabled) SeasonTilt.tiltFromAccelerometerX(rawGravityX) else 0f
+        val tiltSin = sin(tilt)
+        val tiltCos = cos(tilt)
+        val tiltDegrees = Math.toDegrees(tilt.toDouble()).toFloat()
+        // 竖着拿（屏幕朝人）时 y 分量最大，落速略快一点点，手感更接近"真的在往下掉"
+        val speedScale = if (tiltEnabled) {
+            (1f + (rawGravityY / SeasonTilt.SensorGravity).coerceIn(-1f, 1f) * 0.18f)
+        } else {
+            1f
+        }
+
         flakes.forEach { flake ->
             flake.phase += delta * flake.sway
-            flake.y += flake.speed * delta
+            flake.y += flake.speed * speedScale * tiltCos * delta
+            flake.x += flake.speed * tiltSin * delta
             flake.x += sin(flake.phase * 2f * PI.toFloat()) * flake.sway * 14f * delta
             flake.rotation += flake.spin * delta
 
             if (flake.y - flake.size > h) {
                 flake.y = -flake.size
-                flake.x = Random.nextFloat() * w
+                // 直接修正 x 会显得"瞬移"，沿着当前倾斜方向在屏幕外重排更自然
+                flake.x = Random.nextFloat() * w - tiltSin * flake.size * 4f
             }
             if (flake.x < -flake.size * 2) flake.x = w + flake.size
             if (flake.x > w + flake.size * 2) flake.x = -flake.size
@@ -160,13 +246,14 @@ class SeasonOverlay @JvmOverloads constructor(
             val scale = flake.size * 2f / image.width
             matrix.reset()
             matrix.postTranslate(-image.width / 2f, -image.height / 2f)
-            matrix.postRotate(flake.rotation)
+            matrix.postRotate(flake.rotation + tiltDegrees)
             matrix.postScale(scale, scale)
             matrix.postTranslate(flake.x, flake.y)
             paint.alpha = flake.alpha
             canvas.drawBitmap(image, matrix, paint)
         }
-        postInvalidateDelayed(FRAME_INTERVAL_MILLIS)
+        // 下一帧继续（跟随屏幕刷新率）
+        postInvalidateOnAnimation()
     }
 
     // ---------- 精灵图 ----------
@@ -333,7 +420,10 @@ class SeasonOverlay @JvmOverloads constructor(
     }
 
     private companion object {
-        /** 氛围层 30fps 足够（雪花叶子是慢动作），省一半绘制也不让设备一直满帧。 */
-        const val FRAME_INTERVAL_MILLIS = 33L
+        /** 加速度计低通系数。 */
+        const val TILT_SMOOTHING = 0.14f
+
+        /** 开关状态的检查间隔：每秒一次足够，省掉每帧读 SharedPreferences。 */
+        const val SETTINGS_CHECK_INTERVAL_MILLIS = 1000L
     }
 }
