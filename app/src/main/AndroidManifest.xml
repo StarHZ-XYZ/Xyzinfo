@@ -80,6 +80,8 @@
         <activity android:name=".ui.hardware.HardwareMoreActivity" />
         <!-- 网络测速：多台公共节点 + 自动就近 + 并行多线程 -->
         <activity android:name=".ui.network.NetworkSpeedActivity" />
+        <!-- 品牌图鉴：内置的矢量 logo 全集 -->
+        <activity android:name=".ui.logos.LogoGalleryActivity" />
         <!--
           3D 引擎跑分：单独开进程（:gpu）。GLSL 在个别 Adreno 驱动上会引发原生崩溃，
           隔到子进程后主程序不会一起挂掉，可以自动退回 2D 测试继续跑完。

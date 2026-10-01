@@ -254,6 +254,13 @@ class MainActivity : AppCompatActivity() {
         ) {
             open(com.rjy.xyz.apps.xyzinfo.ui.network.NetworkSpeedActivity::class.java)
         }
+        addEntryCard(
+            "品牌图鉴",
+            "手机品牌 / 芯片厂商 logo 全集（全部矢量，放大不糊）",
+            R.drawable.ic_module_logos
+        ) {
+            open(com.rjy.xyz.apps.xyzinfo.ui.logos.LogoGalleryActivity::class.java)
+        }
     }
 
     /**

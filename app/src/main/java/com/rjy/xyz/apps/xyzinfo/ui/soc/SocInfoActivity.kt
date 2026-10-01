@@ -107,7 +107,13 @@ class SocInfoActivity : AppCompatActivity() {
         tvBrandBadge.setTextColor(foreground)
     }
 
-    private fun SocBrand.iconRes(): Int = when (this) {
+    /** 1.0.4：优先用「超级 logo 包」里的真 logo（矢量化自用户提供的原图）。 */
+    private fun SocBrand.iconRes(): Int =
+        com.rjy.xyz.apps.xyzinfo.data.ChipLogoCatalog.logoOf(this).takeIf { it != 0 }
+            ?: legacyIconRes()
+
+    /** logo 包里没有的厂商（玄戒、未知）退回原来那套手绘通用图标。 */
+    private fun SocBrand.legacyIconRes(): Int = when (this) {
         SocBrand.SNAPDRAGON -> R.drawable.ic_brand_snapdragon
         SocBrand.MEDIATEK -> R.drawable.ic_brand_mediatek
         SocBrand.EXYNOS -> R.drawable.ic_brand_exynos

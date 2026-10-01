@@ -9,6 +9,7 @@ import android.graphics.RectF
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import kotlin.math.min
+import com.rjy.xyz.apps.xyzinfo.R
 
 /**
  * 品牌徽标目录 + 徽章渲染。
@@ -28,7 +29,13 @@ object BrandLogoCatalog {
         /** 徽章上的缩写，1~3 个字符。 */
         val badge: String,
         /** 品牌主色（写成 Long 省得每个字面量都加 .toInt()）。 */
-        val color: Long
+        val color: Long,
+        /**
+         * 真正的品牌 logo（1.0.4 起随「超级 logo 包」内置，由用户提供的原图自动矢量化生成）。
+         * 为 0 时退回 [badge] 文字徽章 —— 品牌表里几百个品牌不可能人人都有矢量图，
+         * 有 logo 的用 logo、没有的用统一风格徽章，观感才一致。
+         */
+        val logoRes: Int = 0
     )
 
     /**
@@ -37,24 +44,24 @@ object BrandLogoCatalog {
      */
     val BRANDS: List<Brand> = listOf(
         // ── 中国 ──
-        Brand(listOf("xiaomi", "mi ", "redmi", "小米"), "小米", "MI", 0xFFFF6900),
-        Brand(listOf("redmi", "红米"), "红米", "RD", 0xFFFF6900),
+        Brand(listOf("xiaomi", "mi ", "redmi", "小米"), "小米", "MI", 0xFFFF6900, R.drawable.ic_logo_xiaomi),
+        Brand(listOf("redmi", "红米"), "红米", "RD", 0xFFFF6900, R.drawable.ic_logo_xiaomi),
         Brand(listOf("poco"), "POCO", "PC", 0xFFFFC400),
         Brand(listOf("huawei", "华为", "hwd"), "华为", "HW", 0xFFCF0A2C),
-        Brand(listOf("honor", "荣耀"), "荣耀", "HN", 0xFF0A84FF),
-        Brand(listOf("oppo", "欧珀"), "OPPO", "OP", 0xFF1C9E4C),
-        Brand(listOf("oneplus", "一加"), "一加", "1+", 0xFFEB0028),
-        Brand(listOf("realme", "真我"), "真我", "RM", 0xFFD8A200),
-        Brand(listOf("vivo", "维沃"), "vivo", "VV", 0xFF415FFF),
-        Brand(listOf("iqoo"), "iQOO", "iQ", 0xFF415FFF),
-        Brand(listOf("meizu", "魅族"), "魅族", "MZ", 0xFF00A9E0),
-        Brand(listOf("zte", "中兴"), "中兴", "ZT", 0xFF0066B3),
-        Brand(listOf("nubia", "努比亚"), "努比亚", "NB", 0xFFE4002B),
-        Brand(listOf("red magic", "redmagic", "红魔"), "红魔", "RM", 0xFFE4002B),
-        Brand(listOf("lenovo", "联想"), "联想", "LN", 0xFFE2231A),
-        Brand(listOf("motorola", "moto", "摩托罗拉"), "摩托罗拉", "MO", 0xFF5C92FA),
+        Brand(listOf("honor", "荣耀"), "荣耀", "HN", 0xFF0A84FF, R.drawable.ic_logo_honor),
+        Brand(listOf("oppo", "欧珀"), "OPPO", "OP", 0xFF1C9E4C, R.drawable.ic_logo_oppo),
+        Brand(listOf("oneplus", "一加"), "一加", "1+", 0xFFEB0028, R.drawable.ic_logo_oneplus),
+        Brand(listOf("realme", "真我"), "真我", "RM", 0xFFD8A200, R.drawable.ic_logo_realme),
+        Brand(listOf("vivo", "维沃"), "vivo", "VV", 0xFF415FFF, R.drawable.ic_logo_vivo),
+        Brand(listOf("iqoo"), "iQOO", "iQ", 0xFF415FFF, R.drawable.ic_logo_iqoo),
+        Brand(listOf("meizu", "魅族"), "魅族", "MZ", 0xFF00A9E0, R.drawable.ic_logo_meizu),
+        Brand(listOf("zte", "中兴"), "中兴", "ZT", 0xFF0066B3, R.drawable.ic_logo_zte),
+        Brand(listOf("nubia", "努比亚"), "努比亚", "NB", 0xFFE4002B, R.drawable.ic_logo_nubia),
+        Brand(listOf("red magic", "redmagic", "红魔"), "红魔", "RM", 0xFFE4002B, R.drawable.ic_logo_redmagic),
+        Brand(listOf("lenovo", "联想"), "联想", "LN", 0xFFE2231A, R.drawable.ic_logo_lenovo),
+        Brand(listOf("motorola", "moto", "摩托罗拉"), "摩托罗拉", "MO", 0xFF5C92FA, R.drawable.ic_logo_motorola),
         Brand(listOf("legion", "拯救者"), "拯救者", "LG", 0xFFE2231A),
-        Brand(listOf("smartisan", "锤子", "坚果"), "锤子", "SM", 0xFF8C8C8C),
+        Brand(listOf("smartisan", "锤子", "坚果"), "锤子", "SM", 0xFF8C8C8C, R.drawable.ic_logo_smartisan),
         Brand(listOf("gionee", "金立"), "金立", "GN", 0xFFD2232A),
         Brand(listOf("coolpad", "酷派"), "酷派", "CP", 0xFF2A6DBB),
         Brand(listOf("letv", "leeco", "乐视"), "乐视", "LE", 0xFFE2231A),
@@ -63,7 +70,7 @@ object BrandLogoCatalog {
         Brand(listOf("gree", "格力"), "格力", "GR", 0xFF1B77C8),
         Brand(listOf("hisense", "海信"), "海信", "HS", 0xFF1D7A46),
         Brand(listOf("tcl", "阿尔卡特", "alcatel"), "TCL", "TCL", 0xFFE4002B),
-        Brand(listOf("blackshark", "黑鲨"), "黑鲨", "BS", 0xFF00C8FF),
+        Brand(listOf("blackshark", "黑鲨"), "黑鲨", "BS", 0xFF00C8FF, R.drawable.ic_logo_blackshark),
         Brand(listOf("tecno", "传音"), "传音 Tecno", "TC", 0xFF0067B1),
         Brand(listOf("infinix"), "传音 Infinix", "IN", 0xFF0A84FF),
         Brand(listOf("itel"), "传音 itel", "IT", 0xFF00A0E9),
@@ -85,9 +92,9 @@ object BrandLogoCatalog {
         Brand(listOf("vivo iqoo"), "iQOO", "iQ", 0xFF415FFF),
 
         // ── 韩日 ──
-        Brand(listOf("samsung", "三星"), "三星", "SS", 0xFF1428A0),
+        Brand(listOf("samsung", "三星"), "三星", "SS", 0xFF1428A0, R.drawable.ic_logo_samsung),
         Brand(listOf("lg electronics", "lge", "lg-"), "LG", "LG", 0xFFA50034),
-        Brand(listOf("sony", "索尼"), "索尼", "SN", 0xFF1A1A1A),
+        Brand(listOf("sony", "索尼"), "索尼", "SN", 0xFF1A1A1A, R.drawable.ic_logo_sony),
         Brand(listOf("sharp", "夏普"), "夏普", "SH", 0xFFE60012),
         Brand(listOf("kyocera", "京瓷"), "京瓷", "KY", 0xFFD32F2F),
         Brand(listOf("fujitsu", "富士通"), "富士通", "FJ", 0xFFD50000),
@@ -98,10 +105,10 @@ object BrandLogoCatalog {
 
         // ── 欧美 ──
         Brand(listOf("apple", "苹果", "iphone"), "苹果", "AP", 0xFF333333),
-        Brand(listOf("google"), "谷歌", "GO", 0xFF4285F4),
-        Brand(listOf("nokia", "诺基亚"), "诺基亚", "NK", 0xFF124191),
+        Brand(listOf("google"), "谷歌", "GO", 0xFF4285F4, R.drawable.ic_logo_google),
+        Brand(listOf("nokia", "诺基亚"), "诺基亚", "NK", 0xFF124191, R.drawable.ic_logo_nokia),
         Brand(listOf("htc", "宏达电"), "HTC", "HTC", 0xFF0F9D58),
-        Brand(listOf("blackberry", "rim", "黑莓"), "黑莓", "BB", 0xFF1A1A1A),
+        Brand(listOf("blackberry", "rim", "黑莓"), "黑莓", "BB", 0xFF1A1A1A, R.drawable.ic_logo_blackberry),
         Brand(listOf("nvidia"), "NVIDIA", "NV", 0xFF76B900),
         Brand(listOf("amazon"), "Amazon", "AZ", 0xFFFF9900),
         Brand(listOf("microsoft", "surface"), "微软", "MS", 0xFF0078D4),
@@ -161,7 +168,7 @@ object BrandLogoCatalog {
         Brand(listOf("evercoss"), "Evercoss", "EC", 0xFFD32F2F),
         Brand(listOf("mito"), "MITO", "MI", 0xFF29B6F6),
         Brand(listOf("pixel", "google pixel"), "Pixel", "PX", 0xFF4285F4),
-        Brand(listOf("nothing", "nothing phone"), "Nothing", "NO", 0xFF1A1A1A)
+        Brand(listOf("nothing", "nothing phone"), "Nothing", "NO", 0xFF1A1A1A, R.drawable.ic_logo_nothing)
     )
 
     /**
@@ -191,6 +198,18 @@ object BrandLogoCatalog {
      * @param sizePx 期望边长（会按屏幕密度取整）
      */
     fun drawable(context: Context, brand: Brand, sizePx: Int): Drawable {
+        /*
+         * 有真 logo 就直接用（矢量，任意尺寸都清晰）；
+         * 没有的仍然走下面的文字徽章 —— 两三百个品牌不可能都有图，
+         * 混着用时"有图用图、没图用徽章"看起来是统一的，不会一半图一半字。
+         */
+        if (brand.logoRes != 0) {
+            val logo = androidx.appcompat.content.res.AppCompatResources.getDrawable(context, brand.logoRes)
+            if (logo != null) {
+                logo.setBounds(0, 0, sizePx, sizePx)
+                return logo
+            }
+        }
         val size = sizePx.coerceAtLeast(16)
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
