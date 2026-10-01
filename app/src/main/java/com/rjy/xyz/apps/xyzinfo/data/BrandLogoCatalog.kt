@@ -216,12 +216,26 @@ object BrandLogoCatalog {
         if (brand.logoRes != 0) {
             val logo = androidx.appcompat.content.res.AppCompatResources.getDrawable(context, brand.logoRes)
             if (logo != null) {
+                /*
+                 * **按 logo 自己的比例给槽位**。
+                 *
+                 * 这批 logo 大多是"宽字标"：联发科 3.9:1、OPPO 4.1:1、Nothing 5.3:1。
+                 * 原来不管什么 logo 都塞进正方框里，宽字标被压成一条 8dp 高的细线，根本看不清。
+                 * 现在宽度按比例算（最多 2.6 倍高度），字标就能铺开，清晰度直接翻倍。
+                 */
+                val aspect = if (logo.intrinsicHeight > 0) {
+                    logo.intrinsicWidth.toFloat() / logo.intrinsicHeight
+                } else {
+                    1f
+                }
+                val boxHeight = sizePx
+                val boxWidth = (sizePx * aspect.coerceIn(0.5f, 2.6f)).toInt().coerceAtLeast(sizePx / 2)
                 if (brand.logoTile == 0) {
-                    logo.setBounds(0, 0, sizePx, sizePx)
+                    logo.setBounds(0, 0, boxWidth, boxHeight)
                     return logo
                 }
                 // 近黑 / 近白的单色 logo：垫一块对比色底板，两种主题下都看得清
-                return tiledLogo(context, logo, sizePx, brand.logoTile == 2)
+                return tiledLogo(logo, boxWidth, boxHeight, brand.logoTile == 2)
             }
         }
         val size = sizePx.coerceAtLeast(16)
@@ -268,19 +282,20 @@ object BrandLogoCatalog {
      * 用 LayerDrawable 而不是先画成位图：矢量 logo 直接按目标尺寸绘制，
      * 放大到任何尺寸都是清晰的；底板也只是个 shape drawable，几乎不占内存。
      */
-    private fun tiledLogo(context: Context, logo: Drawable, sizePx: Int, darkTile: Boolean): Drawable {
+    private fun tiledLogo(logo: Drawable, widthPx: Int, heightPx: Int, darkTile: Boolean): Drawable {
         val tileColor = if (darkTile) 0xFF23272E.toInt() else 0xFFFFFFFF.toInt()
         val strokeColor = if (darkTile) 0xFF3A4048.toInt() else 0xFFD8DEE7.toInt()
         val tile = android.graphics.drawable.GradientDrawable().apply {
             shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-            cornerRadius = sizePx * 0.30f
+            cornerRadius = heightPx * 0.30f
             setColor(tileColor)
-            setStroke((sizePx * 0.045f).toInt().coerceAtLeast(1), strokeColor)
+            setStroke((heightPx * 0.045f).toInt().coerceAtLeast(1), strokeColor)
         }
-        val inset = (sizePx * 0.18f).toInt()
-        logo.setBounds(inset, inset, sizePx - inset, sizePx - inset)
+        val insetX = (widthPx * 0.12f).toInt()
+        val insetY = (heightPx * 0.16f).toInt()
+        logo.setBounds(insetX, insetY, widthPx - insetX, heightPx - insetY)
         return android.graphics.drawable.LayerDrawable(arrayOf(tile, logo)).apply {
-            setBounds(0, 0, sizePx, sizePx)
+            setBounds(0, 0, widthPx, heightPx)
         }
     }
 

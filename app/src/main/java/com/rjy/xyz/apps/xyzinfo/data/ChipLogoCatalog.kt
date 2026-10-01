@@ -34,4 +34,24 @@ object ChipLogoCatalog {
         SocBrand.XRING -> "小米玄戒"
         SocBrand.UNKNOWN -> "未知"
     }
+
+    /**
+     * 按 logo 自己的比例给"宽槽位"的 drawable（没有内置 logo 时返回 null）。
+     *
+     * 芯片厂的 logo 也大多是宽字标（联发科接近 4:1），塞进正方框会压成一条细线；
+     * 这里按高度 [heightPx] 反推宽度，最多放宽到 3 倍，字标就能铺开。
+     */
+    fun wideDrawable(context: android.content.Context, brand: SocBrand, heightPx: Int): android.graphics.drawable.Drawable? {
+        val res = logoOf(brand)
+        if (res == 0) return null
+        val logo = androidx.appcompat.content.res.AppCompatResources.getDrawable(context, res) ?: return null
+        val aspect = if (logo.intrinsicHeight > 0) {
+            logo.intrinsicWidth.toFloat() / logo.intrinsicHeight
+        } else {
+            1f
+        }
+        val width = (heightPx * aspect.coerceIn(0.6f, 3.0f)).toInt().coerceAtLeast(heightPx)
+        logo.setBounds(0, 0, width, heightPx)
+        return logo
+    }
 }

@@ -93,6 +93,13 @@ class SettingsActivity : AppCompatActivity() {
             recreate()
         }
 
+        binding.switchHoliday.isChecked = SettingsRepository.holidayEffectEnabled(this)
+        binding.tvHolidayHint.alpha = if (binding.switchHoliday.isChecked) 1f else 0.5f
+        binding.switchHoliday.setOnCheckedChangeListener { _, checked ->
+            SettingsRepository.setHolidayEffectEnabled(this, checked)
+            binding.tvHolidayHint.alpha = if (checked) 1f else 0.5f
+        }
+
         binding.switchHomeGrid.isChecked = SettingsRepository.homeGridStyle(this)
         binding.switchHomeGrid.setOnCheckedChangeListener { _, checked ->
             SettingsRepository.setHomeGridStyle(this, checked)

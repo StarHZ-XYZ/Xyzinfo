@@ -56,11 +56,13 @@
 
                     <ImageView
                         android:id="@+id/ivBrandIcon"
-                        android:layout_width="52dp"
-                        android:layout_height="52dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="56dp"
+                        android:minWidth="56dp"
                         android:background="@drawable/bg_brand_tile"
                         android:contentDescription="@string/app_name"
-                        android:padding="10dp"
+                        android:padding="9dp"
+                        android:scaleType="fitCenter"
                         android:src="@drawable/ic_brand_unknown" />
 
                     <LinearLayout

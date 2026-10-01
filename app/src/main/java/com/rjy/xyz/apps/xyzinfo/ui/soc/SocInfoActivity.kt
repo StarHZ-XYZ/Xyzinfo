@@ -101,8 +101,46 @@ class SocInfoActivity : AppCompatActivity() {
         val foreground = ContextCompat.getColor(this@SocInfoActivity, brand.foregroundColorRes())
         val background = ContextCompat.getColor(this@SocInfoActivity, brand.backgroundColorRes())
 
-        ivBrandIcon.setImageResource(brand.iconRes())
-        ivBrandIcon.backgroundTintList = ColorStateList.valueOf(background)
+        /*
+         * 芯片 logo 大多是宽字标（联发科接近 4:1）：按比例给"宽槽位"，
+         * 底板跟着一起变宽 —— 塞进方框里只会剩一条看不清的细线。
+         */
+        val density = resources.displayMetrics.density
+        val tileHeight = (56 * density).toInt()
+        val tilePadding = (9 * density).toInt()
+        val brandLogo = com.rjy.xyz.apps.xyzinfo.data.ChipLogoCatalog.wideDrawable(
+            this@SocInfoActivity,
+            brand,
+            tileHeight - tilePadding * 2
+        )
+        /*
+         * 底板（ivBrandIcon 的 background）是跟着控件尺寸走的，
+         * 所以控件本身也必须"按 logo 比例变宽"，否则宽字标仍会被塞回正方框里。
+         */
+        val tileParams = ivBrandIcon.layoutParams
+        tileParams.height = tileHeight
+        if (brandLogo != null) {
+            ivBrandIcon.setImageDrawable(brandLogo)
+            tileParams.width = (brandLogo.bounds.width() + tilePadding * 2)
+                .coerceIn(tileHeight, (150 * density).toInt())
+        } else {
+            // 玄戒 / 未知：退回原来那套手绘通用图标
+            ivBrandIcon.setImageResource(brand.legacyIconRes())
+            tileParams.width = tileHeight
+        }
+        ivBrandIcon.layoutParams = tileParams
+        /*
+         * 底板颜色：**深色模式下必须用浅色板**。
+         *
+         * 夜里品牌底色会换成深色版（比如骁龙是深红），而 logo 本身也是深红 —— 两者糊在一起，
+         * 这就是"CPU 页看不清 logo"的原因（实测深色模式下图标区 99.6% 都是暗色）。
+         * 彩色 logo 配浅色板在任何主题下都清楚，品牌信息由右边的名字与缩写色块承担。
+         */
+        val night = (resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        ivBrandIcon.backgroundTintList =
+            ColorStateList.valueOf(if (night) LIGHT_TILE_COLOR else background)
         tvBrandBadge.backgroundTintList = ColorStateList.valueOf(background)
         tvBrandBadge.setTextColor(foreground)
     }
@@ -144,5 +182,11 @@ class SocInfoActivity : AppCompatActivity() {
         SocBrand.TENSOR -> R.color.brand_tensor_bg
         SocBrand.XRING -> R.color.brand_xring_bg
         SocBrand.UNKNOWN -> R.color.brand_unknown_bg
+    }
+
+    private companion object {
+
+        /** 深色模式下 logo 的浅色底板：彩色 logo 铺在浅板上，任何主题都不会糊成一片。 */
+        const val LIGHT_TILE_COLOR: Int = 0xFFF2F4F7.toInt()
     }
 }

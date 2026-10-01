@@ -25,6 +25,7 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
     private const val KEY_SEASON_EFFECT = "season_effect"
     private const val KEY_SEASON_MODE = "season_mode"
     private const val KEY_SEASON_GRAVITY = "season_gravity"
+    private const val KEY_HOLIDAY_EFFECT = "holiday_effect"
     private const val KEY_HOME_GRID = "home_grid_style"
     private const val KEY_DEEPSEEK_KEY = "deepseek_api_key"
     private const val KEY_AI_MODE = "ai_mode"
@@ -168,6 +169,21 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
 
     fun setSeasonGravity(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_SEASON_GRAVITY, enabled).apply()
+    }
+
+    // ---------- 节日彩蛋（1.0.4）----------
+
+    /**
+     * 节日当天是否把四季氛围换成节日特效，并在进场时弹一条节日祝福。
+     *
+     * 默认**开启**：春节 / 中秋 / 国庆 / 元旦 / 圣诞 / 情人节 / 建军节 / 七夕
+     * 这些日子打开软件才有彩蛋，平日的界面完全不受影响。
+     */
+    fun holidayEffectEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_HOLIDAY_EFFECT, true)
+
+    fun setHolidayEffectEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_HOLIDAY_EFFECT, enabled).apply()
     }
 
     // ---------- 主页排版样式 ----------

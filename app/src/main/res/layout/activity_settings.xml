@@ -215,6 +215,23 @@
                     android:layout_height="wrap_content"
                     android:text="开启后雪花 / 枫叶 / 花瓣会顺着设备倾斜的方向斜着落（横屏、歪着拿都会跟着变）" />
 
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchHoliday"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:minHeight="46dp"
+                    android:text="节日彩蛋特效"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvHolidayHint"
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="春节、元宵、端午、七夕、中秋、国庆、元旦、情人节、建军节、劳动节、儿童节、圣诞节当天，进入软件会换成节日特效并弹一条祝福（默认开启）" />
+
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"

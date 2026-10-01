@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowInsetsCompat
 import com.rjy.xyz.apps.xyzinfo.MainActivity
 import com.rjy.xyz.apps.xyzinfo.R
+import com.rjy.xyz.apps.xyzinfo.data.HolidayCatalog
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkActivity
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.RankingActivity
@@ -142,10 +143,37 @@ object GlassScaffold {
                 host.paddingBottom
             )
         }
-        // 四季氛围：铺在内容之上、底栏之下；粒子数很少，掉帧风险低，可随时关掉
-        if (SettingsRepository.seasonEffectEnabled(activity) &&
-            SettingsRepository.animationsEnabled(activity)
-        ) {
+        /*
+         * 氛围层：铺在内容之上、底栏之下；粒子数很少，掉帧风险低，可随时关掉。
+         *
+         * 1.0.4 起，**节日当天换成节日彩蛋**（灯笼 / 爱心 / 月饼 / 礼物 …），
+         * 否则还是原来的四季氛围 —— 两套一起飘会显得很乱，所以是二选一。
+         */
+        val animationsOn = SettingsRepository.animationsEnabled(activity)
+        val holiday = if (animationsOn && SettingsRepository.holidayEffectEnabled(activity)) {
+            HolidayCatalog.today()
+        } else {
+            null
+        }
+        if (holiday != null) {
+            val festive = HolidayOverlay(activity).apply { this.holiday = holiday }
+            container.addView(
+                festive,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            )
+            (activity as? androidx.lifecycle.LifecycleOwner)?.lifecycle?.addObserver(
+                androidx.lifecycle.LifecycleEventObserver { _, event ->
+                    when (event) {
+                        androidx.lifecycle.Lifecycle.Event.ON_RESUME -> festive.start()
+                        androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> festive.stop()
+                        else -> Unit
+                    }
+                }
+            )
+        } else if (SettingsRepository.seasonEffectEnabled(activity) && animationsOn) {
             val season = SeasonOverlay(activity).apply { this.season = Season.resolve(activity) }
             container.addView(
                 season,
