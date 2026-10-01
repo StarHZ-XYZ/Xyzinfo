@@ -176,6 +176,68 @@
                     android:layout_marginTop="8dp"
                     android:text="点「加载排行榜」才会生成榜单；加载一次会缓存，下次进来直接显示" />
 
+                <!--
+                  榜单数据更新提示：只在后台**检查到真的有新版本**时才显示，平时是 GONE。
+                  检查只拉一个几十字节的版本号，用户点了「更新」才下载数据。
+                -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardRankingUpdate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/surface_variant"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/stroke"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <TextView
+                            android:id="@+id/tvRankingUpdate"
+                            style="@style/Text.Row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="发现更新的榜单数据" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnApplyRankingUpdate"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:backgroundTint="?attr/colorPrimary"
+                                android:text="更新榜单"
+                                android:textColor="@color/text_on_accent"
+                                android:textSize="13sp"
+                                app:cornerRadius="12dp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnDismissRankingUpdate"
+                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:layout_weight="1"
+                                android:text="暂不更新"
+                                android:textColor="?attr/colorPrimary"
+                                android:textSize="13sp"
+                                app:cornerRadius="12dp"
+                                app:strokeColor="?attr/colorPrimary" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <LinearLayout
                     android:id="@+id/layoutRanking"
                     android:layout_width="match_parent"

@@ -9,7 +9,23 @@ import com.rjy.xyz.apps.xyzinfo.util.DeviceFacts
  */
 object DeviceOverviewProvider {
 
-    fun load(): DeviceOverview = DeviceOverview(
+    /**
+     * 缓存：这些值在一次进程生命周期内不会变，而读 /proc、/sys、包管理等加起来要 80ms 以上。
+     * 首页（以及开屏预热）每次都要，缓存下来能显著减少启动与切页开销。
+     */
+    @Volatile
+    private var cached: DeviceOverview? = null
+
+    fun load(): DeviceOverview = cached ?: synchronized(this) {
+        cached ?: build().also { cached = it }
+    }
+
+    /** 需要重新读取时调用。 */
+    fun invalidate() {
+        cached = null
+    }
+
+    private fun build(): DeviceOverview = DeviceOverview(
         displayName = DeviceFacts.friendlyDeviceName(),
         rawModel = DeviceFacts.orUnknown(Build.MODEL),
         androidRelease = DeviceFacts.orUnknown(Build.VERSION.RELEASE),

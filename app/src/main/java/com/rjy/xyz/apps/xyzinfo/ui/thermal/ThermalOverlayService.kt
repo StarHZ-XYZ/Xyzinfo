@@ -179,7 +179,7 @@ class ThermalOverlayService : Service() {
     private fun updateTemperature() {
         // 读 /sys 是 I/O：放后台线程，读完再回主线程刷文字
         Thread({
-            val hottest = runCatching { ThermalLogger.readZones() }
+            val hottest = runCatching { ThermalLogger.readZones(this@ThermalOverlayService) }
                 .getOrDefault(emptyList())
                 .firstOrNull() ?: return@Thread
             handler.post {

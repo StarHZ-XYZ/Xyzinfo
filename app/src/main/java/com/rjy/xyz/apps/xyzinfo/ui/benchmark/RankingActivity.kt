@@ -8,12 +8,15 @@ import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import com.rjy.xyz.apps.xyzinfo.data.SocInfoProvider
 import com.rjy.xyz.apps.xyzinfo.data.benchmark.GeekerwanScores
+import com.rjy.xyz.apps.xyzinfo.data.benchmark.RankingCache
+import com.rjy.xyz.apps.xyzinfo.data.benchmark.RankingUpdater
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityRankingBinding
 import com.rjy.xyz.apps.xyzinfo.databinding.ItemRankingRowBinding
 import com.rjy.xyz.apps.xyzinfo.model.ChipScore
@@ -92,6 +95,12 @@ class RankingActivity : AppCompatActivity() {
                 "本机实测用的是本应用的算法，只是换算到同一刻度上便于比较，不代表官方成绩。"
         )
 
+        binding.btnApplyRankingUpdate.setOnClickListener { applyRankingUpdate() }
+        binding.btnDismissRankingUpdate.setOnClickListener {
+            Anim.pressFeedback(it)
+            binding.cardRankingUpdate.visibility = View.GONE
+        }
+
         buildMetricChips()
         buildBrandChips()
 
@@ -106,8 +115,10 @@ class RankingActivity : AppCompatActivity() {
         }
         Anim.pressFeedback(binding.btnRunBenchmark)
 
-        // 芯片识别放后台，读完再决定是直接吃缓存还是等用户点加载
+        // 芯片识别 + 读本地缓存放后台，读完直接开始逐条显示
         loadDeviceChip()
+        // 后台检查榜单数据有没有新版本（只拉一个几十字节的版本号，很轻）
+        checkRankingUpdate()
     }
 
     override fun onDestroy() {
@@ -118,6 +129,8 @@ class RankingActivity : AppCompatActivity() {
 
     private fun loadDeviceChip() {
         Thread({
+            // 先把下载过的榜单数据集读进内存（没有就用内置的），再识别芯片
+            runCatching { RankingUpdater.loadCached(this) }
             val spec = runCatching { SocInfoProvider.findSpec() }.getOrNull()
             deviceChipName = spec?.displayName
             matched = GeekerwanScores.match(deviceChipName)
@@ -130,12 +143,84 @@ class RankingActivity : AppCompatActivity() {
                     showIdle()
                 }
             }
+            // 内存里没有，再试磁盘缓存（进程刚起来时走这条）
+            if (cache == null) {
+                val disk = runCatching { RankingCache.load(this) }.getOrNull()
+                runOnUiThread {
+                    if (isFinishing || disk == null) return@runOnUiThread
+                    if (disk.key == currentKey()) {
+                        applyPrepared(disk.toPrepared(), animate = false)
+                    }
+                }
+            }
         }, "xyzinfo-ranking").start()
+    }
+
+    /** 磁盘缓存 → 内存模型。 */
+    private fun RankingCache.Snapshot.toPrepared(): PreparedRanking = PreparedRanking(
+        key = key,
+        rows = rows.map {
+            RankRow(
+                name = it.name,
+                value = it.value,
+                year = it.year,
+                isMeasured = it.measured,
+                isMatched = it.matched
+            )
+        },
+        maxValue = maxValue,
+        summary = summary
+    )
+
+    /**
+     * 后台检查榜单数据有没有更新。
+     *
+     * 只拉一个几十字节的版本号文件；**有更新才**弹出提示条，
+     * 用户点了「更新」才真正下载数据。没网 / 连不上就静默跳过，绝不打扰。
+     */
+    private fun checkRankingUpdate() {
+        Thread({
+            val result = runCatching { RankingUpdater.check(this) }.getOrNull() ?: return@Thread
+            if (!result.hasUpdate) return@Thread
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                binding.cardRankingUpdate.visibility = View.VISIBLE
+                binding.tvRankingUpdate.text =
+                    "发现更新的榜单数据：${result.currentVersion} → ${result.remoteVersion}"
+            }
+        }, "xyzinfo-ranking-check").start()
+    }
+
+    /** 用户确认更新：下载 → 校验 → 落盘 → 重新整理榜单。 */
+    private fun applyRankingUpdate() {
+        Anim.pressFeedback(binding.btnApplyRankingUpdate)
+        binding.btnApplyRankingUpdate.isEnabled = false
+        binding.tvRankingUpdate.text = "正在下载榜单数据…"
+        Thread({
+            val result = runCatching { RankingUpdater.update(this) }
+                .getOrElse { RankingUpdater.UpdateResult(false, it.javaClass.simpleName) }
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                binding.btnApplyRankingUpdate.isEnabled = true
+                if (result.success) {
+                    binding.cardRankingUpdate.visibility = View.GONE
+                    // 数据换了，缓存与内存缓存一起作废，重新整理并逐条显示
+                    cache = null
+                    RankingCache.clear(this)
+                    Toast.makeText(this, result.message, Toast.LENGTH_SHORT).show()
+                    startLoading()
+                } else {
+                    binding.tvRankingUpdate.text = "更新失败：${result.message}"
+                }
+            }
+        }, "xyzinfo-ranking-update").start()
     }
 
     private fun currentKey(): String {
         val measured = SettingsRepository.lastBenchmark(this)
-        return "$metric|$brand|$deviceChipName|${measured?.single}|${measured?.multi}|${measured?.gpu}"
+        // 带上榜单数据版本：在线更新过数据之后，旧缓存自动失效
+        return "$metric|$brand|$deviceChipName|${measured?.single}|${measured?.multi}|${measured?.gpu}" +
+            "|${GeekerwanScores.datasetVersion}"
     }
 
     private fun showIdle() {
@@ -190,12 +275,35 @@ class RankingActivity : AppCompatActivity() {
             )
         }
         rows.sortByDescending { it.value }
-        return PreparedRanking(
+        val prepared = PreparedRanking(
             key = key,
             rows = rows,
             maxValue = rows.firstOrNull()?.value ?: 1,
             summary = deviceSummary()
         )
+        // 落盘：下次进页面直接读缓存，不用再筛选 / 排序 / 拼概览
+        runCatching {
+            RankingCache.save(
+                this,
+                RankingCache.Snapshot(
+                    key = prepared.key,
+                    summary = prepared.summary,
+                    maxValue = prepared.maxValue,
+                    rows = prepared.rows.map {
+                        RankingCache.Row(
+                            name = it.name,
+                            value = it.value,
+                            year = it.year,
+                            measured = it.isMeasured,
+                            matched = it.isMatched
+                        )
+                    },
+                    datasetVersion = GeekerwanScores.datasetVersion,
+                    savedAt = System.currentTimeMillis()
+                )
+            )
+        }
+        return prepared
     }
 
     private fun deviceSummary(): String {
@@ -251,12 +359,34 @@ class RankingActivity : AppCompatActivity() {
 
         var index = 0
         var deviceRowIndex = -1
-        // 用 object 而不是 lambda：分块递归需要拿到这个 Runnable 自己
-        val chunk = object : Runnable {
-          override fun run() {
-            if (token != renderToken || isFinishing) return
-            val end = minOf(index + CHUNK_SIZE, prepared.rows.size)
-            while (index < end) {
+        /*
+         * **一条一条地显示**（1.0.2 改）。
+         *
+         * 之前是"每帧塞 5 行"：90 行在不到 20 帧里全部出现，观感就是"啪一下全刷出来"，
+         * 而且同一帧里要塞 5 次 inflate + 5 次动画启动，中低端机必然掉帧。
+         *
+         * 现在按固定节拍一行一行加（见 [ROW_REVEAL_INTERVAL_MILLIS]）：
+         * - 每帧（甚至每两帧）只 inflate 一行，主线程毫无压力；
+         * - 每行自己带一个很轻的入场（淡入 + 轻微上浮），于是整张榜是"从上往下长出来"的；
+         * - 90 行大约 2.4 秒铺完，随时可以滚动、可以点别的，不会卡。
+         */
+        val reveal = object : Runnable {
+            override fun run() {
+                if (token != renderToken || isFinishing) return
+                if (index >= prepared.rows.size) {
+                    binding.tvRankingHint.text = "共 ${prepared.rows.size} 条（已缓存，下次进来直接显示）"
+                    // 铺完了再把玻璃取样打开，让底栏恢复实时模糊
+                    glassBar?.setBackdropEnabled(true)
+                    if (deviceRowIndex >= 0) {
+                        val target = binding.layoutRanking.getChildAt(deviceRowIndex)
+                        if (target != null) {
+                            binding.root.post {
+                                binding.root.smoothScrollTo(0, (target.top - dp(120f)).coerceAtLeast(0))
+                            }
+                        }
+                    }
+                    return
+                }
                 val row = prepared.rows[index]
                 val item = ItemRankingRowBinding.inflate(layoutInflater, binding.layoutRanking, false)
                 item.tvRank.text = "#${index + 1}"
@@ -285,36 +415,32 @@ class RankingActivity : AppCompatActivity() {
                     }
                 }
                 val fraction = if (prepared.maxValue > 0) row.value.toFloat() / prepared.maxValue else 0f
-                /*
-                 * 只有首屏那几行做生长动画：90 个 view 同时跑动画，每帧要刷新 90 个 view 的
-                 * 变换，本来就重；铺到后面时用户根本看不到，动画纯粹是在抢帧。
-                 */
-                val animateThisRow = animate && index < ANIMATED_ROWS
                 item.viewBar.growBar(
                     fraction,
-                    duration = if (animateThisRow) 420L else 1L,
-                    delay = if (animateThisRow) index * 14L else 0L
+                    duration = if (animate) 260L else 1L,
+                    delay = 0L
                 )
                 binding.layoutRanking.addView(item.root)
+                if (animate) {
+                    item.root.alpha = 0f
+                    item.root.translationY = dp(10f).toFloat()
+                    item.root.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .setDuration(ROW_FADE_IN_MILLIS)
+                        .start()
+                }
                 index++
-            }
-            if (index < prepared.rows.size) {
-                binding.tvRankingHint.text = "正在渲染 ${index}/${prepared.rows.size}…"
-                binding.layoutRanking.postOnAnimation(this)
-            } else {
-                binding.tvRankingHint.text = "共 ${prepared.rows.size} 条（已缓存，下次进来直接显示）"
-                // 铺完了再把玻璃取样打开，让底栏恢复实时模糊
-                glassBar?.setBackdropEnabled(true)
-                if (deviceRowIndex >= 0) {
-                    val target = binding.layoutRanking.getChildAt(deviceRowIndex) ?: return
-                    binding.root.post {
-                        binding.root.smoothScrollTo(0, (target.top - dp(120f)).coerceAtLeast(0))
-                    }
+                binding.tvRankingHint.text = "正在显示 ${index}/${prepared.rows.size}…"
+                if (index >= prepared.rows.size) {
+                    // 最后一行：等它淡入结束再收尾，避免"最后一行还在淡入就提示完成"
+                    handler.postDelayed(this, ROW_FADE_IN_MILLIS)
+                } else {
+                    handler.postDelayed(this, ROW_REVEAL_INTERVAL_MILLIS)
                 }
             }
-          }
         }
-        handler.post(chunk)
+        handler.post(reveal)
     }
 
     private fun buildMetricChips() {
@@ -400,17 +526,11 @@ class RankingActivity : AppCompatActivity() {
     private fun dp(value: Float): Int = (value * resources.displayMetrics.density).roundToInt()
 
     private companion object {
-        /**
-         * 每帧铺多少行。
-         *
-         * 每一行都要 inflate 一个 MaterialCardView，XML 解析 + 视图创建在手机上是毫秒级的，
-         * 12 行塞进一帧就会"跳 30 帧"。宁可一帧只铺 5 行、多花几百毫秒慢慢铺完 ——
-         * 用户明确说过"缓慢加载没关系，别卡"，这个取舍就是这么定的。
-         */
-        const val CHUNK_SIZE = 5
+        /** 一行一行的节拍：26ms ≈ 每秒 38 行，90 行约 2.4 秒铺完。 */
+        const val ROW_REVEAL_INTERVAL_MILLIS = 26L
 
-        /** 只给首屏这些行做生长动画，后面的行直接落位。 */
-        const val ANIMATED_ROWS = 14
+        /** 每行自己的淡入时长。 */
+        const val ROW_FADE_IN_MILLIS = 180L
 
         /**
          * 已经生成好的榜单。放在 companion 里，退出页面再进来可以直接复用，

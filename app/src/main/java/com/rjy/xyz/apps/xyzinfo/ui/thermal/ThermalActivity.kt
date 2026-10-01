@@ -190,17 +190,33 @@ class ThermalActivity : AppCompatActivity() {
      */
     private val liveSamples = mutableListOf<ThermalLogger.Sample>()
 
-    /** 时间窗切换：1 小时 / 24 小时 / 7 天 / 30 天。 */
+    /**
+     * 时间窗切换：1 小时 / 6 小时 / 24 小时 / 7 天 / 30 天。
+     *
+     * 1.0.2 把窗口拉长：只记录了几分钟时，1 小时窗口看起来"只有一小段"，
+     * 默认给 24 小时（长时间挂机后能看出整天的温度走势），想看细节再切到 1 小时。
+     */
     private fun buildRangeChips() {
-        val options = listOf(1 to "1 小时", 24 to "24 小时", 24 * 7 to "7 天", 24 * 30 to "30 天")
+        val options = listOf(
+            1 to "1 小时",
+            6 to "6 小时",
+            24 to "24 小时",
+            24 * 7 to "7 天",
+            24 * 30 to "30 天"
+        )
         val density = resources.displayMetrics.density
         binding.layoutThermalRange.removeAllViews()
         options.forEach { (hours, label) ->
             val chip = TextView(this).apply {
                 text = label
-                textSize = 12.5f
+                textSize = 12f
                 gravity = android.view.Gravity.CENTER
-                setPadding((12 * density).toInt(), (7 * density).toInt(), (12 * density).toInt(), (7 * density).toInt())
+                setPadding(
+                    (10 * density).toInt(), (7 * density).toInt(),
+                    (10 * density).toInt(), (7 * density).toInt()
+                )
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
                 setTextColor(
                     ContextCompat.getColor(
                         this@ThermalActivity,
@@ -261,12 +277,27 @@ class ThermalActivity : AppCompatActivity() {
 
     private fun refreshNow() {
         Thread({
-            val zones = runCatching { ThermalLogger.readZones() }.getOrDefault(emptyList())
-            val text = if (zones.isEmpty()) {
-                "读不到热区（部分机型限制读取 /sys/class/thermal）"
-            } else {
-                val hottest = zones.first()
-                String.format(Locale.US, "%.1f ℃", hottest.celsius) + " · " + hottest.name
+            val zones = runCatching { ThermalLogger.readZones(this@ThermalActivity) }.getOrDefault(emptyList())
+            val batteryOnly = zones.size == 1 && zones.first().name == "电池"
+            val text = zones.firstOrNull()?.let {
+                String.format(Locale.US, "%.1f ℃", it.celsius) + " · " + it.name
+            } ?: "读不到温度"
+            /*
+             * 说明这一栏在告诉用户"这些数字是从哪来的"。
+             * 很多 Android 10+ 机型（尤其部分高通 + MIUI）不让应用读 /sys/class/thermal，
+             * 这时用电池温度兜底，并且**明确写出来**，避免用户以为温度监控坏了。
+             */
+            val note = when {
+                zones.isEmpty() ->
+                    "本机既读不到热区节点、也拿不到电池温度，系统层面完全屏蔽了温度信息。"
+
+                batteryOnly ->
+                    "本机不向应用开放热区节点（Android 10+ 常见限制），显示的是电池温度 —— " +
+                        "它比芯片温度低一些，但发热趋势是一致的。"
+
+                else -> "当前热区：" + zones.joinToString("、") {
+                    it.name + " " + String.format(Locale.US, "%.1f℃", it.celsius)
+                }
             }
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
@@ -274,6 +305,7 @@ class ThermalActivity : AppCompatActivity() {
                 val hottest = zones.firstOrNull()
                 binding.thermalGauge.setTemperature(hottest?.celsius, hottest?.name.orEmpty())
                 binding.thermalGauge.contentDescription = text
+                binding.tvThermalZoneNote.text = note
                 // 实时点也喂给曲线，并把内存缓冲限制在 30 分钟内
                 val now = System.currentTimeMillis()
                 zones.forEach { liveSamples += ThermalLogger.Sample(now, it.name, it.celsius) }

@@ -1,0 +1,874 @@
+[
+  {
+    "name": "骁龙 8 Elite Gen 5",
+    "brand": "骁龙",
+    "single": 3500,
+    "multi": 10500,
+    "gpu": 4300,
+    "year": 2025
+  },
+  {
+    "name": "骁龙 8 Elite Gen 5 for Galaxy",
+    "brand": "骁龙",
+    "single": 3600,
+    "multi": 10800,
+    "gpu": 4500,
+    "year": 2026
+  },
+  {
+    "name": "骁龙 8 Elite",
+    "brand": "骁龙",
+    "single": 3050,
+    "multi": 9600,
+    "gpu": 3900,
+    "year": 2024
+  },
+  {
+    "name": "骁龙 8 Elite for Galaxy",
+    "brand": "骁龙",
+    "single": 3150,
+    "multi": 10000,
+    "gpu": 4100,
+    "year": 2025
+  },
+  {
+    "name": "骁龙 8 Gen 3",
+    "brand": "骁龙",
+    "single": 2250,
+    "multi": 6900,
+    "gpu": 3100,
+    "year": 2023
+  },
+  {
+    "name": "骁龙 8 Gen 3 for Galaxy",
+    "brand": "骁龙",
+    "single": 2320,
+    "multi": 7100,
+    "gpu": 3200,
+    "year": 2024
+  },
+  {
+    "name": "骁龙 8s Gen 4",
+    "brand": "骁龙",
+    "single": 2150,
+    "multi": 6300,
+    "gpu": 2700,
+    "year": 2025
+  },
+  {
+    "name": "骁龙 8s Gen 3",
+    "brand": "骁龙",
+    "single": 1900,
+    "multi": 5100,
+    "gpu": 2400,
+    "year": 2024
+  },
+  {
+    "name": "骁龙 8 Gen 2",
+    "brand": "骁龙",
+    "single": 2050,
+    "multi": 5700,
+    "gpu": 2600,
+    "year": 2022
+  },
+  {
+    "name": "骁龙 8 Gen 2 for Galaxy",
+    "brand": "骁龙",
+    "single": 2120,
+    "multi": 5900,
+    "gpu": 2750,
+    "year": 2023
+  },
+  {
+    "name": "骁龙 8+ Gen 1",
+    "brand": "骁龙",
+    "single": 1750,
+    "multi": 4500,
+    "gpu": 2200,
+    "year": 2022
+  },
+  {
+    "name": "骁龙 8 Gen 1",
+    "brand": "骁龙",
+    "single": 1600,
+    "multi": 4100,
+    "gpu": 2000,
+    "year": 2021
+  },
+  {
+    "name": "骁龙 888+",
+    "brand": "骁龙",
+    "single": 1550,
+    "multi": 4000,
+    "gpu": 1800,
+    "year": 2021
+  },
+  {
+    "name": "骁龙 888",
+    "brand": "骁龙",
+    "single": 1500,
+    "multi": 3900,
+    "gpu": 1700,
+    "year": 2020
+  },
+  {
+    "name": "骁龙 870",
+    "brand": "骁龙",
+    "single": 1400,
+    "multi": 3600,
+    "gpu": 1500,
+    "year": 2021
+  },
+  {
+    "name": "骁龙 865+",
+    "brand": "骁龙",
+    "single": 1300,
+    "multi": 3500,
+    "gpu": 1350,
+    "year": 2020
+  },
+  {
+    "name": "骁龙 865",
+    "brand": "骁龙",
+    "single": 1250,
+    "multi": 3400,
+    "gpu": 1300,
+    "year": 2019
+  },
+  {
+    "name": "骁龙 860",
+    "brand": "骁龙",
+    "single": 1200,
+    "multi": 3200,
+    "gpu": 1200,
+    "year": 2021
+  },
+  {
+    "name": "骁龙 855+",
+    "brand": "骁龙",
+    "single": 1100,
+    "multi": 2900,
+    "gpu": 1100,
+    "year": 2020
+  },
+  {
+    "name": "骁龙 855",
+    "brand": "骁龙",
+    "single": 1050,
+    "multi": 2750,
+    "gpu": 1050,
+    "year": 2018
+  },
+  {
+    "name": "骁龙 845",
+    "brand": "骁龙",
+    "single": 850,
+    "multi": 2300,
+    "gpu": 800,
+    "year": 2017
+  },
+  {
+    "name": "骁龙 835",
+    "brand": "骁龙",
+    "single": 700,
+    "multi": 1800,
+    "gpu": 600,
+    "year": 2016
+  },
+  {
+    "name": "骁龙 7+ Gen 3",
+    "brand": "骁龙",
+    "single": 1550,
+    "multi": 4400,
+    "gpu": 1750,
+    "year": 2024
+  },
+  {
+    "name": "骁龙 7+ Gen 2",
+    "brand": "骁龙",
+    "single": 1400,
+    "multi": 3900,
+    "gpu": 1250,
+    "year": 2023
+  },
+  {
+    "name": "骁龙 7 Gen 4",
+    "brand": "骁龙",
+    "single": 1300,
+    "multi": 3700,
+    "gpu": 1300,
+    "year": 2025
+  },
+  {
+    "name": "骁龙 7 Gen 3",
+    "brand": "骁龙",
+    "single": 1200,
+    "multi": 3300,
+    "gpu": 1050,
+    "year": 2023
+  },
+  {
+    "name": "骁龙 7s Gen 3",
+    "brand": "骁龙",
+    "single": 1100,
+    "multi": 3000,
+    "gpu": 950,
+    "year": 2024
+  },
+  {
+    "name": "骁龙 7 Gen 1",
+    "brand": "骁龙",
+    "single": 1050,
+    "multi": 2900,
+    "gpu": 1000,
+    "year": 2022
+  },
+  {
+    "name": "骁龙 7s Gen 2",
+    "brand": "骁龙",
+    "single": 950,
+    "multi": 2600,
+    "gpu": 850,
+    "year": 2023
+  },
+  {
+    "name": "骁龙 780G",
+    "brand": "骁龙",
+    "single": 1080,
+    "multi": 3000,
+    "gpu": 1050,
+    "year": 2020
+  },
+  {
+    "name": "骁龙 778G+",
+    "brand": "骁龙",
+    "single": 1020,
+    "multi": 2950,
+    "gpu": 950,
+    "year": 2021
+  },
+  {
+    "name": "骁龙 778G",
+    "brand": "骁龙",
+    "single": 1010,
+    "multi": 2900,
+    "gpu": 1000,
+    "year": 2021
+  },
+  {
+    "name": "骁龙 765G",
+    "brand": "骁龙",
+    "single": 930,
+    "multi": 2300,
+    "gpu": 700,
+    "year": 2019
+  },
+  {
+    "name": "骁龙 750G",
+    "brand": "骁龙",
+    "single": 850,
+    "multi": 2200,
+    "gpu": 650,
+    "year": 2020
+  },
+  {
+    "name": "骁龙 732G",
+    "brand": "骁龙",
+    "single": 720,
+    "multi": 1850,
+    "gpu": 500,
+    "year": 2020
+  },
+  {
+    "name": "骁龙 6 Gen 4",
+    "brand": "骁龙",
+    "single": 1150,
+    "multi": 3200,
+    "gpu": 800,
+    "year": 2025
+  },
+  {
+    "name": "骁龙 6 Gen 3",
+    "brand": "骁龙",
+    "single": 950,
+    "multi": 2700,
+    "gpu": 700,
+    "year": 2024
+  },
+  {
+    "name": "骁龙 6 Gen 1",
+    "brand": "骁龙",
+    "single": 900,
+    "multi": 2500,
+    "gpu": 650,
+    "year": 2022
+  },
+  {
+    "name": "骁龙 695",
+    "brand": "骁龙",
+    "single": 950,
+    "multi": 2200,
+    "gpu": 600,
+    "year": 2021
+  },
+  {
+    "name": "骁龙 690",
+    "brand": "骁龙",
+    "single": 800,
+    "multi": 2000,
+    "gpu": 500,
+    "year": 2020
+  },
+  {
+    "name": "骁龙 4 Gen 2",
+    "brand": "骁龙",
+    "single": 820,
+    "multi": 2000,
+    "gpu": 450,
+    "year": 2023
+  },
+  {
+    "name": "骁龙 4 Gen 1",
+    "brand": "骁龙",
+    "single": 750,
+    "multi": 1800,
+    "gpu": 400,
+    "year": 2022
+  },
+  {
+    "name": "天玑 9500",
+    "brand": "天玑",
+    "single": 3300,
+    "multi": 10000,
+    "gpu": 4100,
+    "year": 2025
+  },
+  {
+    "name": "天玑 9400",
+    "brand": "天玑",
+    "single": 2900,
+    "multi": 9200,
+    "gpu": 3700,
+    "year": 2024
+  },
+  {
+    "name": "天玑 9400e",
+    "brand": "天玑",
+    "single": 2650,
+    "multi": 8300,
+    "gpu": 3300,
+    "year": 2025
+  },
+  {
+    "name": "天玑 9300+",
+    "brand": "天玑",
+    "single": 2300,
+    "multi": 7800,
+    "gpu": 3500,
+    "year": 2024
+  },
+  {
+    "name": "天玑 9300",
+    "brand": "天玑",
+    "single": 2250,
+    "multi": 7600,
+    "gpu": 3400,
+    "year": 2023
+  },
+  {
+    "name": "天玑 9200+",
+    "brand": "天玑",
+    "single": 2050,
+    "multi": 5800,
+    "gpu": 3100,
+    "year": 2023
+  },
+  {
+    "name": "天玑 9200",
+    "brand": "天玑",
+    "single": 1950,
+    "multi": 5500,
+    "gpu": 3000,
+    "year": 2022
+  },
+  {
+    "name": "天玑 9000+",
+    "brand": "天玑",
+    "single": 1750,
+    "multi": 4600,
+    "gpu": 2700,
+    "year": 2022
+  },
+  {
+    "name": "天玑 9000",
+    "brand": "天玑",
+    "single": 1700,
+    "multi": 4400,
+    "gpu": 2600,
+    "year": 2021
+  },
+  {
+    "name": "天玑 8500",
+    "brand": "天玑",
+    "single": 1900,
+    "multi": 5600,
+    "gpu": 2400,
+    "year": 2025
+  },
+  {
+    "name": "天玑 8400",
+    "brand": "天玑",
+    "single": 1650,
+    "multi": 5100,
+    "gpu": 2200,
+    "year": 2024
+  },
+  {
+    "name": "天玑 8300",
+    "brand": "天玑",
+    "single": 1550,
+    "multi": 4700,
+    "gpu": 2000,
+    "year": 2023
+  },
+  {
+    "name": "天玑 8200",
+    "brand": "天玑",
+    "single": 1250,
+    "multi": 4000,
+    "gpu": 1500,
+    "year": 2022
+  },
+  {
+    "name": "天玑 8100",
+    "brand": "天玑",
+    "single": 1150,
+    "multi": 3800,
+    "gpu": 1400,
+    "year": 2022
+  },
+  {
+    "name": "天玑 8000",
+    "brand": "天玑",
+    "single": 1050,
+    "multi": 3300,
+    "gpu": 1250,
+    "year": 2021
+  },
+  {
+    "name": "天玑 7400",
+    "brand": "天玑",
+    "single": 1150,
+    "multi": 3200,
+    "gpu": 950,
+    "year": 2025
+  },
+  {
+    "name": "天玑 7300",
+    "brand": "天玑",
+    "single": 1050,
+    "multi": 3000,
+    "gpu": 900,
+    "year": 2024
+  },
+  {
+    "name": "天玑 7200",
+    "brand": "天玑",
+    "single": 1100,
+    "multi": 3100,
+    "gpu": 900,
+    "year": 2023
+  },
+  {
+    "name": "天玑 7050",
+    "brand": "天玑",
+    "single": 1000,
+    "multi": 2800,
+    "gpu": 850,
+    "year": 2022
+  },
+  {
+    "name": "天玑 1300",
+    "brand": "天玑",
+    "single": 1050,
+    "multi": 3100,
+    "gpu": 900,
+    "year": 2021
+  },
+  {
+    "name": "天玑 1200",
+    "brand": "天玑",
+    "single": 1000,
+    "multi": 3000,
+    "gpu": 850,
+    "year": 2021
+  },
+  {
+    "name": "天玑 1100",
+    "brand": "天玑",
+    "single": 950,
+    "multi": 2900,
+    "gpu": 800,
+    "year": 2021
+  },
+  {
+    "name": "天玑 1080",
+    "brand": "天玑",
+    "single": 850,
+    "multi": 2300,
+    "gpu": 700,
+    "year": 2021
+  },
+  {
+    "name": "天玑 920",
+    "brand": "天玑",
+    "single": 900,
+    "multi": 2400,
+    "gpu": 750,
+    "year": 2019
+  },
+  {
+    "name": "天玑 900",
+    "brand": "天玑",
+    "single": 850,
+    "multi": 2200,
+    "gpu": 650,
+    "year": 2020
+  },
+  {
+    "name": "天玑 820",
+    "brand": "天玑",
+    "single": 750,
+    "multi": 2000,
+    "gpu": 550,
+    "year": 2019
+  },
+  {
+    "name": "天玑 720",
+    "brand": "天玑",
+    "single": 700,
+    "multi": 1900,
+    "gpu": 500,
+    "year": 2019
+  },
+  {
+    "name": "天玑 700",
+    "brand": "天玑",
+    "single": 620,
+    "multi": 1700,
+    "gpu": 420,
+    "year": 2020
+  },
+  {
+    "name": "天玑 6300",
+    "brand": "天玑",
+    "single": 650,
+    "multi": 1800,
+    "gpu": 350,
+    "year": 2024
+  },
+  {
+    "name": "天玑 6080",
+    "brand": "天玑",
+    "single": 600,
+    "multi": 1650,
+    "gpu": 320,
+    "year": 2023
+  },
+  {
+    "name": "天玑 7025",
+    "brand": "天玑",
+    "single": 720,
+    "multi": 2000,
+    "gpu": 380,
+    "year": 2023
+  },
+  {
+    "name": "Helio G99",
+    "brand": "天玑",
+    "single": 780,
+    "multi": 2100,
+    "gpu": 450,
+    "year": 2022
+  },
+  {
+    "name": "Helio G96",
+    "brand": "天玑",
+    "single": 700,
+    "multi": 1900,
+    "gpu": 400,
+    "year": 2021
+  },
+  {
+    "name": "Helio G90T",
+    "brand": "天玑",
+    "single": 620,
+    "multi": 1700,
+    "gpu": 380,
+    "year": 2019
+  },
+  {
+    "name": "Exynos 2600",
+    "brand": "猎户座",
+    "single": 2900,
+    "multi": 9000,
+    "gpu": 3500,
+    "year": 2026
+  },
+  {
+    "name": "Exynos 2500",
+    "brand": "猎户座",
+    "single": 2400,
+    "multi": 7600,
+    "gpu": 2700,
+    "year": 2024
+  },
+  {
+    "name": "Exynos 2400",
+    "brand": "猎户座",
+    "single": 2050,
+    "multi": 6600,
+    "gpu": 2300,
+    "year": 2024
+  },
+  {
+    "name": "Exynos 2200",
+    "brand": "猎户座",
+    "single": 1350,
+    "multi": 3600,
+    "gpu": 1500,
+    "year": 2022
+  },
+  {
+    "name": "Exynos 2100",
+    "brand": "猎户座",
+    "single": 1250,
+    "multi": 3400,
+    "gpu": 1400,
+    "year": 2021
+  },
+  {
+    "name": "Exynos 1580",
+    "brand": "猎户座",
+    "single": 1150,
+    "multi": 3400,
+    "gpu": 1200,
+    "year": 2024
+  },
+  {
+    "name": "Exynos 1480",
+    "brand": "猎户座",
+    "single": 1120,
+    "multi": 3300,
+    "gpu": 1100,
+    "year": 2024
+  },
+  {
+    "name": "Exynos 1380",
+    "brand": "猎户座",
+    "single": 1050,
+    "multi": 3100,
+    "gpu": 1000,
+    "year": 2023
+  },
+  {
+    "name": "Exynos 1280",
+    "brand": "猎户座",
+    "single": 950,
+    "multi": 2800,
+    "gpu": 800,
+    "year": 2022
+  },
+  {
+    "name": "Exynos 1080",
+    "brand": "猎户座",
+    "single": 1000,
+    "multi": 2800,
+    "gpu": 950,
+    "year": 2020
+  },
+  {
+    "name": "Exynos 990",
+    "brand": "猎户座",
+    "single": 1000,
+    "multi": 2900,
+    "gpu": 1200,
+    "year": 2020
+  },
+  {
+    "name": "Exynos 9825",
+    "brand": "猎户座",
+    "single": 950,
+    "multi": 2700,
+    "gpu": 1100,
+    "year": 2019
+  },
+  {
+    "name": "麒麟 9020",
+    "brand": "麒麟",
+    "single": 1600,
+    "multi": 4700,
+    "gpu": 2000,
+    "year": 2024
+  },
+  {
+    "name": "麒麟 9010",
+    "brand": "麒麟",
+    "single": 1500,
+    "multi": 4400,
+    "gpu": 1900,
+    "year": 2024
+  },
+  {
+    "name": "麒麟 9000S",
+    "brand": "麒麟",
+    "single": 1350,
+    "multi": 3900,
+    "gpu": 1600,
+    "year": 2023
+  },
+  {
+    "name": "麒麟 9000",
+    "brand": "麒麟",
+    "single": 1300,
+    "multi": 3700,
+    "gpu": 1600,
+    "year": 2020
+  },
+  {
+    "name": "麒麟 9000E",
+    "brand": "麒麟",
+    "single": 1250,
+    "multi": 3500,
+    "gpu": 1500,
+    "year": 2020
+  },
+  {
+    "name": "麒麟 990 5G",
+    "brand": "麒麟",
+    "single": 1050,
+    "multi": 2900,
+    "gpu": 1200,
+    "year": 2019
+  },
+  {
+    "name": "麒麟 990",
+    "brand": "麒麟",
+    "single": 1000,
+    "multi": 2800,
+    "gpu": 1150,
+    "year": 2019
+  },
+  {
+    "name": "麒麟 985",
+    "brand": "麒麟",
+    "single": 950,
+    "multi": 2600,
+    "gpu": 1000,
+    "year": 2020
+  },
+  {
+    "name": "麒麟 980",
+    "brand": "麒麟",
+    "single": 900,
+    "multi": 2500,
+    "gpu": 900,
+    "year": 2018
+  },
+  {
+    "name": "麒麟 820",
+    "brand": "麒麟",
+    "single": 880,
+    "multi": 2500,
+    "gpu": 850,
+    "year": 2020
+  },
+  {
+    "name": "麒麟 810",
+    "brand": "麒麟",
+    "single": 780,
+    "multi": 2200,
+    "gpu": 650,
+    "year": 2019
+  },
+  {
+    "name": "Tensor G5",
+    "brand": "谷歌",
+    "single": 1900,
+    "multi": 4900,
+    "gpu": 2100,
+    "year": 2025
+  },
+  {
+    "name": "Tensor G4",
+    "brand": "谷歌",
+    "single": 1650,
+    "multi": 4200,
+    "gpu": 1800,
+    "year": 2024
+  },
+  {
+    "name": "Tensor G3",
+    "brand": "谷歌",
+    "single": 1450,
+    "multi": 3900,
+    "gpu": 1550,
+    "year": 2023
+  },
+  {
+    "name": "Tensor G2",
+    "brand": "谷歌",
+    "single": 1350,
+    "multi": 3300,
+    "gpu": 1350,
+    "year": 2022
+  },
+  {
+    "name": "Tensor G1",
+    "brand": "谷歌",
+    "single": 1050,
+    "multi": 2800,
+    "gpu": 1050,
+    "year": 2021
+  },
+  {
+    "name": "玄戒 O1",
+    "brand": "玄戒",
+    "single": 2750,
+    "multi": 8300,
+    "gpu": 3200,
+    "year": 2025
+  },
+  {
+    "name": "紫光展锐 T820",
+    "brand": "展锐",
+    "single": 900,
+    "multi": 2400,
+    "gpu": 850,
+    "year": 2023
+  },
+  {
+    "name": "紫光展锐 T760",
+    "brand": "展锐",
+    "single": 750,
+    "multi": 2000,
+    "gpu": 600,
+    "year": 2023
+  },
+  {
+    "name": "紫光展锐 T618",
+    "brand": "展锐",
+    "single": 620,
+    "multi": 1600,
+    "gpu": 450,
+    "year": 2021
+  },
+  {
+    "name": "紫光展锐 T610",
+    "brand": "展锐",
+    "single": 560,
+    "multi": 1500,
+    "gpu": 400,
+    "year": 2020
+  }
+]

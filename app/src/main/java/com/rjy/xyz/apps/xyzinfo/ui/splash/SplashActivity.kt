@@ -24,6 +24,30 @@ class SplashActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        /*
+         * 热启动（进程还在、只是从后台回来）：**不播动画、不预热、也不显示**，
+         * 立刻把 MainActivity 提到前面然后结束自己。
+         *
+         * 为什么会出现"没被杀却重载"：开屏页自己 finish 掉了，所以它不在任务栈根上；
+         * 从桌面再次点击图标时，系统会在已有任务栈**再启一个开屏页**，
+         * 于是动画从头播一遍、MainActivity 也被重新创建 —— 看起来就像重载。
+         *
+         * 这里把窗口背景设成透明并立即交棒：用户看到的是"原来那一页直接回来了"，
+         * 进程里原有的 Activity 栈（包括滚动位置、页面状态）完全保留。
+         */
+        if (com.rjy.xyz.apps.xyzinfo.XyzInfoApp.warmStarted) {
+            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            /*
+             * 任务栈里还有我们的页面 → 直接结束这一页，让下面那一页露出来（原样恢复，不重载）；
+             * 进程虽然活着但任务栈已经没了（比如用户按返回退出了、进程被温度浮窗服务续着）→
+             * 这时才需要正常开首页。
+             */
+            if (isTaskRoot) goHome(animated = false) else finish()
+            return
+        }
+        com.rjy.xyz.apps.xyzinfo.XyzInfoApp.markStarted()
+
         binding = ActivitySplashBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarPadding()

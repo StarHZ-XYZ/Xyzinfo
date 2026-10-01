@@ -28,26 +28,72 @@ object ThermalLogger {
 
     private fun file(context: Context): File = File(context.filesDir, FILE_NAME)
 
-    /** 读取当前所有热区温度（摄氏度）。 */
-    fun readZones(): List<Zone> {
-        val root = File("/sys/class/thermal")
-        val dirs = root.listFiles { f -> f.isDirectory && f.name.startsWith("thermal_zone") } ?: return emptyList()
+    /**
+     * 读取当前所有热区温度（摄氏度）。
+     *
+     * **为什么要在多个路径 / 多个文件名里找**：不同厂商暴露温度的位置完全不一样 ——
+     * 有的在 `/sys/class/thermal/thermal_zone<编号>/temp`，有的只在
+     * `/sys/devices/virtual/thermal/`，文件名还可能是 `temperature`。
+     * 之前只试了第一条路径，于是"有些手机点进去什么都不显示"。
+     *
+     * 最后**一定有兜底**：热区全读不到时用电池温度（`BatteryManager` 提供，
+     * 任何 Android 设备都能拿到），并标明来源，绝不会给用户一个空白页。
+     */
+    fun readZones(context: Context? = null): List<Zone> {
+        val zones = readThermalZones()
+        if (zones.isNotEmpty()) return zones
+        val battery = readBatteryTemperature(context)
+        return if (battery == null) emptyList() else listOf(battery)
+    }
+
+    /** 本机是否只能拿到电池温度（界面据此给一句解释）。 */
+    fun isBatteryOnly(context: Context): Boolean =
+        readThermalZones().isEmpty() && readBatteryTemperature(context) != null
+
+    private fun readThermalZones(): List<Zone> {
+        val roots = listOf(
+            File("/sys/class/thermal"),
+            File("/sys/devices/virtual/thermal")
+        )
         val zones = mutableListOf<Zone>()
-        dirs.forEach { dir ->
-            val name = runCatching { File(dir, "type").readText().trim() }.getOrNull()
-                ?.takeIf { it.isNotBlank() } ?: dir.name
-            val raw = runCatching { File(dir, "temp").readText().trim() }.getOrNull() ?: return@forEach
-            val value = raw.toDoubleOrNull() ?: return@forEach
-            // 多数平台是毫摄氏度；也有直接给摄氏度的
-            val celsius = if (value > 1000) value / 1000.0 else value
-            if (celsius in -40.0..150.0) zones += Zone(name, celsius)
+        val seen = mutableSetOf<String>()
+        roots.forEach { root ->
+            val dirs = runCatching {
+                root.listFiles { f -> f.isDirectory && f.name.startsWith("thermal_zone") }
+            }.getOrNull() ?: return@forEach
+            dirs.forEach { dir ->
+                val name = runCatching { File(dir, "type").readText().trim() }.getOrNull()
+                    ?.takeIf { it.isNotBlank() } ?: dir.name
+                // 有的平台叫 temp，有的叫 temperature；单位多是毫摄氏度
+                val celsius = listOf("temp", "temperature")
+                    .firstNotNullOfOrNull { fileName ->
+                        runCatching { File(dir, fileName).readText().trim() }.getOrNull()
+                            ?.toDoubleOrNull()
+                    }
+                    ?.let { value -> if (value > 1000) value / 1000.0 else value }
+                    ?: return@forEach
+                if (celsius in -40.0..150.0 && seen.add(name)) zones += Zone(name, celsius)
+            }
         }
         return zones.sortedByDescending { it.celsius }
     }
 
+    /** 电池温度（摄氏）：`EXTRA_TEMPERATURE` 的单位是 0.1℃。 */
+    private fun readBatteryTemperature(context: Context?): Zone? {
+        val ctx = context?.applicationContext ?: return null
+        val intent = runCatching {
+            ctx.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+        }.getOrNull() ?: return null
+        val raw = intent.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)
+        if (raw == Int.MIN_VALUE) return null
+        val celsius = raw / 10.0
+        if (celsius !in -40.0..150.0) return null
+        return Zone("电池", celsius)
+    }
+
     /** 追加一条采样记录。 */
     fun logSample(context: Context): List<Zone> {
-        val zones = readZones()
+        val zones = readZones(context)
         if (zones.isEmpty()) return zones
         runCatching {
             val target = file(context)

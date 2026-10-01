@@ -18,7 +18,12 @@ object GeekerwanScores {
 
     const val SNAPSHOT = "2026-09"
 
-    val all: List<ChipScore> = listOf(
+    /**
+     * 内置榜单（随 App 一起发布的那一份）。
+     *
+     * 不叫 `all` 是因为**在线更新下来的数据集会覆盖它**：见 [applyDataset]。
+     */
+    val builtIn: List<ChipScore> = listOf(
         // ---------- 高通 骁龙 ----------
         ChipScore("骁龙 8 Elite Gen 5", "骁龙", 3500, 10500, 4300, 2025),
         ChipScore("骁龙 8 Elite Gen 5 for Galaxy", "骁龙", 3600, 10800, 4500, 2026),
@@ -143,6 +148,39 @@ object GeekerwanScores {
 
     /** 榜单里出现的品牌顺序（按旗舰水平排列，用作筛选条的顺序）。 */
     val brands: List<String> = all.map { it.brand }.distinct()
+
+    // ---------- 在线更新下来的数据集 ----------
+
+    /** 下载到的数据集；为 null 表示用内置那份。 */
+    @Volatile
+    private var downloaded: List<ChipScore>? = null
+
+    /** 当前生效的数据集版本（内置版号或下载到的版号）。 */
+    @Volatile
+    var datasetVersion: String = SNAPSHOT
+        private set
+
+    /** 当前生效的榜单：优先用下载到的，没有就用内置。 */
+    val all: List<ChipScore> get() = downloaded ?: builtIn
+
+    /** 是否正在用下载的数据集。 */
+    val usingDownloaded: Boolean get() = downloaded != null
+
+    /**
+     * 换用一份新的数据集（已经解析成 [ChipScore] 的列表）。
+     * [version] 会参与排行榜缓存的有效性判断，换版本会自动让旧缓存失效。
+     */
+    fun applyDataset(chips: List<ChipScore>, version: String) {
+        if (chips.isEmpty()) return
+        downloaded = chips
+        datasetVersion = version
+    }
+
+    /** 回到内置数据集。 */
+    fun useBuiltIn() {
+        downloaded = null
+        datasetVersion = SNAPSHOT
+    }
 
     /** 按维度排序后的榜单。 */
     fun ranked(metric: RankingMetric, brand: String? = null): List<ChipScore> {

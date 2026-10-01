@@ -156,8 +156,17 @@
                 <com.rjy.xyz.apps.xyzinfo.ui.thermal.ThermalChartView
                     android:id="@+id/thermalChart"
                     android:layout_width="match_parent"
-                    android:layout_height="220dp"
-                    android:layout_marginTop="10dp" />
+                    android:layout_height="240dp"
+                    android:layout_marginTop="12dp" />
+
+                <TextView
+                    android:id="@+id/tvThermalZoneNote"
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

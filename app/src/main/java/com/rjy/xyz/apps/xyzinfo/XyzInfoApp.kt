@@ -42,4 +42,21 @@ class XyzInfoApp : Application() {
         DynamicColors.applyToActivitiesIfAvailable(this)
     }
 
+    companion object {
+        /**
+         * 进程内是否已经走过一次启动流程。
+         *
+         * 用途：从桌面再次点开应用时，系统会在已有任务栈上**再启一个 SplashActivity**
+         * （开屏页自己 finish 过，不是任务栈根），于是"明明进程没被杀，却整页重载了一遍"。
+         * 有了这个标记，开屏页只在**冷启动**时播动画，热启动直接透明掠过，
+         * 原来那套页面栈原封不动地恢复。
+         */
+        @Volatile
+        var warmStarted = false
+            private set
+
+        fun markStarted() {
+            warmStarted = true
+        }
+    }
 }
