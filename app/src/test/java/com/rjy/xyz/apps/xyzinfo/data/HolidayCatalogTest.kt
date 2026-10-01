@@ -110,6 +110,29 @@ class HolidayCatalogTest {
     }
 
     @Test
+    fun tapEffectIsThemedPerHoliday() {
+        // 过年点一下是烟花，不是灯笼
+        assertEquals(HolidayTheme.FIREWORK, HolidayCatalog.SPRING_FESTIVAL.tapTheme)
+        assertEquals(HolidayTheme.FIREWORK, HolidayCatalog.NEW_YEAR_EVE.tapTheme)
+        assertEquals(HolidayTheme.FIREWORK, HolidayCatalog.LANTERN_FESTIVAL.tapTheme)
+        // 圣诞是雪球
+        assertEquals(HolidayTheme.SNOWBALL, HolidayCatalog.CHRISTMAS.tapTheme)
+        assertEquals(HolidayTheme.GIFT, HolidayCatalog.CHRISTMAS.theme)
+        // 其它节日：飘落和点击用同一个造型
+        listOf(
+            HolidayCatalog.MID_AUTUMN,
+            HolidayCatalog.QIXI,
+            HolidayCatalog.NATIONAL,
+            HolidayCatalog.ARMY,
+            HolidayCatalog.DRAGON_BOAT,
+            HolidayCatalog.CHILDREN,
+            HolidayCatalog.VALENTINE
+        ).forEach { holiday ->
+            assertEquals("${holiday.name} 的点击造型", holiday.theme, holiday.tapTheme)
+        }
+    }
+
+    @Test
     fun everyHolidayHasItsOwnEffectAndWish() {
         val all = listOf(
             HolidayCatalog.NEW_YEAR,

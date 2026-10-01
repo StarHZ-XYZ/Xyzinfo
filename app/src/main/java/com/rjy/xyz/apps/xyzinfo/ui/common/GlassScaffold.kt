@@ -150,13 +150,19 @@ object GlassScaffold {
          * 否则还是原来的四季氛围 —— 两套一起飘会显得很乱，所以是二选一。
          */
         val animationsOn = SettingsRepository.animationsEnabled(activity)
+        /*
+         * 「飘落特效」是**总开关**：四季氛围和节日彩蛋都由它一键管理。
+         * 节日彩蛋还有个自己的开关（可以只要四季氛围、不要节日特效，反之亦然）。
+         */
+        val fallingOn = animationsOn && SettingsRepository.seasonEffectEnabled(activity)
         val holiday = if (animationsOn && SettingsRepository.holidayEffectEnabled(activity)) {
             HolidayCatalog.today()
         } else {
             null
         }
-        if (holiday != null) {
-            val festive = HolidayOverlay(activity).apply { this.holiday = holiday }
+        val festiveFalling = if (fallingOn) holiday else null
+        if (festiveFalling != null) {
+            val festive = HolidayOverlay(activity).apply { this.holiday = festiveFalling }
             container.addView(
                 festive,
                 FrameLayout.LayoutParams(
@@ -173,7 +179,7 @@ object GlassScaffold {
                     }
                 }
             )
-        } else if (SettingsRepository.seasonEffectEnabled(activity) && animationsOn) {
+        } else if (fallingOn) {
             val season = SeasonOverlay(activity).apply { this.season = Season.resolve(activity) }
             container.addView(
                 season,
@@ -339,6 +345,8 @@ object GlassScaffold {
             SettingsRepository.animationsEnabled(activity)
         ) {
             val particles = ParticleOverlay(activity)
+            // 节日当天，点击特效也换成节日造型（过年放烟花、圣诞扔雪球…）
+            particles.holiday = holiday
             container.addView(
                 particles,
                 FrameLayout.LayoutParams(

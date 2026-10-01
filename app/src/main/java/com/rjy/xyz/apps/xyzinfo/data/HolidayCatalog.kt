@@ -26,13 +26,17 @@ enum class HolidayTheme {
     DUMPLING,
 
     /** 气球（儿童节）。 */
-    BALLOON
+    BALLOON,
+
+    /** 雪球（圣诞节的点击特效）。 */
+    SNOWBALL
 }
 
 /**
  * 一个节日彩蛋：特效造型 + 进场弹的那条祝福。
  *
  * [accent] 是主色（粒子 / 祝福卡底色），[accentDeep] 是渐变的深色端。
+ * [tapTheme] 是**点击粒子**的造型：过年点一下炸的是烟花而不是灯笼。
  */
 data class Holiday(
     val name: String,
@@ -41,7 +45,8 @@ data class Holiday(
     val wish: String,
     val theme: HolidayTheme,
     val accent: Int,
-    val accentDeep: Int
+    val accentDeep: Int,
+    val tapTheme: HolidayTheme = theme
 )
 
 /**
@@ -134,7 +139,9 @@ object HolidayCatalog {
         wish = "辞旧迎新，年夜饭要吃饱",
         theme = HolidayTheme.LANTERN,
         accent = 0xFFD62828.toInt(),
-        accentDeep = 0xFF8B1A1A.toInt()
+        accentDeep = 0xFF8B1A1A.toInt(),
+        // 过年期间点一下炸的是烟花，比掉灯笼更热闹
+        tapTheme = HolidayTheme.FIREWORK
     )
 
     val SPRING_FESTIVAL = Holiday(
@@ -144,7 +151,8 @@ object HolidayCatalog {
         wish = "阖家团圆，万事大吉",
         theme = HolidayTheme.LANTERN,
         accent = 0xFFE01E1E.toInt(),
-        accentDeep = 0xFF9B1111.toInt()
+        accentDeep = 0xFF9B1111.toInt(),
+        tapTheme = HolidayTheme.FIREWORK
     )
 
     val LANTERN_FESTIVAL = Holiday(
@@ -154,7 +162,8 @@ object HolidayCatalog {
         wish = "花好月圆，人月两团圆",
         theme = HolidayTheme.LANTERN,
         accent = 0xFFF08C00.toInt(),
-        accentDeep = 0xFFB35C00.toInt()
+        accentDeep = 0xFFB35C00.toInt(),
+        tapTheme = HolidayTheme.FIREWORK
     )
 
     val LABOUR = Holiday(
@@ -234,6 +243,8 @@ object HolidayCatalog {
         wish = "Merry Christmas · 愿你被礼物砸中",
         theme = HolidayTheme.GIFT,
         accent = 0xFFC92A2A.toInt(),
-        accentDeep = 0xFF1E7A46.toInt()
+        accentDeep = 0xFF1E7A46.toInt(),
+        // 圣诞节的点击特效是雪球
+        tapTheme = HolidayTheme.SNOWBALL
     )
 }

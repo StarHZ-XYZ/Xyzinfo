@@ -152,6 +152,9 @@ class GlassBottomBar @JvmOverloads constructor(
         if (index == NO_TAB) invalidate() else moveTo(index, animated)
     }
 
+    /** 当前选中的标签（[NO_TAB] 表示不属于任何标签）；也方便测试里断言选中态。 */
+    val currentTab: Int get() = selectedIndex
+
     // ---------- 标签 ----------
 
     private fun buildItems() {

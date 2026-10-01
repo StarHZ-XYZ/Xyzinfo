@@ -4,14 +4,13 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RadialGradient
-import android.graphics.RectF
-import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.AbsoluteSizeSpan
@@ -37,6 +36,7 @@ import kotlin.random.Random
  *
  * 载体和四季氛围一样是**预渲染精灵图 + Matrix 批量绘制**：
  * 每帧只做一次 drawBitmap，粒子数也就十几颗，不参与布局，不挡点击。
+ * 重力开关和四季氛围**共用同一个**（设置里一个开关管两处），
  * 特效只在当天是节日时才挂上去，平时这个类根本不会被实例化。
  */
 class HolidayOverlay(context: Context) : FrameLayout(context) {
@@ -131,7 +131,12 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
     private fun bindGreeting(holiday: Holiday) {
         val title = "${holiday.emoji} ${holiday.title}"
         val text = SpannableStringBuilder().append(title).append("\n").append(holiday.wish)
-        text.setSpan(StyleSpan(android.graphics.Typeface.BOLD), 0, title.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        text.setSpan(
+            StyleSpan(android.graphics.Typeface.BOLD),
+            0,
+            title.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
         text.setSpan(AbsoluteSizeSpan(21, true), 0, title.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         text.setSpan(
             AbsoluteSizeSpan(13, true),
@@ -166,8 +171,9 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
 /**
  * 节日粒子层：节日造型的精灵图从天而降，带自转与横摆。
  *
- * 和四季氛围同源的做法，但**不读重力传感器**：节日特效只在一年里的十几天出现，
- * 没必要为它常驻一个传感器监听。
+ * 重力和四季氛围共用一个开关（[SettingsRepository.seasonGravity]）：
+ * 设备往哪边歪，灯笼 / 爱心 / 星星就往哪边斜着落，贴图也跟着倾斜同样的角度。
+ * 传感器只在特效运行期间注册，页面不可见时立刻注销。
  */
 private class HolidayParticles(context: Context) : View(context) {
 
@@ -189,6 +195,24 @@ private class HolidayParticles(context: Context) : View(context) {
     private var sprite: Bitmap? = null
     private var lastFrameNanos = 0L
     private var running = false
+
+    /** 加速度计原始读数（低通滤波后），只在特效运行期间有值。 */
+    private var rawGravityX = 0f
+    private var rawGravityY = 0f
+    private var gravityEnabled = false
+    private var settingsCheckedAt = 0L
+    private val sensorManager by lazy {
+        context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+    }
+    private val gravityListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            // 低通滤波：传感器噪声不小，直接用会看到粒子抖
+            rawGravityX += (event.values[0] - rawGravityX) * TILT_SMOOTHING
+            rawGravityY += (event.values[1] - rawGravityY) * TILT_SMOOTHING
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
 
     var holiday: Holiday? = null
         set(value) {
@@ -216,42 +240,88 @@ private class HolidayParticles(context: Context) : View(context) {
         if (running) return
         running = true
         lastFrameNanos = 0L
+        settingsCheckedAt = 0L
+        syncGravity(force = true)
         postInvalidateOnAnimation()
     }
 
     fun stop() {
         running = false
+        stopGravitySensor()
         // 和四季氛围一样不清空粒子：回到前台时接着飘，不会"重来一遍"
         invalidate()
     }
 
+    /** 重力开关每秒最多读一次；开关变化时立刻注册 / 注销传感器。 */
+    private fun syncGravity(force: Boolean = false) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!force && now - settingsCheckedAt < SETTINGS_CHECK_INTERVAL_MILLIS) return
+        settingsCheckedAt = now
+        val wanted = SettingsRepository.seasonGravity(context)
+        if (wanted == gravityEnabled) return
+        gravityEnabled = wanted
+        if (wanted) startGravitySensor() else stopGravitySensor()
+    }
+
+    private fun startGravitySensor() {
+        val manager = sensorManager ?: return
+        val sensor = manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
+        runCatching {
+            manager.registerListener(gravityListener, sensor, SensorManager.SENSOR_DELAY_GAME)
+        }
+    }
+
+    private fun stopGravitySensor() {
+        val manager = sensorManager ?: return
+        runCatching { manager.unregisterListener(gravityListener) }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val theme = holiday ?: return
+        val holiday = holiday ?: return
         if (!running || width <= 0 || height <= 0) return
+        syncGravity()
         if (!SettingsRepository.animationsEnabled(context)) {
             running = false
+            stopGravitySensor()
             return
         }
         val w = width.toFloat()
         val h = height.toFloat()
-        if (flakes.isEmpty()) spawn(w, h, theme)
-        val image = sprite ?: buildSprite(theme).also { sprite = it }
+        if (flakes.isEmpty()) spawn(w, h, holiday)
+        val image = sprite ?: HolidaySprites.build(holiday, SPRITE_SIZE).also { sprite = it }
 
         val now = System.nanoTime()
         val delta = if (lastFrameNanos == 0L) 0.016f
         else ((now - lastFrameNanos) / 1e9).toFloat().coerceAtMost(0.06f)
         lastFrameNanos = now
 
+        /*
+         * 重力：和四季氛围完全一套算法（同一个 SeasonTilt 映射）。
+         * tilt 是下落方向相对竖直方向的偏角，速度分量就是 (sin, cos)，
+         * 贴图也跟着倾斜同样的角度 —— 灯笼 / 爱心"顺着重力倒"。
+         */
+        val tilt = if (gravityEnabled) SeasonTilt.tiltFromAccelerometerX(rawGravityX) else 0f
+        val tiltSin = sin(tilt)
+        val tiltCos = cos(tilt)
+        val tiltDegrees = Math.toDegrees(tilt.toDouble()).toFloat()
+        val speedScale = if (gravityEnabled) {
+            (1f + (rawGravityY / SeasonTilt.SensorGravity).coerceIn(-1f, 1f) * 0.18f)
+        } else {
+            1f
+        }
+
         flakes.forEach { flake ->
             flake.phase += delta * flake.sway
-            flake.y += flake.speed * delta
+            flake.y += flake.speed * speedScale * tiltCos * delta
+            flake.x += flake.speed * tiltSin * delta
             flake.x += sin(flake.phase * 2f * PI.toFloat()) * flake.sway * 22f * delta
             flake.rotation += flake.spin * delta
 
             if (flake.y - flake.size > h) {
                 flake.y = -flake.size
-                flake.x = Random.nextFloat() * w
+                // 沿着当前倾斜方向在屏幕外重排，避免"瞬移"
+                flake.x = Random.nextFloat() * w - tiltSin * flake.size * 4f
             }
             if (flake.x < -flake.size * 2) flake.x = w + flake.size
             if (flake.x > w + flake.size * 2) flake.x = -flake.size
@@ -259,7 +329,7 @@ private class HolidayParticles(context: Context) : View(context) {
             val scale = flake.size * 2f / image.width
             matrix.reset()
             matrix.postTranslate(-image.width / 2f, -image.height / 2f)
-            matrix.postRotate(flake.rotation)
+            matrix.postRotate(flake.rotation + tiltDegrees)
             matrix.postScale(scale, scale)
             matrix.postTranslate(flake.x, flake.y)
             paint.alpha = flake.alpha
@@ -301,202 +371,15 @@ private class HolidayParticles(context: Context) : View(context) {
         }
     }
 
-    // ---------- 精灵图：每种节日造型画一次，之后只做位图变换 ----------
+    private companion object {
 
-    private fun buildSprite(holiday: Holiday): Bitmap {
-        val size = 96
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val center = size / 2f
-        when (holiday.theme) {
-            HolidayTheme.LANTERN -> drawLantern(canvas, paint, size, holiday)
-            HolidayTheme.HEART -> drawHeart(canvas, paint, size, holiday)
-            HolidayTheme.STAR -> drawStar(canvas, paint, size, holiday)
-            HolidayTheme.FIREWORK -> drawFirework(canvas, paint, size, holiday)
-            HolidayTheme.MOONCAKE -> drawMooncake(canvas, paint, size, holiday)
-            HolidayTheme.GIFT -> drawGift(canvas, paint, size, holiday)
-            HolidayTheme.DUMPLING -> drawDumpling(canvas, paint, size, holiday)
-            HolidayTheme.BALLOON -> drawBalloon(canvas, paint, size, holiday)
-        }
-        return bitmap
+        /** 精灵图边长：96px 已经足够细腻，一张约 36KB。 */
+        const val SPRITE_SIZE = 96
+
+        /** 加速度计低通系数（和四季氛围保持一致）。 */
+        const val TILT_SMOOTHING = 0.14f
+
+        /** 重力开关状态每秒最多读一次，省掉每帧读 SharedPreferences。 */
+        const val SETTINGS_CHECK_INTERVAL_MILLIS = 1000L
     }
-
-    private fun drawLantern(canvas: Canvas, paint: Paint, size: Int, holiday: Holiday) {
-        val body = RectF(size * 0.24f, size * 0.20f, size * 0.76f, size * 0.70f)
-        paint.shader = LinearGradient(
-            body.left, body.top, body.right, body.bottom,
-            holiday.accent, holiday.accentDeep, Shader.TileMode.CLAMP
-        )
-        canvas.drawOval(body, paint)
-        paint.shader = null
-        // 金色上下箍
-        paint.color = 0xFFFFD34E.toInt()
-        canvas.drawRect(size * 0.30f, size * 0.17f, size * 0.70f, size * 0.24f, paint)
-        canvas.drawRect(size * 0.30f, size * 0.67f, size * 0.70f, size * 0.74f, paint)
-        // 灯芯 + 流苏
-        paint.strokeWidth = size * 0.035f
-        paint.strokeCap = Paint.Cap.ROUND
-        paint.style = Paint.Style.STROKE
-        canvas.drawLine(size * 0.5f, size * 0.10f, size * 0.5f, size * 0.17f, paint)
-        canvas.drawLine(size * 0.5f, size * 0.74f, size * 0.5f, size * 0.93f, paint)
-        paint.style = Paint.Style.FILL
-        // 中间的"福"字简化为一道竖纹
-        paint.color = 0x66FFFFFF
-        canvas.drawRect(size * 0.47f, size * 0.30f, size * 0.53f, size * 0.62f, paint)
-    }
-
-    private fun drawHeart(canvas: Canvas, paint: Paint, size: Int, holiday: Holiday) {
-        val path = Path()
-        path.moveTo(size * 0.5f, size * 0.82f)
-        path.cubicTo(size * 0.06f, size * 0.55f, size * 0.16f, size * 0.16f, size * 0.5f, size * 0.36f)
-        path.cubicTo(size * 0.84f, size * 0.16f, size * 0.94f, size * 0.55f, size * 0.5f, size * 0.82f)
-        path.close()
-        paint.shader = LinearGradient(
-            size * 0.2f, size * 0.2f, size * 0.8f, size * 0.85f,
-            holiday.accent, holiday.accentDeep, Shader.TileMode.CLAMP
-        )
-        canvas.drawPath(path, paint)
-        paint.shader = null
-        paint.color = 0x40FFFFFF
-        canvas.drawCircle(size * 0.36f, size * 0.37f, size * 0.06f, paint)
-    }
-
-    private fun drawStar(canvas: Canvas, paint: Paint, size: Int, holiday: Holiday) {
-        val path = starPath(size / 2f, size / 2f, size * 0.40f, size * 0.16f)
-        paint.shader = LinearGradient(
-            size * 0.2f, 0f, size * 0.8f, size.toFloat(),
-            holiday.accent, holiday.accentDeep, Shader.TileMode.CLAMP
-        )
-        canvas.drawPath(path, paint)
-        paint.shader = null
-    }
-
-    private fun drawFirework(canvas: Canvas, paint: Paint, size: Int, holiday: Holiday) {
-        canvas.drawCircle(
-            size / 2f, size / 2f, size * 0.46f,
-            Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                shader = RadialGradient(
-                    size / 2f, size / 2f, size * 0.46f,
-                    intArrayOf(withAlpha(holiday.accent, 170), withAlpha(holiday.accentDeep, 0)),
-                    floatArrayOf(0f, 1f),
-                    Shader.TileMode.CLAMP
-                )
-            }
-        )
-        paint.color = Color.WHITE
-        paint.strokeWidth = size * 0.045f
-        paint.strokeCap = Paint.Cap.ROUND
-        paint.style = Paint.Style.STROKE
-        for (index in 0 until 8) {
-            val angle = Math.toRadians((index * 45).toDouble())
-            val dx = cos(angle).toFloat()
-            val dy = sin(angle).toFloat()
-            canvas.drawLine(
-                size / 2f + dx * size * 0.10f, size / 2f + dy * size * 0.10f,
-                size / 2f + dx * size * 0.44f, size / 2f + dy * size * 0.44f,
-                paint
-            )
-        }
-        paint.style = Paint.Style.FILL
-        canvas.drawCircle(size / 2f, size / 2f, size * 0.07f, paint)
-    }
-
-    private fun drawMooncake(canvas: Canvas, paint: Paint, size: Int, holiday: Holiday) {
-        val body = RectF(size * 0.14f, size * 0.20f, size * 0.86f, size * 0.82f)
-        paint.shader = LinearGradient(
-            body.left, body.top, body.right, body.bottom,
-            holiday.accent, holiday.accentDeep, Shader.TileMode.CLAMP
-        )
-        canvas.drawRoundRect(body, size * 0.22f, size * 0.22f, paint)
-        paint.shader = null
-        paint.color = 0x55FFFFFF
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = size * 0.03f
-        canvas.drawRoundRect(
-            RectF(size * 0.22f, size * 0.28f, size * 0.78f, size * 0.74f),
-            size * 0.16f, size * 0.16f, paint
-        )
-        paint.style = Paint.Style.FILL
-        paint.color = 0xAAFFFFFF.toInt()
-        canvas.drawCircle(size * 0.5f, size * 0.51f, size * 0.10f, paint)
-    }
-
-    private fun drawGift(canvas: Canvas, paint: Paint, size: Int, holiday: Holiday) {
-        paint.shader = LinearGradient(
-            size * 0.2f, size * 0.3f, size * 0.8f, size * 0.85f,
-            holiday.accent, holiday.accentDeep, Shader.TileMode.CLAMP
-        )
-        canvas.drawRoundRect(
-            RectF(size * 0.16f, size * 0.32f, size * 0.84f, size * 0.86f),
-            size * 0.08f, size * 0.08f, paint
-        )
-        paint.shader = null
-        paint.color = 0xFFFFD34E.toInt()
-        canvas.drawRect(size * 0.42f, size * 0.32f, size * 0.58f, size * 0.86f, paint)
-        canvas.drawRect(size * 0.16f, size * 0.52f, size * 0.84f, size * 0.62f, paint)
-        // 蝴蝶结
-        canvas.drawOval(RectF(size * 0.22f, size * 0.18f, size * 0.48f, size * 0.36f), paint)
-        canvas.drawOval(RectF(size * 0.52f, size * 0.18f, size * 0.78f, size * 0.36f), paint)
-    }
-
-    private fun drawDumpling(canvas: Canvas, paint: Paint, size: Int, holiday: Holiday) {
-        val path = Path()
-        path.moveTo(size * 0.5f, size * 0.14f)
-        path.lineTo(size * 0.86f, size * 0.80f)
-        path.lineTo(size * 0.14f, size * 0.80f)
-        path.close()
-        paint.shader = LinearGradient(
-            size * 0.3f, 0f, size * 0.7f, size.toFloat(),
-            holiday.accent, holiday.accentDeep, Shader.TileMode.CLAMP
-        )
-        canvas.drawPath(path, paint)
-        paint.shader = null
-        paint.color = 0x66FFFFFF
-        paint.strokeWidth = size * 0.04f
-        paint.style = Paint.Style.STROKE
-        canvas.drawLine(size * 0.30f, size * 0.62f, size * 0.70f, size * 0.62f, paint)
-        canvas.drawLine(size * 0.36f, size * 0.46f, size * 0.64f, size * 0.46f, paint)
-        // 绑绳
-        paint.color = 0xFFFFD34E.toInt()
-        canvas.drawLine(size * 0.30f, size * 0.30f, size * 0.70f, size * 0.30f, paint)
-        paint.style = Paint.Style.FILL
-    }
-
-    private fun drawBalloon(canvas: Canvas, paint: Paint, size: Int, holiday: Holiday) {
-        paint.shader = LinearGradient(
-            size * 0.3f, size * 0.1f, size * 0.7f, size * 0.7f,
-            holiday.accent, holiday.accentDeep, Shader.TileMode.CLAMP
-        )
-        canvas.drawOval(RectF(size * 0.24f, size * 0.10f, size * 0.76f, size * 0.68f), paint)
-        paint.shader = null
-        paint.color = withAlpha(holiday.accentDeep, 200)
-        val knot = Path()
-        knot.moveTo(size * 0.5f, size * 0.66f)
-        knot.lineTo(size * 0.44f, size * 0.76f)
-        knot.lineTo(size * 0.56f, size * 0.76f)
-        knot.close()
-        canvas.drawPath(knot, paint)
-        paint.color = 0x99FFFFFF.toInt()
-        paint.strokeWidth = size * 0.025f
-        paint.style = Paint.Style.STROKE
-        canvas.drawLine(size * 0.5f, size * 0.76f, size * 0.5f, size * 0.94f, paint)
-        paint.style = Paint.Style.FILL
-    }
-
-    private fun starPath(cx: Float, cy: Float, outer: Float, inner: Float): Path {
-        val path = Path()
-        for (index in 0 until 10) {
-            val radius = if (index % 2 == 0) outer else inner
-            val angle = Math.toRadians((-90 + index * 36).toDouble())
-            val x = cx + cos(angle).toFloat() * radius
-            val y = cy + sin(angle).toFloat() * radius
-            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-        }
-        path.close()
-        return path
-    }
-
-    private fun withAlpha(color: Int, alpha: Int): Int =
-        Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))
 }

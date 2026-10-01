@@ -89,15 +89,21 @@ class SettingsActivity : AppCompatActivity() {
             binding.tvSeasonGravityHint.alpha = if (checked) 1f else 0.5f
         }
         binding.switchSeason.setOnCheckedChangeListener { _, checked ->
+            // 总开关：一次关掉四季氛围与节日特效
             SettingsRepository.setSeasonEffectEnabled(this, checked)
+            binding.switchHoliday.isEnabled = checked
+            binding.tvHolidayHint.alpha = if (checked && binding.switchHoliday.isChecked) 1f else 0.5f
             recreate()
         }
 
         binding.switchHoliday.isChecked = SettingsRepository.holidayEffectEnabled(this)
-        binding.tvHolidayHint.alpha = if (binding.switchHoliday.isChecked) 1f else 0.5f
+        val fallingOn = SettingsRepository.seasonEffectEnabled(this)
+        binding.switchHoliday.isEnabled = fallingOn
+        binding.tvHolidayHint.alpha = if (fallingOn && binding.switchHoliday.isChecked) 1f else 0.5f
         binding.switchHoliday.setOnCheckedChangeListener { _, checked ->
             SettingsRepository.setHolidayEffectEnabled(this, checked)
-            binding.tvHolidayHint.alpha = if (checked) 1f else 0.5f
+            binding.tvHolidayHint.alpha =
+                if (checked && SettingsRepository.seasonEffectEnabled(this)) 1f else 0.5f
         }
 
         binding.switchHomeGrid.isChecked = SettingsRepository.homeGridStyle(this)
@@ -107,7 +113,16 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // 活体预览：就是首页用的那个底栏组件，点着能直接感受液体指示块
-        binding.glassBarPreview.bind(GlassScaffold.tabs(), GlassScaffold.TAB_SETTINGS) { _, _ -> }
+        /*
+         * 预览里的选中态必须**跟着点击走**。
+         *
+         * 之前这里的回调是空的：点别的标签只让指示线滑过去（光标动了），
+         * 但 selectedIndex 一直停在「设置」—— 于是图标 / 文字的选中色、
+         * 选中项背后那团光晕全都不动，看着就像"光晕没跑过去"。
+         */
+        binding.glassBarPreview.bind(GlassScaffold.tabs(), GlassScaffold.TAB_SETTINGS) { index, _ ->
+            binding.glassBarPreview.setSelectedTab(index, animated = true)
+        }
         // 预览也要真的磨砂：拿设置页自己的内容当取样源
         binding.glassBarPreview.attachBackdrop(binding.root)
     }
