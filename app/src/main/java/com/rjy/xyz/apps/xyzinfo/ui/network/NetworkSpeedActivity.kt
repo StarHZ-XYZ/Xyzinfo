@@ -19,6 +19,7 @@ import com.rjy.xyz.apps.xyzinfo.data.speed.SpeedTestCatalog
 import com.rjy.xyz.apps.xyzinfo.data.speed.SpeedTestEngine
 import com.rjy.xyz.apps.xyzinfo.data.speed.SpeedTestServer
 import com.rjy.xyz.apps.xyzinfo.data.speed.SpeedUnit
+import com.rjy.xyz.apps.xyzinfo.data.speed.SpeedVerdict
 import com.rjy.xyz.apps.xyzinfo.data.speed.formatMillis
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityNetworkSpeedBinding
 import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
@@ -479,6 +480,17 @@ class NetworkSpeedActivity : AppCompatActivity() {
         }
         binding.tvPhase.text = summary
 
+        // 网络评价：上行、下行分开评（家里的宽带经常是下行快、上行慢，一个总分看不出来）
+        renderVerdict(
+            SpeedVerdict.evaluate(
+                downloadBytesPerSecond = report.downloadBytesPerSecond,
+                uploadBytesPerSecond = report.uploadBytesPerSecond,
+                pingMs = report.latency?.averageMs,
+                jitterMs = report.latency?.jitterMs,
+                uploadUnavailableReason = report.uploadSkippedReason
+            )
+        )
+
         SettingsRepository.saveSpeedResult(
             context = this,
             downloadBytesPerSecond = report.downloadBytesPerSecond,
@@ -512,7 +524,15 @@ class NetworkSpeedActivity : AppCompatActivity() {
         records.forEach { record ->
             val moment = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
                 .format(Date(record.timestamp))
-            val head = "$moment ｜ ${record.serverName} ｜ ${record.connections} 连接"
+            // 记录里也带上当时的评价等级，回头对比一眼就能看出"哪次更好"
+            val verdict = SpeedVerdict.evaluate(
+                downloadBytesPerSecond = record.downloadBytesPerSecond,
+                uploadBytesPerSecond = record.uploadBytesPerSecond,
+                pingMs = record.pingMs,
+                jitterMs = record.jitterMs
+            )
+            val head = "$moment ｜ ${record.serverName} ｜ ${record.connections} 连接" +
+                " ｜ ${verdict.download.grade}↓ ${verdict.upload?.grade ?: "—"}↑ ${verdict.score} 分"
             val detail = buildString {
                 append("下载 ").append(unit.text(record.downloadBytesPerSecond))
                 record.uploadBytesPerSecond?.let { append(" ｜ 上传 ").append(unit.text(it)) }
@@ -554,7 +574,78 @@ class NetworkSpeedActivity : AppCompatActivity() {
             append("：下载 ${unit.text(saved.downloadBytesPerSecond)}")
             saved.uploadBytesPerSecond?.let { append("，上传 ${unit.text(it)}") }
         }
+        // 上次的成绩也把评价还原出来，进页面不是一张空卡
+        renderVerdict(
+            SpeedVerdict.evaluate(
+                downloadBytesPerSecond = saved.downloadBytesPerSecond,
+                uploadBytesPerSecond = saved.uploadBytesPerSecond,
+                pingMs = saved.pingMs,
+                jitterMs = saved.jitterMs
+            )
+        )
     }
+
+    /**
+     * 渲染网络评价：总评 + 下行 / 上行各自的等级、人话、能干什么 / 干什么吃力 + 延迟说明。
+     */
+    private fun renderVerdict(verdict: SpeedVerdict.Verdict) {
+        binding.tvVerdictGrade.text = verdict.grade
+        binding.tvVerdictGrade.setTextColor(verdictColor(verdict.score))
+        binding.tvVerdictScore.text = "${verdict.score} 分"
+        binding.tvVerdictHeadline.text = verdict.headline
+        binding.tvVerdictTier.text = verdict.tierNote ?: ""
+        binding.tvVerdictTier.visibility =
+            if (verdict.tierNote.isNullOrBlank()) View.GONE else View.VISIBLE
+
+        renderLine(
+            title = binding.tvVerdictDownload,
+            detail = binding.tvVerdictDownloadDetail,
+            line = verdict.download
+        )
+        val upload = verdict.upload
+        if (upload == null) {
+            binding.tvVerdictUpload.text = "上行：未测到"
+            binding.tvVerdictUpload.setTextColor(
+                ContextCompat.getColor(this, R.color.text_secondary)
+            )
+            binding.tvVerdictUploadDetail.text = verdict.uploadUnavailableReason ?: "—"
+        } else {
+            renderLine(
+                title = binding.tvVerdictUpload,
+                detail = binding.tvVerdictUploadDetail,
+                line = upload
+            )
+        }
+        binding.tvVerdictLatency.text = verdict.latencyNote
+    }
+
+    /** 单条（上行 / 下行）：标题行「下行 128.4 Mbps ｜ 良好」+ 说明行。 */
+    private fun renderLine(
+        title: android.widget.TextView,
+        detail: android.widget.TextView,
+        line: SpeedVerdict.LineVerdict
+    ) {
+        title.text = "${line.direction} ${unit.text(line.speedMbps * 1e6 / 8)} ｜ ${line.grade}（${line.score} 分）"
+        title.setTextColor(verdictColor(line.score))
+        detail.text = buildString {
+            append(line.summary)
+            if (line.capabilities.isNotEmpty()) {
+                append("\n够用：").append(line.capabilities.joinToString("、"))
+            }
+            if (line.limits.isNotEmpty()) {
+                append("\n吃力：").append(line.limits.joinToString("、"))
+            }
+        }
+    }
+
+    private fun verdictColor(score: Int): Int = ContextCompat.getColor(
+        this,
+        when {
+            score >= 70 -> R.color.accent
+            score >= 50 -> R.color.status_warning
+            else -> R.color.status_danger
+        }
+    )
 
     // ---------- 多节点并行对比 ----------
 
