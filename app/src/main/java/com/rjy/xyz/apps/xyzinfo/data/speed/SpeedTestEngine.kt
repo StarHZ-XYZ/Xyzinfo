@@ -27,7 +27,16 @@ object SpeedTestEngine {
 
     private const val CONNECT_TIMEOUT_MS = 6_000
     private const val READ_TIMEOUT_MS = 8_000
-    private const val SAMPLE_INTERVAL_MS = 200L
+    /**
+     * 采样间隔：100ms（每秒 10 次）。
+     *
+     * 之前是 200ms（每秒 5 次），大数字看起来一顿一顿的；100ms 采样 + 下面的指数平滑
+     * 能让读数「爬得顺」，又不会因为窗口太短而乱跳。
+     */
+    private const val SAMPLE_INTERVAL_MS = 100L
+
+    /** 指数平滑系数：新值占 50%，一帧的抖动被吃掉一半，同时保留对真实速度变化的响应。 */
+    private const val SAMPLE_SMOOTHING = 0.5
     private const val READ_BUFFER = 64 * 1024
     private const val UPLOAD_CHUNK = 256 * 1024
 
@@ -252,6 +261,8 @@ object SpeedTestEngine {
         var previousBytes = 0L
         var previousAt = startedAt
         var lastRate = 0.0
+        var smoothedRate = 0.0
+        var hasRate = false
 
         while (!session.isCancelled && System.currentTimeMillis() < deadline) {
             Thread.sleep(SAMPLE_INTERVAL_MS)
@@ -267,8 +278,17 @@ object SpeedTestEngine {
             }
             previousBytes = bytes
             previousAt = now
+
+            // 平滑后的瞬时速度：界面上跳动的那个大数字用它，看起来才像「速度表」而不是随机数
+            smoothedRate = if (hasRate) {
+                smoothedRate + (lastRate - smoothedRate) * SAMPLE_SMOOTHING
+            } else {
+                lastRate
+            }
+            hasRate = true
+
             onSample?.invoke(
-                lastRate,
+                smoothedRate,
                 ((now - startedAt).toDouble() / durationMs).coerceIn(0.0, 1.0)
             )
         }

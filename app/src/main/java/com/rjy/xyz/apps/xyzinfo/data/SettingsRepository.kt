@@ -33,6 +33,8 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
     private const val KEY_LAST_MULTI = "last_multi"
     private const val KEY_LAST_GPU = "last_gpu"
     private const val KEY_LAST_AT = "last_at"
+    private const val KEY_LAST_DETAIL = "last_detail"
+    private const val KEY_LAST_STABILITY = "last_stability"
 
     private const val KEY_SPEED_UNIT = "speed_unit"
     private const val KEY_SPEED_CONNECTIONS = "speed_connections"
@@ -227,15 +229,27 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
         val single: Int,
         val multi: Int,
         val gpu: Int?,
-        val timestamp: Long
+        val timestamp: Long,
+        /** 上次各阶段的原始速率明细（换机器标定、或用户想回看时很有用）。 */
+        val detail: String? = null,
+        val stabilityPercent: Int = 0
     )
 
-    fun saveBenchmark(context: Context, single: Int, multi: Int, gpu: Int?) {
+    fun saveBenchmark(
+        context: Context,
+        single: Int,
+        multi: Int,
+        gpu: Int?,
+        detail: String? = null,
+        stabilityPercent: Int = 0
+    ) {
         prefs(context).edit()
             .putInt(KEY_LAST_SINGLE, single)
             .putInt(KEY_LAST_MULTI, multi)
             .putInt(KEY_LAST_GPU, gpu ?: -1)
             .putLong(KEY_LAST_AT, System.currentTimeMillis())
+            .putString(KEY_LAST_DETAIL, detail)
+            .putInt(KEY_LAST_STABILITY, stabilityPercent)
             .apply()
     }
 
@@ -249,7 +263,9 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
             single = single,
             multi = multi,
             gpu = gpu.takeIf { it > 0 },
-            timestamp = p.getLong(KEY_LAST_AT, 0L)
+            timestamp = p.getLong(KEY_LAST_AT, 0L),
+            detail = p.getString(KEY_LAST_DETAIL, null),
+            stabilityPercent = p.getInt(KEY_LAST_STABILITY, 0)
         )
     }
 
@@ -259,6 +275,8 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
             .remove(KEY_LAST_MULTI)
             .remove(KEY_LAST_GPU)
             .remove(KEY_LAST_AT)
+            .remove(KEY_LAST_DETAIL)
+            .remove(KEY_LAST_STABILITY)
             .apply()
     }
 

@@ -153,53 +153,68 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="18dp">
+                android:padding="16dp">
 
-                <TextView
-                    android:id="@+id/tvSpeedValue"
+                <!-- 大数字 + 单位放在同一行（基线对齐）：比上下两行省出一整行的高度 -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:includeFontPadding="false"
-                    android:text="0.00"
-                    android:textColor="@color/text_primary"
-                    android:textSize="42sp"
-                    android:textStyle="bold" />
+                    android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/tvSpeedUnit"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:gravity="center"
-                    android:text="Mbps"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
+                    <TextView
+                        android:id="@+id/tvSpeedValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:text="0.00"
+                        android:textColor="@color/text_primary"
+                        android:textSize="38sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvSpeedUnit"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:includeFontPadding="false"
+                        android:text="Mbps"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tvPhase"
                     style="@style/Text.SectionSubtitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="4dp"
                     android:gravity="center"
                     android:text="点下面的按钮开始测速" />
+
+                <!-- 实时速度曲线：每秒 10 个采样点，测速过程中一直在画 -->
+                <com.rjy.xyz.apps.xyzinfo.ui.network.SpeedGraphView
+                    android:id="@+id/speedGraph"
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:layout_marginTop="10dp"
+                    android:importantForAccessibility="no" />
 
                 <ProgressBar
                     android:id="@+id/progressSpeed"
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
-                    android:layout_height="6dp"
-                    android:layout_marginTop="10dp"
+                    android:layout_height="4dp"
+                    android:layout_marginTop="6dp"
                     android:max="1000"
                     android:progress="0"
                     android:progressTint="?attr/colorPrimary" />
 
-                <!-- 四项成绩：两行两列，够宽才放得下「128.4 Mbps」这种带单位的完整读数 -->
+                <!-- 四项成绩：一格一项，标签在左、数值在右，带单位也放得下 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="10dp"
                     android:orientation="horizontal">
 
                     <LinearLayout
@@ -207,25 +222,31 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:background="@drawable/bg_row_panel"
-                        android:orientation="vertical"
-                        android:padding="12dp">
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="10dp"
+                        android:paddingTop="8dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="8dp">
 
                         <TextView
-                            android:layout_width="match_parent"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="下载"
                             android:textColor="@color/text_secondary"
-                            android:textSize="12sp" />
+                            android:textSize="11.5sp" />
 
                         <TextView
                             android:id="@+id/tvDownload"
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="3dp"
+                            android:layout_weight="1"
+                            android:gravity="end"
                             android:includeFontPadding="false"
+                            android:maxLines="1"
                             android:text="—"
                             android:textColor="@color/text_primary"
-                            android:textSize="18sp"
+                            android:textSize="13.5sp"
                             android:textStyle="bold" />
                     </LinearLayout>
 
@@ -235,25 +256,31 @@
                         android:layout_marginStart="6dp"
                         android:layout_weight="1"
                         android:background="@drawable/bg_row_panel"
-                        android:orientation="vertical"
-                        android:padding="12dp">
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="10dp"
+                        android:paddingTop="8dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="8dp">
 
                         <TextView
-                            android:layout_width="match_parent"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="上传"
                             android:textColor="@color/text_secondary"
-                            android:textSize="12sp" />
+                            android:textSize="11.5sp" />
 
                         <TextView
                             android:id="@+id/tvUpload"
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="3dp"
+                            android:layout_weight="1"
+                            android:gravity="end"
                             android:includeFontPadding="false"
+                            android:maxLines="1"
                             android:text="—"
                             android:textColor="@color/text_primary"
-                            android:textSize="18sp"
+                            android:textSize="13.5sp"
                             android:textStyle="bold" />
                     </LinearLayout>
                 </LinearLayout>
@@ -269,25 +296,31 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:background="@drawable/bg_row_panel"
-                        android:orientation="vertical"
-                        android:padding="12dp">
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="10dp"
+                        android:paddingTop="8dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="8dp">
 
                         <TextView
-                            android:layout_width="match_parent"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="延迟"
                             android:textColor="@color/text_secondary"
-                            android:textSize="12sp" />
+                            android:textSize="11.5sp" />
 
                         <TextView
                             android:id="@+id/tvPing"
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="3dp"
+                            android:layout_weight="1"
+                            android:gravity="end"
                             android:includeFontPadding="false"
+                            android:maxLines="1"
                             android:text="—"
                             android:textColor="@color/text_primary"
-                            android:textSize="18sp"
+                            android:textSize="13.5sp"
                             android:textStyle="bold" />
                     </LinearLayout>
 
@@ -297,25 +330,31 @@
                         android:layout_marginStart="6dp"
                         android:layout_weight="1"
                         android:background="@drawable/bg_row_panel"
-                        android:orientation="vertical"
-                        android:padding="12dp">
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="10dp"
+                        android:paddingTop="8dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="8dp">
 
                         <TextView
-                            android:layout_width="match_parent"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="抖动"
                             android:textColor="@color/text_secondary"
-                            android:textSize="12sp" />
+                            android:textSize="11.5sp" />
 
                         <TextView
                             android:id="@+id/tvJitter"
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="3dp"
+                            android:layout_weight="1"
+                            android:gravity="end"
                             android:includeFontPadding="false"
+                            android:maxLines="1"
                             android:text="—"
                             android:textColor="@color/text_primary"
-                            android:textSize="18sp"
+                            android:textSize="13.5sp"
                             android:textStyle="bold" />
                     </LinearLayout>
                 </LinearLayout>

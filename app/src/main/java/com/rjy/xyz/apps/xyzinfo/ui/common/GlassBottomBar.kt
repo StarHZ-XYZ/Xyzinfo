@@ -141,6 +141,9 @@ class GlassBottomBar @JvmOverloads constructor(
 
     fun requestBackdropRefresh(immediate: Boolean = false) = backdrop.requestRefresh(immediate)
 
+    /** 跑分等重负载场景：暂停底栏的实时模糊采样，别让全页重绘占满主线程。 */
+    fun setBackdropEnabled(enabled: Boolean) = backdrop.setEnabled(enabled)
+
     fun setSelectedTab(index: Int, animated: Boolean) {
         if (index != NO_TAB && index !in tabs.indices) return
         val previous = selectedIndex

@@ -335,6 +335,7 @@ class NetworkSpeedActivity : AppCompatActivity() {
         binding.tvSpeedValue.text = unit.valueText(0.0)
         binding.tvPhase.text = "正在测延迟…"
         binding.progressSpeed.progress = 0
+        binding.speedGraph.reset()
         binding.tvDownload.text = "—"
         binding.tvUpload.text = "—"
         binding.tvPing.text = "—"
@@ -408,6 +409,8 @@ class NetworkSpeedActivity : AppCompatActivity() {
         fraction: Double
     ) {
         binding.tvSpeedValue.text = unit.valueText(bytesPerSecond)
+        // 曲线只画下载 / 上传阶段的速度；延迟阶段没有带宽数据，不掺进去
+        binding.speedGraph.addSample(bytesPerSecond)
         val progress = when (phase) {
             SpeedTestEngine.Phase.DOWNLOAD -> 100 + fraction * 450
             SpeedTestEngine.Phase.UPLOAD -> 550 + fraction * 450
@@ -586,6 +589,7 @@ class NetworkSpeedActivity : AppCompatActivity() {
     /** 切换单位：所有已经算出来的数字都要按新单位重画一遍（不能只改标题）。 */
     private fun applyUnitToReadout() {
         binding.tvSpeedUnit.text = unit.suffix
+        binding.speedGraph.unit = unit
         if (hasResult) {
             binding.tvSpeedValue.text = unit.valueText(lastDownloadBps)
             binding.tvDownload.text = unit.text(lastDownloadBps)
@@ -664,7 +668,10 @@ class NetworkSpeedActivity : AppCompatActivity() {
         const val COMPARE_CONNECTIONS = 2
         const val COMPARE_MS = 6_000L
 
-        /** 界面刷新节流：200ms 采一次，80ms 才允许往 UI 推一次。 */
-        const val THROTTLE_MS = 80L
+        /**
+         * 界面刷新节流：内核 100ms 采一次，这里 60ms 放一次 ——
+         * 等于每个采样点都会推到界面（每秒 10 次），大数字和曲线才是连贯的。
+         */
+        const val THROTTLE_MS = 60L
     }
 }

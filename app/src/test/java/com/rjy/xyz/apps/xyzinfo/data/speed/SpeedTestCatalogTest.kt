@@ -84,8 +84,19 @@ class SpeedTestCatalogTest {
     fun `拿不到定位时的兜底顺序可用来测速`() {
         val fallback = SpeedTestCatalog.defaultOrder(4)
         assertEquals(4, fallback.size)
+        // 首选任播（自动就近），接着是大陆几台带宽最大的镜像站
         assertTrue(fallback.first().anycast)
-        assertEquals("tuna", fallback[1].id)
+        assertEquals("ustc", fallback[1].id)
+    }
+
+    @Test
+    fun `大陆节点覆盖多个城市`() {
+        val mainland = servers.filter { it.countryCode == "CN" }
+        assertTrue("大陆节点太少：${mainland.size}", mainland.size >= 5)
+        val cities = mainland.map { it.city }.toSet()
+        assertTrue("大陆节点只覆盖了 $cities", cities.size >= 4)
+        // 每个大陆节点都要是 HTTPS 且至少有一个可用地址（目录约束，防止手滑写成 http）
+        mainland.forEach { assertTrue(it.downloadUrls.all { url -> url.startsWith("https://") }) }
     }
 
     @Test

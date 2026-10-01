@@ -39,13 +39,36 @@ class GlassBackdrop(private val host: View) {
     private val handler = Handler(Looper.getMainLooper())
     private var pending = false
 
+    /** 关掉后不再取样重建（跑分期间用，见 [setEnabled]）。 */
+    private var enabled = true
+
     fun attachSource(view: View) {
         source = view
         requestRefresh(immediate = true)
     }
 
+    /**
+     * 暂停 / 恢复实时模糊。
+     *
+     * 为什么要这个开关：重建一次模糊要把**整个页面**重绘进一张位图再模糊，
+     * 而页面里任何布局变化（比如跑分时每 250ms 刷一次状态文字）都会触发一次**立即**重建。
+     * 跑分页内容长、刷新密，主线程会被这些重绘彻底占满 —— 实测把一次
+     * `startActivity` 的调用推迟了 44 秒才执行。跑分期间把玻璃取样停掉，
+     * 主线程才能腾出来处理真正重要的事情。
+     */
+    fun setEnabled(value: Boolean) {
+        enabled = value
+        if (!value) {
+            handler.removeCallbacksAndMessages(null)
+            pending = false
+        } else {
+            requestRefresh(immediate = true)
+        }
+    }
+
     /** 滚动时每帧都能调，内部按 80ms 节流，真正重算不会太频繁。 */
     fun requestRefresh(immediate: Boolean = false) {
+        if (!enabled) return
         val src = source ?: return
         if (!host.isAttachedToWindow || src.width <= 0) return
         if (immediate) {

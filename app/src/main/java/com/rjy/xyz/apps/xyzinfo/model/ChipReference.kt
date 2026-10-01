@@ -39,5 +39,11 @@ data class GpuResult(
     val renderer: String,
     /** 实测像素填充率（Gpx/s）。 */
     val pixelRateGiga: Double,
-    val frames: Int
+    val frames: Int,
+    /** 这次用的是什么负载：「3D 引擎」或「2D 填充（3D 不可用时的退路）」。 */
+    val mode: String = "2D 填充",
+    /** 3D 模式下每帧渲染的通道数（自适应加重后的结果）。 */
+    val passes: Int = 0,
+    /** 3D 模式下每帧提交的三角形数量。 */
+    val trianglesPerFrame: Int = 0
 )

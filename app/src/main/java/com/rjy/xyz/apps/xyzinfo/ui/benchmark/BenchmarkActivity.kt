@@ -2,6 +2,7 @@ package com.rjy.xyz.apps.xyzinfo.ui.benchmark
 
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import android.view.View
 import android.view.WindowManager
 import android.widget.LinearLayout
@@ -27,6 +28,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.countUpWith
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import com.rjy.xyz.apps.xyzinfo.ui.common.setRawBlock
 import com.rjy.xyz.apps.xyzinfo.util.Labels
+import com.rjy.xyz.apps.xyzinfo.util.Formats
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -48,8 +50,24 @@ class BenchmarkActivity : AppCompatActivity() {
     private var running = false
     private var deviceChipName: String? = null
     private var deviceGpuName: String? = null
+    /** 状态文字上次推到界面的时间（跑分期间节流用）。 */
+    @Volatile private var lastStatusPostAt = 0L
     /** 最近一次内存测试结果（0.8 新增）。 */
     private var lastMemory: MemoryBenchmark.Result? = null
+
+    /** 3D 起不来时的原因，会写进结果明细里，让用户知道这次用了退路。 */
+    private var gpu3dFailure: String? = null
+
+    /**
+     * 3D 跑分页用 startActivityForResult 的方式打开（这样它退出后会自然回到本页）。
+     *
+     * **刻意不用它的回调来判定结果**：跨进程 Activity 结果的回调时机在个别 ROM 上并不保证
+     * （实测 HyperOS 上要么不来、要么早来），所以真正的判据是子进程写下的结果文件，见
+     * [runGpu3d] 里的轮询。
+     */
+    private val gpu3dLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { /* 结果从文件读，这里不处理 */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -106,17 +124,39 @@ class BenchmarkActivity : AppCompatActivity() {
         binding.tvCpuSingleScore.setInfoRow("CPU 单核：${saved.single}")
         binding.tvCpuMultiScore.setInfoRow("CPU 多核：${saved.multi}")
         binding.tvGpuScore.setInfoRow("GPU：${saved.gpu ?: "未测"}")
-        binding.tvStability.setInfoRow("稳定性：上次成绩已保存，可再跑一次对比")
+        binding.tvStability.setInfoRow(
+            if (saved.stabilityPercent > 0) {
+                "稳定性：${saved.stabilityPercent}%（上次成绩已保存，可再跑一次对比）"
+            } else {
+                "稳定性：上次成绩已保存，可再跑一次对比"
+            }
+        )
+        // 上次的原始速率明细也摆出来，省得用户只能看到一个孤零零的分数
+        saved.detail?.takeIf { it.isNotBlank() }?.let {
+            binding.tvBenchmarkDetail.setRawBlock(it)
+        }
     }
 
     private fun startBenchmark() {
-        if (running) return
+        // 进程级互斥：万一页面上出现了两个实例（标签切换 / 系统重建都可能），
+        // 也绝不让两个跑分同时在跑 —— 互相抢 CPU 会把两轮成绩一起毁掉。
+        if (running || runInProgress) return
         running = true
+        runInProgress = true
         binding.btnStartBenchmark.isEnabled = false
         binding.btnStartBenchmark.alpha = 0.6f
         binding.progressBenchmark.visibility = View.VISIBLE
         binding.progressBenchmark.progress = 0
         binding.layoutStages.removeAllViews()
+        /*
+         * 跑分期间把玻璃底栏收起来，并停掉它的实时模糊。
+         *
+         * 这不是"看着清爽"的问题：底栏每次重建模糊都要把整个页面重绘进位图，而页面上
+         * 任何布局变化（跑分每 250ms 刷一次状态文字）都会立刻触发一次重建。实测主线程
+         * 因此被占满，连 `startActivity` 都被推迟了 44 秒才执行 —— 3D 跑分就是这么被拖超时的。
+         */
+        glassBar?.setBackdropEnabled(false)
+        glassBar?.visibility = View.GONE
 
         val deep = SettingsRepository.deepBenchmarkEnabled(this)
         val cpuSeconds = CpuBenchmark.totalSeconds(deep)
@@ -141,37 +181,146 @@ class BenchmarkActivity : AppCompatActivity() {
                 cpuSingleScore = cpu.singleScore,
                 cpuMultiScore = cpu.multiScore,
                 gpuScore = gpu?.score,
-                cpuSingleDetail = cpu.stages.take(5).joinToString("\n") {
+                cpuSingleDetail = cpu.stages.take(6).joinToString("\n") {
                     "${it.name}：${it.detail}"
                 },
-                cpuMultiDetail = cpu.stages.drop(5).joinToString("\n") {
+                cpuMultiDetail = cpu.stages.drop(6).joinToString("\n") {
                     "${it.name}：${it.detail}"
                 },
-                gpuDetail = gpu?.let {
-                    String.format(
-                        Locale.US,
-                        "GPU：%.1f 帧/秒｜1%% low：%.1f 帧/秒｜填充率：%.1f Gpx/s｜%d 帧",
-                        it.framesPerSecond, it.lowFramesPerSecond, it.pixelRateGiga, it.frames
-                    )
-                } ?: "GPU：${deviceGpuName ?: "未知"}（本次未取得有效帧率）",
+                gpuDetail = gpu?.let { buildGpuDetail(it) }
+                    ?: buildGpuFallbackDetail(),
                 stabilityPercent = cpu.stabilityPercent,
                 totalSeconds = (System.currentTimeMillis() - startedAt) / 1000.0,
                 stages = cpu.stages
             )
             SettingsRepository.saveBenchmark(
-                this, result.cpuSingleScore, result.cpuMultiScore, result.gpuScore
+                context = this,
+                single = result.cpuSingleScore,
+                multi = result.cpuMultiScore,
+                gpu = result.gpuScore,
+                // 明细一起存下来：换机器重新标定基准、或者用户回头核对原始速率时都有用
+                detail = listOfNotNull(
+                    result.cpuSingleDetail,
+                    result.cpuMultiDetail,
+                    result.gpuDetail,
+                    lastMemory?.detail
+                ).joinToString("\n"),
+                stabilityPercent = result.stabilityPercent
             )
             runOnUiThread { if (!isFinishing) renderResult(result, cpu, gpu) }
         }, "xyzinfo-benchmark").start()
     }
 
     /**
-     * GPU 阶段：全屏铺开压力视图，跑满 [seconds] 秒。
+     * GPU 阶段：**优先跑 3D 引擎**（独立进程里的 GLES 3.0 场景），
+     * 只有 3D 起不来（驱动编译失败 / 进程被驱动带走 / 超时）才退回 2D 填充测试。
+     *
+     * 为什么要换成 3D：2D 填充对现代 GPU 太轻，画面很容易顶在垂直同步上（60/90/120 帧），
+     * 于是分数被刷新率锁死，旗舰机和中端机拉不开差距 —— 测出来的是屏幕而不是 GPU。
+     * 3D 场景把着色做得足够重，让 GPU 自己成为瓶颈，分数才反映真实图形性能。
+     */
+    private fun runGpuStress(seconds: Double, cpuSeconds: Double, totalSeconds: Double): GpuResult? {
+        val three = runGpu3d(seconds, cpuSeconds, totalSeconds)
+        if (three != null) return three
+        return runCanvasGpuStress(seconds, cpuSeconds, totalSeconds)
+    }
+
+    /** 3D 引擎阶段：交给独立进程跑，主线程只负责显示进度和等结果。 */
+    private fun runGpu3d(seconds: Double, cpuSeconds: Double, totalSeconds: Double): GpuResult? {
+        val launchedAt = System.currentTimeMillis()
+        gpu3dFailure = null
+
+        runOnUiThread {
+            if (isFinishing) {
+                gpu3dFailure = "跑分页面已结束"
+                return@runOnUiThread
+            }
+            glassBar?.visibility = View.GONE
+            Gpu3dActivity.deleteStaleResult(this)
+            gpu3dLauncher.launch(Gpu3dActivity.intent(this, seconds))
+        }
+
+        /*
+         * 轮询子进程写下的结果文件，而不是等 Activity 回调：
+         * 回调在个别 ROM 上不来或早来（都会让这一轮白白退化成 2D 测试），
+         * 而结果文件带写入时间戳，出现在磁盘上就等于"这次 3D 真的跑完了"。
+         */
+        val deadline = System.currentTimeMillis() + ((seconds + 16) * 1000).toLong()
+        val startedAt = System.currentTimeMillis()
+        var result: Gpu3dResult? = null
+        var readNote = "等待超时（子进程可能被显卡驱动带崩）"
+        while (System.currentTimeMillis() < deadline) {
+            val (candidate, note) = Gpu3dActivity.readResultWithReason(this, launchedAt)
+            readNote = note
+            if (candidate != null) {
+                result = candidate
+                break
+            }
+            val elapsed = (System.currentTimeMillis() - startedAt) / 1000.0
+            setStatus(
+                "3D 引擎渲染测速",
+                cpuSeconds + elapsed.coerceAtMost(seconds),
+                totalSeconds,
+                "OpenGL ES 3.0 场景负载"
+            )
+            Thread.sleep(400)
+        }
+
+        /*
+         * 退路测试必须等本页真的回到前台再跑：压力视图不可见 / 窗口没焦点时不会出帧，
+         * 2D 填充测试就会"跑了个寂寞"（结果直接是未测）。
+         */
+        waitUntilVisible(10_000L)
+        runOnUiThread { if (!isFinishing) glassBar?.visibility = View.VISIBLE }
+
+        if (result == null) {
+            gpu3dFailure = "3D 测试没有返回结果（$readNote）"
+            return null
+        }
+        if (result.error != null || result.frames <= 0 || result.shadedPixelsPerSecond <= 0.0) {
+            gpu3dFailure = result.error ?: "3D 测试未取得有效帧率"
+            return null
+        }
+        return GpuResult(
+            score = (result.shadedPixelsPerSecond / REFERENCE_3D_PIXELS_PER_SECOND * 1000).roundToInt(),
+            framesPerSecond = result.framesPerSecond,
+            lowFramesPerSecond = result.lowFramesPerSecond,
+            renderer = result.renderer,
+            pixelRateGiga = result.shadedPixelsPerSecond / 1e9,
+            frames = result.frames,
+            mode = "3D 引擎",
+            passes = result.passes,
+            trianglesPerFrame = result.trianglesPerFrame
+        )
+    }
+
+    /** 等本页重新可见（最多 [timeoutMillis]），避免在后台跑需要绘制帧的测试。 */
+    private fun waitUntilVisible(timeoutMillis: Long) {
+        val deadline = System.currentTimeMillis() + timeoutMillis
+        while (System.currentTimeMillis() < deadline) {
+            val visible = CountDownLatch(1)
+            var hasFocus = false
+            runOnUiThread {
+                hasFocus = !isFinishing && window.decorView.hasWindowFocus()
+                visible.countDown()
+            }
+            visible.await(2, TimeUnit.SECONDS)
+            if (hasFocus) return
+            Thread.sleep(250)
+        }
+    }
+
+    /**
+     * 2D 填充退路：全屏铺开压力视图，跑满 [seconds] 秒。
      *
      * 全屏是 0.7 的关键改动——0.5 版只有 180dp 高，填充量太小，
      * 很多机器直接顶到垂直同步上限，测出来的其实是刷新率而不是 GPU 性能。
      */
-    private fun runGpuStress(seconds: Double, cpuSeconds: Double, totalSeconds: Double): GpuResult? {
+    private fun runCanvasGpuStress(
+        seconds: Double,
+        cpuSeconds: Double,
+        totalSeconds: Double
+    ): GpuResult? {
         val latch = CountDownLatch(1)
         var raw: GpuCanvasStressView.RawResult? = null
 
@@ -221,11 +370,16 @@ class BenchmarkActivity : AppCompatActivity() {
             lowFramesPerSecond = value.lowFramesPerSecond,
             renderer = deviceGpuName ?: "硬件加速 2D 渲染",
             pixelRateGiga = value.pixelsPerSecond / 1e9,
-            frames = value.frames
+            frames = value.frames,
+            mode = "2D 填充（3D 退路）"
         )
     }
 
     private fun setStatus(stage: String, elapsed: Double, total: Double, live: String? = null) {
+        // 状态刷新节流：600ms 一次足够看清进度，也少给主线程添活
+        val now = System.currentTimeMillis()
+        if (now - lastStatusPostAt < STATUS_THROTTLE_MS) return
+        lastStatusPostAt = now
         runOnUiThread {
             if (isFinishing) return@runOnUiThread
             binding.tvBenchmarkStatus.setInfoRow("当前阶段：$stage")
@@ -250,8 +404,11 @@ class BenchmarkActivity : AppCompatActivity() {
         gpu: GpuResult?
     ) {
         running = false
+        runInProgress = false
         binding.btnStartBenchmark.isEnabled = true
         binding.btnStartBenchmark.animate().alpha(1f).setDuration(Anim.DURATION_SHORT).start()
+        glassBar?.visibility = View.VISIBLE
+        glassBar?.setBackdropEnabled(true)
         binding.progressBenchmark.animateTo(100)
         binding.tvBenchmarkStatus.setInfoRow("测试完成：总耗时 ${result.totalSeconds.roundToInt()} 秒")
         binding.tvBenchmarkStage.text = "可再点一次看稳定性差异（连续跑分时分数通常会略降）"
@@ -322,11 +479,52 @@ class BenchmarkActivity : AppCompatActivity() {
 
     private fun dp(value: Float): Int = (value * resources.displayMetrics.density).roundToInt()
 
+    /**
+     * GPU 明细：3D 模式额外说明通道数（自适应加压的结果）与每帧三角形数量，
+     * 这样用户能看出"这一轮到底压了多重"；退路的 2D 模式也会写明原因。
+     */
+    private fun buildGpuDetail(gpu: GpuResult): String = buildString {
+        append(
+            String.format(
+                Locale.US,
+                "GPU（%s）：%.1f 帧/秒｜1%% low：%.1f 帧/秒｜着色率：%.1f Gpx/s｜%d 帧",
+                gpu.mode, gpu.framesPerSecond, gpu.lowFramesPerSecond, gpu.pixelRateGiga, gpu.frames
+            )
+        )
+        if (gpu.mode.startsWith("3D")) {
+            append(String.format(
+                Locale.US,
+                "\n3D 负载：每帧 %d 个着色通道 ｜ %s 个三角形 ｜ 着色率 %.2f Gpx/s ｜ %s",
+                gpu.passes, Formats.grouped(gpu.trianglesPerFrame), gpu.pixelRateGiga, gpu.renderer
+            ))
+        }
+        gpu3dFailure?.let { append("\n注：$it，已使用 2D 填充退路") }
+    }
+
+    /** GPU 完全没出成绩时的说明：把 3D 那一步卡在哪写清楚，方便定位（也方便用户反馈）。 */
+    private fun buildGpuFallbackDetail(): String = buildString {
+        append("GPU：${deviceGpuName ?: "未知"}（本次未取得有效帧率）")
+        gpu3dFailure?.let { append("\n原因：$it") }
+    }
+
     private companion object {
+        /** 进程级互斥标志：同一时刻只允许一轮跑分。 */
+        @Volatile
+        private var runInProgress = false
+
         /**
          * GPU 填充率基准：以骁龙 778G（0.5 版真机 33 帧/秒 × 约 1.05 亿像素/帧）折算的
          * 3.5 Gpx/s 为 1000 分，这样中端机仍在 1000 附近，旗舰能拉开差距。
          */
         const val REFERENCE_PIXELS_PER_SECOND = 3.5e9
+
+        /**
+         * 3D 引擎的着色率基准：骁龙 778G（Adreno 642L）真机实测值，对应 1000 分。
+         * 与参考榜单给它的 GPU = 1000 同一刻度。
+         */
+        const val REFERENCE_3D_PIXELS_PER_SECOND = 1.18e8
+
+        /** 状态文字最快多久推一次界面（跑分期间主线程要留给测量本身）。 */
+        const val STATUS_THROTTLE_MS = 600L
     }
 }

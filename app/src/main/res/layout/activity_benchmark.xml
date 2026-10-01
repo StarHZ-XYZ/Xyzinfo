@@ -80,7 +80,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:text="点击开始：标准模式约 1 分 25 秒，会依次测试整数、浮点、压缩、排序、位运算、多核与 GPU" />
+                        android:text="点击开始：标准模式约 2 分钟，依次测试整数 / 浮点 / 压缩 / 排序 / 位运算 / 内存带宽 / 多核与 3D 引擎 GPU" />
 
                     <TextView
                         android:id="@+id/tvBenchmarkStage"
