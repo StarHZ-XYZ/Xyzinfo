@@ -57,4 +57,43 @@ class NetworkSpeedVerdictRenderTest {
         assertTrue("延迟说明应有点评", text(R.id.tvVerdictLatency).contains("延迟"))
         activity.finish()
     }
+
+    /**
+     * 回归：设置的测速单位是 MB/s 时，**整张评价卡都不许再出现 Mbps**。
+     *
+     * 用户报的 bug：单位切成 MB/s，网络评价的描述仍然是 Mbps。
+     */
+    @Test
+    fun `单位是MB每秒时评价卡不会出现Mbps`() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsRepository.setSpeedUnit(context, "MBS")
+        SettingsRepository.saveSpeedResult(
+            context = context,
+            downloadBytesPerSecond = 500e6 / 8,
+            uploadBytesPerSecond = 3e6 / 8,
+            pingMs = 25.0,
+            jitterMs = 6.0,
+            serverName = "测试节点"
+        )
+
+        val activity = Robolectric.buildActivity(NetworkSpeedActivity::class.java).setup().get()
+        fun text(id: Int) = activity.findViewById<TextView>(id).text.toString()
+
+        val headline = text(R.id.tvVerdictHeadline)
+        assertTrue("总评应该用 MB/s：$headline", headline.contains("MB/s"))
+        assertTrue("总评不该再出现 Mbps：$headline", !headline.contains("Mbps"))
+        // 500Mbps = 62.5MB/s
+        assertTrue("数字也要换算：$headline", headline.contains("62.5"))
+
+        listOf(
+            R.id.tvVerdictDownload,
+            R.id.tvVerdictUpload,
+            R.id.tvVerdictDownloadDetail,
+            R.id.tvVerdictUploadDetail
+        ).forEach { id ->
+            val value = text(id)
+            assertTrue("第 $id 段出现 Mbps：$value", !value.contains("Mbps"))
+        }
+        activity.finish()
+    }
 }

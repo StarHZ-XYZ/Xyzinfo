@@ -18,6 +18,7 @@ import com.rjy.xyz.apps.xyzinfo.data.DeviceOverviewProvider
 import com.rjy.xyz.apps.xyzinfo.data.RamInfoProvider
 import com.rjy.xyz.apps.xyzinfo.data.ScreenInfoProvider
 import com.rjy.xyz.apps.xyzinfo.data.SocInfoProvider
+import com.rjy.xyz.apps.xyzinfo.data.DeviceNameRepository
 import com.rjy.xyz.apps.xyzinfo.util.Formats
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -33,7 +34,10 @@ enum class ShareTheme(val id: String, val label: String) {
     CLOUD("cloud", "云白"),
 
     /** 品牌色：跟着设备品牌的主色走。 */
-    BRAND("brand", "品牌色");
+    BRAND("brand", "品牌色"),
+
+    /** 彩霞：珊瑚橙 → 紫 → 蓝的三段渐变，发出去最抓眼。 */
+    RAINBOW("rainbow", "彩霞");
 
     companion object {
         fun of(id: String?): ShareTheme = values().firstOrNull { it.id == id } ?: DEPTH
@@ -75,9 +79,17 @@ object ShareCardRenderer {
         val screen = runCatching { ScreenInfoProvider.load(context) }.getOrNull()
         val battery = runCatching { BatteryInfoProvider.load(context) }.getOrNull()
 
-        val deviceName = overview?.displayName ?: Build.MODEL
+        /*
+         * 机型名优先用机型库解析出来的**实际型号**（小米 Civi 1S），
+         * 库没命中才退回 Build.MODEL（内部型号，例如 2109119BC）——
+         * 用户反馈"卡片上显示的是手机内部型号而不是实际型号"就是这里以前直接用了 rawModel。
+         */
+        val deviceName = DeviceNameRepository.lookup(context, Build.DEVICE, Build.MODEL)
+            ?.takeIf { it.isNotBlank() }
+            ?: overview?.displayName?.takeIf { it.isNotBlank() }
+            ?: Build.MODEL
         val modelLine = buildString {
-            append("型号 ").append(overview?.rawModel ?: Build.MODEL)
+            append("内部码 ").append(overview?.rawModel ?: Build.MODEL)
             val code = overview?.deviceCode ?: Build.DEVICE
             if (code.isNotBlank()) append(" ｜ 代号 ").append(code)
         }
@@ -91,7 +103,9 @@ object ShareCardRenderer {
                 Spec(
                     "内存",
                     ram?.let { info ->
-                        val total = Formats.bytes(info.measuredTotalBytes)
+                        // 标称容量（12 GB）才是"实际对应的"档位；实测可用（10.93 GB）和被系统占用有关
+                        val total = info.nominalTotalGigabytes?.let { "$it GB" }
+                            ?: Formats.bytes(info.measuredTotalBytes)
                         val type = info.typeName.takeIf { it.isNotBlank() && it != "未知" }
                         if (type != null) "$total · $type" else total
                     } ?: "未知"
@@ -174,7 +188,9 @@ object ShareCardRenderer {
         val muted: Int,
         val card: Int,
         val stroke: Int,
-        val tile: Int
+        val tile: Int,
+        /** 三段渐变的中间色（只有彩霞主题用）。 */
+        val middle: Int? = null
     )
 
     private fun paletteFor(theme: ShareTheme, brandColor: Int): Palette = when (theme) {
@@ -217,13 +233,36 @@ object ShareCardRenderer {
                 tile = 0xFFF2F4F7.toInt()
             )
         }
+
+        ShareTheme.RAINBOW -> Palette(
+            top = 0xFFFF7A59.toInt(),
+            bottom = 0xFF2B6CF6.toInt(),
+            glow = 0x40FFFFFF,
+            title = Color.WHITE,
+            body = 0xFFF6F8FF.toInt(),
+            muted = 0xD9FFFFFF.toInt(),
+            card = 0x24FFFFFF,
+            stroke = 0x38FFFFFF,
+            tile = 0xFFFFFFFF.toInt(),
+            middle = 0xFFB14FE0.toInt()
+        )
     }
 
     private fun drawBackground(canvas: Canvas, paint: Paint, palette: Palette) {
-        paint.shader = LinearGradient(
-            0f, 0f, CARD_WIDTH.toFloat(), CARD_HEIGHT.toFloat(),
-            palette.top, palette.bottom, Shader.TileMode.CLAMP
-        )
+        val middle = palette.middle
+        paint.shader = if (middle == null) {
+            LinearGradient(
+                0f, 0f, CARD_WIDTH.toFloat(), CARD_HEIGHT.toFloat(),
+                palette.top, palette.bottom, Shader.TileMode.CLAMP
+            )
+        } else {
+            LinearGradient(
+                0f, 0f, CARD_WIDTH.toFloat(), CARD_HEIGHT.toFloat(),
+                intArrayOf(palette.top, middle, palette.bottom),
+                floatArrayOf(0f, 0.5f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
         canvas.drawRect(0f, 0f, CARD_WIDTH.toFloat(), CARD_HEIGHT.toFloat(), paint)
         paint.shader = RadialGradient(
             CARD_WIDTH * 0.86f, CARD_HEIGHT * 0.08f, CARD_WIDTH * 0.75f,

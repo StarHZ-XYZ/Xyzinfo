@@ -86,6 +86,7 @@ class NetworkSpeedActivity : AppCompatActivity() {
         buildUnitChips()
         buildParallelChips()
         buildLocationChips()
+        buildHistoryLimitChips()
         showLastResult()
         renderHistory()
         applyUnitToReadout()
@@ -481,14 +482,12 @@ class NetworkSpeedActivity : AppCompatActivity() {
         binding.tvPhase.text = summary
 
         // 网络评价：上行、下行分开评（家里的宽带经常是下行快、上行慢，一个总分看不出来）
-        renderVerdict(
-            SpeedVerdict.evaluate(
-                downloadBytesPerSecond = report.downloadBytesPerSecond,
-                uploadBytesPerSecond = report.uploadBytesPerSecond,
-                pingMs = report.latency?.averageMs,
-                jitterMs = report.latency?.jitterMs,
-                uploadUnavailableReason = report.uploadSkippedReason
-            )
+        updateVerdict(
+            downloadBytesPerSecond = report.downloadBytesPerSecond,
+            uploadBytesPerSecond = report.uploadBytesPerSecond,
+            pingMs = report.latency?.averageMs,
+            jitterMs = report.latency?.jitterMs,
+            uploadUnavailableReason = report.uploadSkippedReason
         )
 
         SettingsRepository.saveSpeedResult(
@@ -518,10 +517,13 @@ class NetworkSpeedActivity : AppCompatActivity() {
     private fun renderHistory() {
         val records = SettingsRepository.speedRecords(this)
         binding.layoutSpeedHistory.removeAllViews()
+        binding.tvSpeedHistoryEmpty.text =
+            "还没有记录。测完一次就会记在这里（最多保留 ${SettingsRepository.speedHistoryLimit(this)} 条）"
         binding.tvSpeedHistoryEmpty.visibility = if (records.isEmpty()) View.VISIBLE else View.GONE
         binding.btnClearHistory.visibility = if (records.isEmpty()) View.GONE else View.VISIBLE
 
-        records.forEach { record ->
+        // 记录多的时候只画前 200 条：一次画 2000 行会明显卡，窗格里滚动看最近的就够了
+        records.take(MAX_RENDERED_RECORDS).forEach { record ->
             val moment = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
                 .format(Date(record.timestamp))
             // 记录里也带上当时的评价等级，回头对比一眼就能看出"哪次更好"
@@ -529,7 +531,8 @@ class NetworkSpeedActivity : AppCompatActivity() {
                 downloadBytesPerSecond = record.downloadBytesPerSecond,
                 uploadBytesPerSecond = record.uploadBytesPerSecond,
                 pingMs = record.pingMs,
-                jitterMs = record.jitterMs
+                jitterMs = record.jitterMs,
+                unit = unit
             )
             val head = "$moment ｜ ${record.serverName} ｜ ${record.connections} 连接" +
                 " ｜ ${verdict.download.grade}↓ ${verdict.upload?.grade ?: "—"}↑ ${verdict.score} 分"
@@ -553,6 +556,17 @@ class NetworkSpeedActivity : AppCompatActivity() {
             ).apply { topMargin = dp(6f) }
             binding.layoutSpeedHistory.addView(row)
         }
+        if (records.size > MAX_RENDERED_RECORDS) {
+            binding.layoutSpeedHistory.addView(
+                TextView(this).apply {
+                    text = "还有 ${records.size - MAX_RENDERED_RECORDS} 条更早的记录" +
+                        "（列表可上下滑；记录条数在上面的选项里调）"
+                    textSize = 11f
+                    setTextColor(ContextCompat.getColor(context, R.color.text_tertiary))
+                    setPadding(0, dp(8f), 0, 0)
+                }
+            )
+        }
     }
 
     /** 进页面时先把上次的成绩摆出来，避免一片空白。 */
@@ -575,12 +589,52 @@ class NetworkSpeedActivity : AppCompatActivity() {
             saved.uploadBytesPerSecond?.let { append("，上传 ${unit.text(it)}") }
         }
         // 上次的成绩也把评价还原出来，进页面不是一张空卡
+        updateVerdict(
+            downloadBytesPerSecond = saved.downloadBytesPerSecond,
+            uploadBytesPerSecond = saved.uploadBytesPerSecond,
+            pingMs = saved.pingMs,
+            jitterMs = saved.jitterMs
+        )
+    }
+
+    /**
+     * 评价的原始输入（字节/秒）。
+     *
+     * 切单位时要拿它重新算一遍文案 —— 只改数字不改文字，就会出现「单位是 MB/s、评价里写 Mbps」。
+     */
+    private class VerdictInput(
+        val downloadBytesPerSecond: Double,
+        val uploadBytesPerSecond: Double?,
+        val pingMs: Double?,
+        val jitterMs: Double?,
+        val uploadUnavailableReason: String?
+    )
+
+    private var verdictInput: VerdictInput? = null
+
+    /** 用**当前单位**重新生成评价文案并渲染（切单位后也会走这里）。 */
+    private fun updateVerdict(
+        downloadBytesPerSecond: Double,
+        uploadBytesPerSecond: Double?,
+        pingMs: Double?,
+        jitterMs: Double?,
+        uploadUnavailableReason: String? = null
+    ) {
+        verdictInput = VerdictInput(
+            downloadBytesPerSecond,
+            uploadBytesPerSecond,
+            pingMs,
+            jitterMs,
+            uploadUnavailableReason
+        )
         renderVerdict(
             SpeedVerdict.evaluate(
-                downloadBytesPerSecond = saved.downloadBytesPerSecond,
-                uploadBytesPerSecond = saved.uploadBytesPerSecond,
-                pingMs = saved.pingMs,
-                jitterMs = saved.jitterMs
+                downloadBytesPerSecond = downloadBytesPerSecond,
+                uploadBytesPerSecond = uploadBytesPerSecond,
+                pingMs = pingMs,
+                jitterMs = jitterMs,
+                uploadUnavailableReason = uploadUnavailableReason,
+                unit = unit
             )
         )
     }
@@ -755,6 +809,28 @@ class NetworkSpeedActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 记录条数：最多保留多少条测速记录（1.0.5 新增，最高 2000 条）。
+     *
+     * 记录本身很小，但列表会很长 —— 所以记录区是一个固定高度的滚动窗格，
+     * 无论选多少条都不会把整页撑爆。
+     */
+    private fun buildHistoryLimitChips() {
+        binding.layoutHistoryLimit.removeAllViews()
+        val current = SettingsRepository.speedHistoryLimit(this)
+        HISTORY_LIMIT_OPTIONS.forEach { limit ->
+            binding.layoutHistoryLimit.addView(
+                createChip("$limit 条", limit == current) {
+                    if (limit != current) {
+                        SettingsRepository.setSpeedHistoryLimit(this, limit)
+                        buildHistoryLimitChips()
+                        renderHistory()
+                    }
+                }
+            )
+        }
+    }
+
     /** 定位测速开关（默认开启）。关掉后重新挑一次节点，并且不再发定位请求。 */
     private fun buildLocationChips() {
         binding.layoutLocationChips.removeAllViews()
@@ -784,6 +860,16 @@ class NetworkSpeedActivity : AppCompatActivity() {
             binding.tvSpeedValue.text = unit.valueText(lastDownloadBps)
             binding.tvDownload.text = unit.text(lastDownloadBps)
             binding.tvUpload.text = lastUploadBps?.let { unit.text(it) } ?: "—"
+        }
+        // 评价文案里的速度也要换成新单位（单位是 MB/s、描述写 Mbps 就是这个 bug）
+        verdictInput?.let {
+            updateVerdict(
+                downloadBytesPerSecond = it.downloadBytesPerSecond,
+                uploadBytesPerSecond = it.uploadBytesPerSecond,
+                pingMs = it.pingMs,
+                jitterMs = it.jitterMs,
+                uploadUnavailableReason = it.uploadUnavailableReason
+            )
         }
         renderCompare()
     }
@@ -852,6 +938,12 @@ class NetworkSpeedActivity : AppCompatActivity() {
 
         /** 定位测速开关（默认开启）。关掉就完全不出网定位。 */
         val LOCATION_OPTIONS = listOf("定位测速：开" to true, "定位测速：关" to false)
+
+        /** 测速记录最多保留多少条（1.0.5 起可选，最高 2000 条）。 */
+        val HISTORY_LIMIT_OPTIONS = listOf(20, 50, 100, 500, 2000)
+
+        /** 列表一次最多画多少行，超出的用一句提示收尾（画 2000 行会卡）。 */
+        const val MAX_RENDERED_RECORDS = 200
 
         /** 下载 / 上传各跑 10 秒：再短容易被慢启动带偏，再长用户等得不耐烦。 */
         const val DOWNLOAD_MS = 10_000L

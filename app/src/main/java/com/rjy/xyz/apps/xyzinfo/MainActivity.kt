@@ -179,7 +179,7 @@ class MainActivity : AppCompatActivity() {
             "原始型号：${overview.rawModel} ｜ 设备代号：${overview.deviceCode}"
         tvAndroidVersion.setInfoRow(
             "Android 版本：${overview.androidRelease}（API ${overview.apiLevel}）",
-            iconRes = R.drawable.ic_module_system
+            iconRes = R.drawable.ic_info_android
         )
         // 一并显示设备形态：手机 / 平板 / 折叠屏（含展开折叠状态）
         val form = DeviceFormDetector.detect(this@MainActivity)
@@ -188,7 +188,7 @@ class MainActivity : AppCompatActivity() {
         )
         tvKernelVersion.setInfoRow(
             "内核：${overview.kernelRelease} ｜ 架构：${overview.abiLabel}",
-            iconRes = R.drawable.ic_module_cpu
+            iconRes = R.drawable.ic_info_kernel
         )
         tvBrandManufacturer.setInfoRow(
             "品牌：${overview.brand}" +
@@ -197,7 +197,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     ""
                 },
-            iconRes = R.drawable.ic_module_telephony
+            iconRes = R.drawable.ic_info_brand
         )
         // 顶部信息收敛：设备代号已并入「原始型号」那一行，CPU 架构并入内核那一行，
         // 这两行不再单独占位，避免首页一上来就是一大串等宽字段。
@@ -227,7 +227,7 @@ class MainActivity : AppCompatActivity() {
         addEntryCard(
             "硬件测试",
             "屏幕坏点 / 触摸 / 扬声器 / 麦克风 / 振动 / 摄像头 / NFC",
-            R.drawable.ic_module_screen
+            R.drawable.ic_module_hardware
         ) {
             open(HardwareMoreActivity::class.java)
         }
@@ -237,7 +237,7 @@ class MainActivity : AppCompatActivity() {
         addEntryCard(
             "环境检测",
             "root 与风险环境痕迹（分级 + 证据）",
-            R.drawable.ic_module_system
+            R.drawable.ic_module_env
         ) {
             open(EnvironmentCheckActivity::class.java)
         }
@@ -251,7 +251,7 @@ class MainActivity : AppCompatActivity() {
         addEntryCard(
             "温度监控",
             "各热区实时温度 + 长期记录与导出",
-            R.drawable.ic_module_sensor
+            R.drawable.ic_module_thermal
         ) {
             open(com.rjy.xyz.apps.xyzinfo.ui.thermal.ThermalActivity::class.java)
         }

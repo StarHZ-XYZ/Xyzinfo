@@ -59,7 +59,13 @@ object SpeedVerdict {
         uploadBytesPerSecond: Double?,
         pingMs: Double?,
         jitterMs: Double?,
-        uploadUnavailableReason: String? = null
+        uploadUnavailableReason: String? = null,
+        /**
+         * 评价文案里的速度单位。
+         *
+         * 设置里切到 MB/s 之后，评价里就不能再写 Mbps —— 同一屏两套单位最容易让人以为测错了。
+         */
+        unit: SpeedUnit = SpeedUnit.MBPS
     ): Verdict {
         val download = evaluateDownload(mbps(downloadBytesPerSecond))
         val upload = uploadBytesPerSecond?.let { evaluateUpload(mbps(it)) }
@@ -78,7 +84,7 @@ object SpeedVerdict {
         return Verdict(
             score = score,
             grade = gradeOf(score),
-            headline = headlineOf(score, download, upload),
+            headline = headlineOf(score, download, upload, unit),
             download = download,
             upload = upload,
             latencyNote = latencyNote(pingMs, jitterMs),
@@ -184,7 +190,12 @@ object SpeedVerdict {
         else -> "较差"
     }
 
-    private fun headlineOf(score: Int, download: LineVerdict, upload: LineVerdict?): String {
+    private fun headlineOf(
+        score: Int,
+        download: LineVerdict,
+        upload: LineVerdict?,
+        unit: SpeedUnit
+    ): String {
         /*
          * 上行下行等级不一致时，先把这件事点出来 —— 比"整体不错"有用得多：
          * 用户的真实困扰往往就是"看视频很流畅，一开直播 / 发大文件就崩"。
@@ -193,13 +204,13 @@ object SpeedVerdict {
             val downloadRank = rank(download.grade)
             val uploadRank = rank(upload.grade)
             if (downloadRank - uploadRank >= 1) {
-                return "下行 ${speedText(download.speedMbps)}（${download.grade}）明显快于" +
-                    "上行 ${speedText(upload.speedMbps)}（${upload.grade}）—— " +
+                return "下行 ${speedText(download.speedMbps, unit)}（${download.grade}）明显快于" +
+                    "上行 ${speedText(upload.speedMbps, unit)}（${upload.grade}）—— " +
                     "看视频、下东西没问题，上传 / 直播会明显吃力"
             }
             if (uploadRank - downloadRank >= 1) {
-                return "上行 ${speedText(upload.speedMbps)}（${upload.grade}）反而比" +
-                    "下行 ${speedText(download.speedMbps)}（${download.grade}）好 —— " +
+                return "上行 ${speedText(upload.speedMbps, unit)}（${upload.grade}）反而比" +
+                    "下行 ${speedText(download.speedMbps, unit)}（${download.grade}）好 —— " +
                     "常见于限速策略或 Wi-Fi 干扰"
             }
         }
@@ -218,15 +229,13 @@ object SpeedVerdict {
         else -> 0
     }
 
-    /** 速度文案：100 以上取整，以下保留一位小数。 */
-    private fun speedText(mbps: Double): String {
-        val text = if (mbps >= 100) {
-            mbps.roundToInt().toString()
-        } else {
-            String.format(java.util.Locale.getDefault(), "%.1f", mbps)
-        }
-        return "$text Mbps"
-    }
+    /**
+     * 速度文案：**跟着设置里的单位走**。
+     *
+     * 内部统计一律用 Mbps，显示时换算成用户选的单位（MB/s = Mbps ÷ 8）。
+     */
+    private fun speedText(mbps: Double, unit: SpeedUnit): String =
+        unit.text(mbps * 1_000_000.0 / 8.0)
 
     /**
      * 把实测值折算成 0~100 分：低于第一个分界点 = 0 分，超过最后一个 = 100 分，

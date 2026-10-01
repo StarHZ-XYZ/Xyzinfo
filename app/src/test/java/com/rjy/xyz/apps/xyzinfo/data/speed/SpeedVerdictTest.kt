@@ -1,6 +1,7 @@
 package com.rjy.xyz.apps.xyzinfo.data.speed
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -84,5 +85,41 @@ class SpeedVerdictTest {
         // 10Mbps 才谈得上 1080p 推流
         assertTrue(evaluate(100.0, 11.0).upload!!.capabilities.contains("1080p 直播推流"))
         assertTrue(evaluate(100.0, 8.0).upload!!.limits.contains("高清直播推流"))
+    }
+
+    /**
+     * 回归：单位切到 MB/s 之后，**评价文案里的单位也必须跟着换**。
+     *
+     * 用户报的 bug：单位选 MB/s，评价里还写着 Mbps —— 同一屏两套单位，看着像测错了。
+     */
+    @Test
+    fun `评价文案的单位跟着设置走`() {
+        val bytesDown = 500.0 * 1e6 / 8
+        val bytesUp = 3.0 * 1e6 / 8
+
+        val mbps = SpeedVerdict.evaluate(
+            downloadBytesPerSecond = bytesDown,
+            uploadBytesPerSecond = bytesUp,
+            pingMs = 25.0,
+            jitterMs = 6.0,
+            unit = SpeedUnit.MBPS
+        )
+        assertTrue("Mbps 档应该写 Mbps：${mbps.headline}", mbps.headline.contains("Mbps"))
+        assertFalse("Mbps 档不该出现 MB/s：${mbps.headline}", mbps.headline.contains("MB/s"))
+
+        val mbs = SpeedVerdict.evaluate(
+            downloadBytesPerSecond = bytesDown,
+            uploadBytesPerSecond = bytesUp,
+            pingMs = 25.0,
+            jitterMs = 6.0,
+            unit = SpeedUnit.MBS
+        )
+        assertTrue("MB/s 档应该写 MB/s：${mbs.headline}", mbs.headline.contains("MB/s"))
+        assertFalse("MB/s 档不能再写 Mbps：${mbs.headline}", mbs.headline.contains("Mbps"))
+        // 500 Mbps = 62.5 MB/s，数字也要跟着换算（不是只换单位后缀）
+        assertTrue("500Mbps 应换算成 62.5 MB/s：${mbs.headline}", mbs.headline.contains("62.5"))
+        // 等级 / 分数不受单位影响
+        assertEquals(mbps.score, mbs.score)
+        assertEquals(mbps.download.grade, mbs.download.grade)
     }
 }

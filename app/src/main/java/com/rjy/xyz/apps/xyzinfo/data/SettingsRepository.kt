@@ -26,6 +26,10 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
     private const val KEY_SEASON_MODE = "season_mode"
     private const val KEY_SEASON_GRAVITY = "season_gravity"
     private const val KEY_HOLIDAY_EFFECT = "holiday_effect"
+    private const val KEY_SPEED_HISTORY_LIMIT = "speed_history_limit"
+    private const val KEY_THERMAL_LOG = "thermal_log_enabled"
+    private const val KEY_THERMAL_INTERVAL = "thermal_log_interval_minutes"
+    private const val KEY_THERMAL_LIMIT = "thermal_record_limit"
     private const val KEY_HOME_GRID = "home_grid_style"
     private const val KEY_DEEPSEEK_KEY = "deepseek_api_key"
     private const val KEY_AI_MODE = "ai_mode"
@@ -51,6 +55,12 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
 
     /** 测速记录最多保留多少条（新的在前）。 */
     private const val SPEED_HISTORY_LIMIT = 20
+
+/** 测速记录最多保留 2000 条（用户可调的上限）。 */
+private const val MAX_SPEED_HISTORY_LIMIT = 2000
+
+/** 温度记录列表最多显示 2000 条。 */
+private const val MAX_THERMAL_RECORD_LIMIT = 2000
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -363,7 +373,8 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
     fun addSpeedRecord(context: Context, record: SpeedRecord) {
         val records = speedRecords(context).toMutableList()
         records.add(0, record)
-        while (records.size > SPEED_HISTORY_LIMIT) records.removeAt(records.size - 1)
+        val limit = speedHistoryLimit(context)
+        while (records.size > limit) records.removeAt(records.size - 1)
         val array = org.json.JSONArray()
         records.forEach { item ->
             array.put(
@@ -402,6 +413,50 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
 
     fun clearSpeedRecords(context: Context) {
         prefs(context).edit().remove(KEY_SPEED_HISTORY).apply()
+    }
+
+    /**
+     * 测速记录最多保留多少条（1.0.5 起可调，默认 20，最大 2000）。
+     *
+     * 记录本身很小（一条几十字节），给到 2000 条也就几十 KB；
+     * 但列表会很长，所以页面上用可滚动的窗格显示。
+     */
+    fun speedHistoryLimit(context: Context): Int =
+        prefs(context).getInt(KEY_SPEED_HISTORY_LIMIT, SPEED_HISTORY_LIMIT)
+            .coerceIn(SPEED_HISTORY_LIMIT, MAX_SPEED_HISTORY_LIMIT)
+
+    fun setSpeedHistoryLimit(context: Context, limit: Int) {
+        prefs(context).edit()
+            .putInt(KEY_SPEED_HISTORY_LIMIT, limit.coerceIn(SPEED_HISTORY_LIMIT, MAX_SPEED_HISTORY_LIMIT))
+            .apply()
+    }
+
+    // ---------- 温度监控（1.0.5）----------
+
+    /** 打开温度页时是否自动记录：默认关，用户点了开关才记。 */
+    fun thermalLogEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_THERMAL_LOG, false)
+
+    fun setThermalLogEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_THERMAL_LOG, enabled).apply()
+    }
+
+    /** 自动记录的间隔（分钟）：1 / 5 / 30。 */
+    fun thermalIntervalMinutes(context: Context): Int =
+        prefs(context).getInt(KEY_THERMAL_INTERVAL, 1).coerceIn(1, 60)
+
+    fun setThermalIntervalMinutes(context: Context, minutes: Int) {
+        prefs(context).edit().putInt(KEY_THERMAL_INTERVAL, minutes.coerceIn(1, 60)).apply()
+    }
+
+    /** 温度记录列表最多显示多少条（存储不限，只影响显示）。 */
+    fun thermalRecordLimit(context: Context): Int =
+        prefs(context).getInt(KEY_THERMAL_LIMIT, 100).coerceIn(20, MAX_THERMAL_RECORD_LIMIT)
+
+    fun setThermalRecordLimit(context: Context, limit: Int) {
+        prefs(context).edit()
+            .putInt(KEY_THERMAL_LIMIT, limit.coerceIn(20, MAX_THERMAL_RECORD_LIMIT))
+            .apply()
     }
 
     /** 最近一次测速结果（速度统一存字节/秒，显示时再按单位换算）。 */

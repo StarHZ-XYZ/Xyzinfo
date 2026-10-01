@@ -21,6 +21,21 @@ object ThermalLogger {
 
     data class Sample(val timestamp: Long, val name: String, val celsius: Double)
 
+    /**
+     * 一条**单次记录**（1.0.5 新增，温度页下半部分按这个列表展示）。
+     *
+     * 长表里同一时刻有很多热区，这里把一次采样收成一行：
+     * CPU 取所有 CPU 相关热区的**平均**，电池单独一列。
+     */
+    data class Record(
+        val timestamp: Long,
+        val cpuCelsius: Double?,
+        val batteryCelsius: Double?,
+        val cpuMaxCelsius: Double?,
+        val cpuSensorCount: Int,
+        val hottestName: String
+    )
+
     private const val FILE_NAME = "thermal.csv"
     private const val HEADER = "timestamp,zone,celsius"
 
@@ -40,7 +55,8 @@ object ThermalLogger {
      * 任何 Android 设备都能拿到），并标明来源，绝不会给用户一个空白页。
      */
     fun readZones(context: Context? = null): List<Zone> {
-        val zones = readThermalZones()
+        // 先从 thermal 子系统读；有些机型只把温度放在 hwmon 里，那就再试一次
+        val zones = readThermalZones().ifEmpty { readHwmonZones() }
         if (zones.isNotEmpty()) return zones
         val battery = readBatteryTemperature(context)
         return if (battery == null) emptyList() else listOf(battery)
@@ -48,7 +64,32 @@ object ThermalLogger {
 
     /** 本机是否只能拿到电池温度（界面据此给一句解释）。 */
     fun isBatteryOnly(context: Context): Boolean =
-        readThermalZones().isEmpty() && readBatteryTemperature(context) != null
+        readThermalZones().isEmpty() && readHwmonZones().isEmpty() &&
+            readBatteryTemperature(context) != null
+
+    /**
+     * 第二来源：`/sys/class/hwmon` 下每个 hwmon 目录里的 `temp1_input`。
+     *
+     * 部分平台（尤其一些平板 / 定制 ROM）不在 thermal 子系统暴露温度，
+     * 只在 hwmon 里给一个 temp1_input（毫摄氏度）。多这一条来源，
+     * "有些手机点进去什么都不显示"的情况就基本消失了。
+     */
+    private fun readHwmonZones(): List<Zone> {
+        val out = mutableListOf<Zone>()
+        val dirs = runCatching {
+            File("/sys/class/hwmon").listFiles { f -> f.isDirectory && f.name.startsWith("hwmon") }
+        }.getOrNull() ?: return emptyList()
+        dirs.forEach { dir ->
+            val name = runCatching { File(dir, "name").readText().trim() }.getOrNull()
+                ?.takeIf { it.isNotBlank() } ?: dir.name
+            val celsius = runCatching { File(dir, "temp1_input").readText().trim() }.getOrNull()
+                ?.toDoubleOrNull()
+                ?.let { if (it > 1000) it / 1000.0 else it }
+                ?: return@forEach
+            if (celsius in -40.0..150.0) out += Zone(name, celsius)
+        }
+        return out.sortedByDescending { it.celsius }
+    }
 
     private fun readThermalZones(): List<Zone> {
         val roots = listOf(
@@ -77,6 +118,77 @@ object ThermalLogger {
         }
         return zones.sortedByDescending { it.celsius }
     }
+
+    /**
+     * 这个热区算不算「CPU 温度」。
+     *
+     * 各平台的命名花样很多：高通是 `tsens_tz_sensor*` / `cpu-0-0-us`，
+     * 联发科是 `mtktscpu` / `cpu_therm`，三星是 `s5p-*`，还有 `apc` / `cluster` / `kryo`。
+     * 反过来 GPU、充电、摄像头、功放这些都要排除 —— 它们跟 CPU 不是一回事。
+     */
+    fun isCpuZone(name: String): Boolean {
+        val lower = name.lowercase()
+        if (EXCLUDE_FROM_CPU.any { lower.contains(it) }) return false
+        return CPU_KEYWORDS.any { lower.contains(it) }
+    }
+
+    /** 电池 / 电量计相关热区。 */
+    fun isBatteryZone(name: String): Boolean {
+        val lower = name.lowercase()
+        return BATTERY_KEYWORDS.any { lower.contains(it) }
+    }
+
+    /** 把驱动里的热区名换成看得懂的中文（认不出来就原样返回）。 */
+    fun label(raw: String): String {
+        val lower = raw.lowercase()
+        LABELS.forEach { (keyword, text) -> if (lower.contains(keyword)) return text }
+        return raw
+    }
+
+    /** CPU 温度 = 所有 CPU 相关热区的平均值（没有就退回"最热的非电池热区"）。 */
+    fun cpuTemperature(zones: List<Zone>): Double? {
+        val cpu = zones.filter { isCpuZone(it.name) }
+        if (cpu.isNotEmpty()) return cpu.map { it.celsius }.average()
+        return zones.filterNot { isBatteryZone(it.name) }.maxByOrNull { it.celsius }?.celsius
+    }
+
+    /** 电池温度：优先热区里的电池节点，其次是 BatteryManager。 */
+    fun batteryTemperature(context: Context?, zones: List<Zone>): Double? =
+        zones.firstOrNull { isBatteryZone(it.name) }?.celsius
+            ?: readBatteryTemperature(context)?.celsius
+
+    /**
+     * 把历史长表收成单条记录（同一时间戳聚成一条），新的在最前面。
+     */
+    fun records(context: Context, hours: Int = 24 * 30, limit: Int = 200): List<Record> =
+        recordsFrom(history(context, hours), limit)
+
+    /** 纯函数版本，方便单元测试直接用构造好的采样。 */
+    fun recordsFrom(samples: List<Sample>, limit: Int = 200): List<Record> {
+        if (samples.isEmpty()) return emptyList()
+        return samples
+            .groupBy { it.timestamp }
+            .toSortedMap(reverseOrder())
+            .entries
+            .take(limit)
+            .map { (timestamp, group) ->
+                val zones = group.map { Zone(it.name, it.celsius) }
+                val cpuZones = zones.filter { isCpuZone(it.name) }
+                val used = cpuZones.ifEmpty { zones.filterNot { isBatteryZone(it.name) } }
+                Record(
+                    timestamp = timestamp,
+                    cpuCelsius = cpuTemperature(zones),
+                    batteryCelsius = zones.firstOrNull { isBatteryZone(it.name) }?.celsius,
+                    cpuMaxCelsius = used.maxByOrNull { it.celsius }?.celsius,
+                    cpuSensorCount = used.size,
+                    hottestName = used.maxByOrNull { it.celsius }?.name?.let { label(it) }.orEmpty()
+                )
+            }
+    }
+
+    /** 一条记录里 CPU / 电池的显示文案。 */
+    fun formatCelsius(value: Double?): String =
+        if (value == null) "—" else String.format(Locale.US, "%.1f ℃", value)
 
     /** 电池温度（摄氏）：`EXTRA_TEMPERATURE` 的单位是 0.1℃。 */
     private fun readBatteryTemperature(context: Context?): Zone? {
@@ -153,4 +265,37 @@ object ThermalLogger {
     }
 
     fun formatTime(timestamp: Long): String = timeFormat.format(Date(timestamp))
+
+    private const val CPU_KEYWORDS_RAW =
+        "cpu,tsens,apc,cluster,kryo,core,mtkts,gold,silver,big,little,s5p,exynos,thermal_zone_cpu"
+    private val CPU_KEYWORDS = CPU_KEYWORDS_RAW.split(',')
+    private val EXCLUDE_FROM_CPU = listOf(
+        "gpu", "battery", "batt", "charger", "chg", "usb", "pa_", "camera", "cam_",
+        "display", "wifi", "modem", "npu", "ambient", "quiet", "backlight", "flash"
+    )
+    private val BATTERY_KEYWORDS = listOf("battery", "batt", "bms", "fuel")
+    private val LABELS = listOf(
+        "battery" to "电池",
+        "batt" to "电池",
+        "tsens_tz_sensor" to "半导体温区",
+        "tsens" to "半导体温区",
+        "cpu" to "CPU",
+        "apc" to "CPU 集群",
+        "cluster" to "CPU 集群",
+        "kryo" to "CPU 核心",
+        "gpu" to "GPU",
+        "quiet" to "机身",
+        "xo" to "晶振",
+        "pa_" to "功放",
+        "charger" to "充电",
+        "chg" to "充电",
+        "usb" to "USB",
+        "camera" to "摄像头",
+        "cam_" to "摄像头",
+        "display" to "屏幕",
+        "wifi" to "WiFi",
+        "modem" to "基带",
+        "npu" to "NPU",
+        "ambient" to "环境"
+    )
 }

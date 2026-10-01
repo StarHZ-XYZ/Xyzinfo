@@ -660,14 +660,34 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="还没有记录。测完一次就会记在这里（最多保留 20 条）" />
+                    android:text="还没有记录。测完一次就会记在这里" />
 
+                <!-- 记录条数：最多 2000 条 -->
                 <LinearLayout
-                    android:id="@+id/layoutSpeedHistory"
+                    android:id="@+id/layoutHistoryLimit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal" />
+
+                <!--
+                  记录列表放进固定高度的滚动窗格：记录多了不会把整页撑成"一条超长列表"，
+                  在窗格里上下滑就能看。
+                -->
+                <ScrollView
+                    android:id="@+id/scrollSpeedHistory"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:orientation="vertical" />
+                    android:maxHeight="360dp"
+                    android:scrollbars="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/layoutSpeedHistory"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </ScrollView>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnClearHistory"
