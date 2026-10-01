@@ -48,6 +48,7 @@ class NetworkSpeedActivity : AppCompatActivity() {
 
     private var unit = SpeedUnit.MBPS
     private var connections = DEFAULT_CONNECTIONS
+    private var useLocation = true
 
     private var geo: GeoLocator.UserGeo? = null
     private var nearby: List<SpeedTestServer> = emptyList()
@@ -77,10 +78,13 @@ class NetworkSpeedActivity : AppCompatActivity() {
 
         unit = SpeedUnit.fromName(SettingsRepository.speedUnit(this))
         connections = SettingsRepository.speedConnections(this)
+        useLocation = SettingsRepository.speedUseLocation(this)
 
         buildUnitChips()
         buildParallelChips()
+        buildLocationChips()
         showLastResult()
+        renderHistory()
         applyUnitToReadout()
 
         Anim.pressFeedback(
@@ -93,6 +97,11 @@ class NetworkSpeedActivity : AppCompatActivity() {
         binding.btnSwitchNode.setOnClickListener { toggleNodeList() }
         binding.btnProbeNodes.setOnClickListener { probeNodes() }
         binding.btnCompare.setOnClickListener { startCompare() }
+        binding.btnClearHistory.setOnClickListener {
+            SettingsRepository.clearSpeedRecords(this)
+            renderHistory()
+            toast("测速记录已清空")
+        }
 
         startDiscovery()
     }
@@ -113,12 +122,19 @@ class NetworkSpeedActivity : AppCompatActivity() {
             return
         }
         discovering = true
-        binding.tvGeoStatus.setInfoRow("正在检测所在位置…")
+        if (useLocation) {
+            binding.tvGeoStatus.setInfoRow("正在检测所在位置…")
+        } else {
+            binding.tvGeoStatus.setInfoRow(
+                "定位测速：已关闭（不出网定位，直接用通用候选节点，可手动切换）"
+            )
+        }
         binding.tvNodeName.text = "正在挑选就近节点…"
         binding.tvNodeDetail.text = "按地理位置筛出最近的若干台，再实测延迟决定用哪一台"
 
         Thread({
-            val detected = runCatching { GeoLocator.detect() }.getOrNull()
+            // 关掉定位测速时**根本不发定位请求**，省一次出网、也彻底不碰位置信息
+            val detected = if (useLocation) runCatching { GeoLocator.detect() }.getOrNull() else null
             val candidates = runCatching {
                 val coordinates = detected?.coordinates
                 if (coordinates != null) {
@@ -170,6 +186,12 @@ class NetworkSpeedActivity : AppCompatActivity() {
 
     private fun renderGeo() {
         val detected = geo
+        if (!useLocation) {
+            binding.tvGeoStatus.setInfoRow(
+                "定位测速：已关闭 ｜ 使用通用候选节点（可在「测速设置」里打开定位）"
+            )
+            return
+        }
         if (detected == null) {
             binding.tvGeoStatus.setInfoRow("位置：未识别（定位接口没连上，已改用通用候选节点）")
             return
@@ -455,6 +477,52 @@ class NetworkSpeedActivity : AppCompatActivity() {
             jitterMs = report.latency?.jitterMs,
             serverName = report.serverName
         )
+        SettingsRepository.addSpeedRecord(
+            this,
+            SettingsRepository.SpeedRecord(
+                timestamp = System.currentTimeMillis(),
+                serverName = report.serverName,
+                downloadBytesPerSecond = report.downloadBytesPerSecond,
+                uploadBytesPerSecond = report.uploadBytesPerSecond,
+                pingMs = report.latency?.averageMs,
+                jitterMs = report.latency?.jitterMs,
+                connections = report.connections
+            )
+        )
+        renderHistory()
+    }
+
+    /** 测速记录：时间 + 节点 + 四项成绩，按单位实时换算。 */
+    private fun renderHistory() {
+        val records = SettingsRepository.speedRecords(this)
+        binding.layoutSpeedHistory.removeAllViews()
+        binding.tvSpeedHistoryEmpty.visibility = if (records.isEmpty()) View.VISIBLE else View.GONE
+        binding.btnClearHistory.visibility = if (records.isEmpty()) View.GONE else View.VISIBLE
+
+        records.forEach { record ->
+            val moment = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
+                .format(Date(record.timestamp))
+            val head = "$moment ｜ ${record.serverName} ｜ ${record.connections} 连接"
+            val detail = buildString {
+                append("下载 ").append(unit.text(record.downloadBytesPerSecond))
+                record.uploadBytesPerSecond?.let { append(" ｜ 上传 ").append(unit.text(it)) }
+                record.pingMs?.let { append(" ｜ 延迟 ").append(formatMillis(it)) }
+                record.jitterMs?.let { append("（抖动 ").append(formatMillis(it)).append("）") }
+            }
+            val row = TextView(this).apply {
+                text = "$head\n$detail"
+                textSize = 12f
+                setTextColor(ContextCompat.getColor(context, R.color.text_primary))
+                setLineSpacing(dp(3f).toFloat(), 1f)
+                background = ContextCompat.getDrawable(this@NetworkSpeedActivity, R.drawable.bg_row_panel)
+                setPadding(dp(12f), dp(10f), dp(12f), dp(10f))
+            }
+            row.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(6f) }
+            binding.layoutSpeedHistory.addView(row)
+        }
     }
 
     /** 进页面时先把上次的成绩摆出来，避免一片空白。 */
@@ -586,6 +654,27 @@ class NetworkSpeedActivity : AppCompatActivity() {
         }
     }
 
+    /** 定位测速开关（默认开启）。关掉后重新挑一次节点，并且不再发定位请求。 */
+    private fun buildLocationChips() {
+        binding.layoutLocationChips.removeAllViews()
+        LOCATION_OPTIONS.forEach { (label, enabled) ->
+            binding.layoutLocationChips.addView(
+                createChip(label, enabled == useLocation) {
+                    if (useLocation != enabled) {
+                        useLocation = enabled
+                        SettingsRepository.setSpeedUseLocation(this, enabled)
+                        buildLocationChips()
+                        if (running) {
+                            toast("测速进行中，改动会在下一次测速生效")
+                        } else {
+                            startDiscovery()
+                        }
+                    }
+                }
+            )
+        }
+    }
+
     /** 切换单位：所有已经算出来的数字都要按新单位重画一遍（不能只改标题）。 */
     private fun applyUnitToReadout() {
         binding.tvSpeedUnit.text = unit.suffix
@@ -659,6 +748,9 @@ class NetworkSpeedActivity : AppCompatActivity() {
 
         const val DEFAULT_CONNECTIONS = 4
         val PARALLEL_OPTIONS = listOf(1, 4, 8, 16)
+
+        /** 定位测速开关（默认开启）。关掉就完全不出网定位。 */
+        val LOCATION_OPTIONS = listOf("定位测速：开" to true, "定位测速：关" to false)
 
         /** 下载 / 上传各跑 10 秒：再短容易被慢启动带偏，再长用户等得不耐烦。 */
         const val DOWNLOAD_MS = 10_000L

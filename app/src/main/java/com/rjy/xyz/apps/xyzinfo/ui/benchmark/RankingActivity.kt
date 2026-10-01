@@ -19,6 +19,7 @@ import com.rjy.xyz.apps.xyzinfo.databinding.ItemRankingRowBinding
 import com.rjy.xyz.apps.xyzinfo.model.ChipScore
 import com.rjy.xyz.apps.xyzinfo.model.RankingMetric
 import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
+import com.rjy.xyz.apps.xyzinfo.ui.common.GlassBottomBar
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.growBar
@@ -39,6 +40,7 @@ class RankingActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityRankingBinding
     private val handler = Handler(Looper.getMainLooper())
+    private var glassBar: GlassBottomBar? = null
 
     private var metric = RankingMetric.COMPOSITE
     private var brand: String? = null
@@ -72,7 +74,7 @@ class RankingActivity : AppCompatActivity() {
         binding = ActivityRankingBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.applySystemBarPadding()
-        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_RANKING)
+        glassBar = GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_RANKING)
 
         binding.btnRunBenchmark.setOnClickListener {
             startActivity(
@@ -221,12 +223,17 @@ class RankingActivity : AppCompatActivity() {
 
     /**
      * 应用榜单：先显示概览，再**每帧铺 12 行**，铺的过程中界面保持可响应。
+     *
+     * 1.0.1 修：铺行期间**关掉底栏的实时模糊**。底栏每次重建模糊都要把整个页面重绘进位图，
+     * 而"每加一批行"都会触发布局变化 → 立刻触发一次重建。点「加载排行榜」时那一下卡死，
+     * 就是这么来的（和跑分页 3D 被拖超时是同一个原因）。
      */
     private fun applyPrepared(prepared: PreparedRanking, animate: Boolean) {
         cache = prepared
         state = State.READY
         renderToken++
         val token = renderToken
+        glassBar?.setBackdropEnabled(false)
 
         binding.tvDeviceSummary.setInfoRow(prepared.summary)
         binding.tvRankingHint.text = "共 ${prepared.rows.size} 条（已缓存，下次进来直接显示）"
@@ -278,10 +285,15 @@ class RankingActivity : AppCompatActivity() {
                     }
                 }
                 val fraction = if (prepared.maxValue > 0) row.value.toFloat() / prepared.maxValue else 0f
+                /*
+                 * 只有首屏那几行做生长动画：90 个 view 同时跑动画，每帧要刷新 90 个 view 的
+                 * 变换，本来就重；铺到后面时用户根本看不到，动画纯粹是在抢帧。
+                 */
+                val animateThisRow = animate && index < ANIMATED_ROWS
                 item.viewBar.growBar(
                     fraction,
-                    duration = if (animate) 480L else 1L,
-                    delay = if (animate && index < 12) index * 14L else 0L
+                    duration = if (animateThisRow) 420L else 1L,
+                    delay = if (animateThisRow) index * 14L else 0L
                 )
                 binding.layoutRanking.addView(item.root)
                 index++
@@ -291,6 +303,8 @@ class RankingActivity : AppCompatActivity() {
                 binding.layoutRanking.postOnAnimation(this)
             } else {
                 binding.tvRankingHint.text = "共 ${prepared.rows.size} 条（已缓存，下次进来直接显示）"
+                // 铺完了再把玻璃取样打开，让底栏恢复实时模糊
+                glassBar?.setBackdropEnabled(true)
                 if (deviceRowIndex >= 0) {
                     val target = binding.layoutRanking.getChildAt(deviceRowIndex) ?: return
                     binding.root.post {
@@ -388,6 +402,9 @@ class RankingActivity : AppCompatActivity() {
     private companion object {
         /** 每帧铺多少行：太大会卡，太小会慢。 */
         const val CHUNK_SIZE = 12
+
+        /** 只给首屏这些行做生长动画，后面的行直接落位。 */
+        const val ANIMATED_ROWS = 14
 
         /**
          * 已经生成好的榜单。放在 companion 里，退出页面再进来可以直接复用，

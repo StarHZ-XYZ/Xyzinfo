@@ -44,6 +44,11 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
     private const val KEY_SPEED_JITTER = "speed_last_jitter"
     private const val KEY_SPEED_NODE = "speed_last_node"
     private const val KEY_SPEED_AT = "speed_last_at"
+    private const val KEY_SPEED_USE_LOCATION = "speed_use_location"
+    private const val KEY_SPEED_HISTORY = "speed_history"
+
+    /** 测速记录最多保留多少条（新的在前）。 */
+    private const val SPEED_HISTORY_LIMIT = 20
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -296,6 +301,79 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
 
     fun setSpeedConnections(context: Context, value: Int) {
         prefs(context).edit().putInt(KEY_SPEED_CONNECTIONS, value.coerceIn(1, 16)).apply()
+    }
+
+    /**
+     * 测速前是否先按出口 IP 定位、自动就近选点。**默认开启**。
+     *
+     * 关掉之后直接用手里的候选节点（就近顺序 + 实测延迟），不再发定位请求 ——
+     * 有些用户不想暴露位置，或者身处代理环境时定位反而会挑错节点。
+     */
+    fun speedUseLocation(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SPEED_USE_LOCATION, true)
+
+    fun setSpeedUseLocation(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_SPEED_USE_LOCATION, enabled).apply()
+    }
+
+    /** 一条历史测速记录（速度统一存字节/秒，显示时再按单位换算）。 */
+    data class SpeedRecord(
+        val timestamp: Long,
+        val serverName: String,
+        val downloadBytesPerSecond: Double,
+        val uploadBytesPerSecond: Double?,
+        val pingMs: Double?,
+        val jitterMs: Double?,
+        val connections: Int
+    )
+
+    /**
+     * 追加一条测速记录，最多保留 [SPEED_HISTORY_LIMIT] 条（新的在最前面）。
+     *
+     * 记录只有"什么时候、连哪台、跑出多少、延迟多少"这几项，不含任何标识信息。
+     */
+    fun addSpeedRecord(context: Context, record: SpeedRecord) {
+        val records = speedRecords(context).toMutableList()
+        records.add(0, record)
+        while (records.size > SPEED_HISTORY_LIMIT) records.removeAt(records.size - 1)
+        val array = org.json.JSONArray()
+        records.forEach { item ->
+            array.put(
+                org.json.JSONObject().apply {
+                    put("t", item.timestamp)
+                    put("node", item.serverName)
+                    put("down", item.downloadBytesPerSecond)
+                    put("up", item.uploadBytesPerSecond ?: -1.0)
+                    put("ping", item.pingMs ?: -1.0)
+                    put("jitter", item.jitterMs ?: -1.0)
+                    put("conn", item.connections)
+                }
+            )
+        }
+        prefs(context).edit().putString(KEY_SPEED_HISTORY, array.toString()).apply()
+    }
+
+    fun speedRecords(context: Context): List<SpeedRecord> {
+        val raw = prefs(context).getString(KEY_SPEED_HISTORY, null) ?: return emptyList()
+        return runCatching {
+            val array = org.json.JSONArray(raw)
+            (0 until array.length()).mapNotNull { index ->
+                val item = array.optJSONObject(index) ?: return@mapNotNull null
+                SpeedRecord(
+                    timestamp = item.optLong("t"),
+                    serverName = item.optString("node"),
+                    downloadBytesPerSecond = item.optDouble("down", 0.0),
+                    uploadBytesPerSecond = item.optDouble("up", -1.0).takeIf { it >= 0 },
+                    pingMs = item.optDouble("ping", -1.0).takeIf { it >= 0 },
+                    jitterMs = item.optDouble("jitter", -1.0).takeIf { it >= 0 },
+                    connections = item.optInt("conn")
+                )
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun clearSpeedRecords(context: Context) {
+        prefs(context).edit().remove(KEY_SPEED_HISTORY).apply()
     }
 
     /** 最近一次测速结果（速度统一存字节/秒，显示时再按单位换算）。 */
