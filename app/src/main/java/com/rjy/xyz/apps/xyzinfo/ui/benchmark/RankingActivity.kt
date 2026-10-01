@@ -400,8 +400,14 @@ class RankingActivity : AppCompatActivity() {
     private fun dp(value: Float): Int = (value * resources.displayMetrics.density).roundToInt()
 
     private companion object {
-        /** 每帧铺多少行：太大会卡，太小会慢。 */
-        const val CHUNK_SIZE = 12
+        /**
+         * 每帧铺多少行。
+         *
+         * 每一行都要 inflate 一个 MaterialCardView，XML 解析 + 视图创建在手机上是毫秒级的，
+         * 12 行塞进一帧就会"跳 30 帧"。宁可一帧只铺 5 行、多花几百毫秒慢慢铺完 ——
+         * 用户明确说过"缓慢加载没关系，别卡"，这个取舍就是这么定的。
+         */
+        const val CHUNK_SIZE = 5
 
         /** 只给首屏这些行做生长动画，后面的行直接落位。 */
         const val ANIMATED_ROWS = 14
