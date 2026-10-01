@@ -3,6 +3,7 @@ package com.rjy.xyz.apps.xyzinfo.ui.screen
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.rjy.xyz.apps.xyzinfo.data.ScreenInfoProvider
+import com.rjy.xyz.apps.xyzinfo.data.ResolutionTier
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityScreenInfoBinding
 import com.rjy.xyz.apps.xyzinfo.model.ScreenInfo
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
@@ -34,6 +35,7 @@ class ScreenInfoActivity : AppCompatActivity() {
         tvScreenSubTitle.text = "分辨率、刷新率与触控能力总览"
 
         tvResolution.setInfoRow("屏幕分辨率：${info.widthPx} × ${info.heightPx}")
+        tvResolutionTier.setInfoRow("分辨率档位：${ResolutionTier.describe(info.widthPx, info.heightPx)}")
         tvScreenSize.setInfoRow("屏幕尺寸：${sizeInches(info.diagonalInches)}")
         tvDensity.setInfoRow(
             "屏幕密度：${info.densityDpi} dpi / ${Formats.decimal(info.density.toDouble())}x / ${info.densityBucket}"
@@ -51,6 +53,44 @@ class ScreenInfoActivity : AppCompatActivity() {
         tvBrightnessHint.setInfoRow("亮度提示：${brightnessHint(info.maxBrightnessNode)}")
 
         tvRawDisplayInfo.setRawBlock(info.rawPreview)
+
+        buildGraySteps()
+        tvHdrTestResult.text = hdrTestNote(info)
+    }
+
+    /**
+     * 黑位 / 高光裁切测试：11 格灰度（0% ~ 100%）。
+     *
+     * 好屏能分出左边几格；如果 0% 与 10% 糊成一块，说明黑位被压死了。
+     * 这里是**真的屏幕能力测试**（和上面两张参考图的观感对比互补）。
+     */
+    private fun buildGraySteps() = with(binding) {
+        layoutGraySteps.removeAllViews()
+        for (step in 0..10) {
+            val value = (step * 25.5).toInt().coerceIn(0, 255)
+            layoutGraySteps.addView(
+                android.view.View(this@ScreenInfoActivity).apply {
+                    layoutParams = android.widget.LinearLayout.LayoutParams(
+                        0,
+                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                        1f
+                    )
+                    setBackgroundColor(android.graphics.Color.rgb(value, value, value))
+                }
+            )
+        }
+    }
+
+    /** HDR 测试的结论行：把系统的 HDR 报告情况说清楚。 */
+    private fun hdrTestNote(info: ScreenInfo): String {
+        val supported = info.hdrSupportedTypes.isNotEmpty()
+        return if (supported) {
+            "本机报告支持：${info.hdrSupportedTypes.joinToString(" / ")}。" +
+                "两张图差别越明显，说明屏幕的对比度与 HDR 处理越好。"
+        } else {
+            "系统没有报告 HDR 类型（部分机型在应用层拿不到）。" +
+                "两张图的差别仍然能反映屏幕对比度：差别很小说明黑位与高光都被压缩了。"
+        }
     }
 
     private fun sizeInches(diagonalInches: Double?): String =

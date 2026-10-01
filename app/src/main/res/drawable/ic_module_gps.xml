@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 模块图标：GPS 定位 -->
+<!--
+  定位：地图钉（Material place 形状）。
+  1.0.6 修：首页 GPS 卡片以前直接复用了「杂项工具」的柱状图标，两张卡片长得一模一样；
+  这个文件以前是个纯圆点（没用上），现在换成正经的地图钉。
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -7,5 +11,5 @@
     android:viewportHeight="24">
     <path
         android:fillColor="?attr/colorPrimary"
-        android:pathData="M12,2c-3.87,0 -7,3.13 -7,7 0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7zM12,11.5c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z" />
+        android:pathData="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7zM12,11.5c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z" />
 </vector>

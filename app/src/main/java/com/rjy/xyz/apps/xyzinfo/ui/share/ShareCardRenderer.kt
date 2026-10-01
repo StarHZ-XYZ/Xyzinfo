@@ -20,6 +20,7 @@ import com.rjy.xyz.apps.xyzinfo.data.ScreenInfoProvider
 import com.rjy.xyz.apps.xyzinfo.data.SocInfoProvider
 import com.rjy.xyz.apps.xyzinfo.data.DeviceNameRepository
 import com.rjy.xyz.apps.xyzinfo.util.Formats
+import com.rjy.xyz.apps.xyzinfo.util.Labels
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -97,8 +98,8 @@ object ShareCardRenderer {
             ?: overview?.brand ?: Build.MANUFACTURER
 
         val specs = buildList {
-            add(Spec("处理器", soc?.displayName ?: overview?.cpuArchitecture ?: "未知"))
-            add(Spec("图形", soc?.gpuName?.takeIf { it.isNotBlank() } ?: "未知"))
+            add(Spec("处理器", known(soc?.displayName) ?: known(overview?.cpuArchitecture) ?: "未知"))
+            add(Spec("图形", known(soc?.gpuName) ?: "未知"))
             add(
                 Spec(
                     "内存",
@@ -106,7 +107,8 @@ object ShareCardRenderer {
                         // 标称容量（12 GB）才是"实际对应的"档位；实测可用（10.93 GB）和被系统占用有关
                         val total = info.nominalTotalGigabytes?.let { "$it GB" }
                             ?: Formats.bytes(info.measuredTotalBytes)
-                        val type = info.typeName.takeIf { it.isNotBlank() && it != "未知" }
+                        // 「系统未公开」「未知」这类占位文字不上卡片（用户反馈卡片上冒出一串"系统未公开"）
+                        val type = known(info.typeName)
                         if (type != null) "$total · $type" else total
                     } ?: "未知"
                 )
@@ -129,9 +131,9 @@ object ShareCardRenderer {
             )
             add(Spec("系统", "Android ${overview?.androidRelease ?: Build.VERSION.RELEASE}（API ${overview?.apiLevel ?: Build.VERSION.SDK_INT}）"))
             add(Spec("架构", overview?.abiLabel ?: System.getProperty("os.arch").orEmpty()))
-            add(Spec("系统 UI", overview?.romName?.takeIf { it.isNotBlank() } ?: "未知"))
+            add(Spec("系统 UI", known(overview?.romName) ?: "未知"))
             add(Spec("设备代号", overview?.deviceCode?.takeIf { it.isNotBlank() } ?: Build.DEVICE))
-            add(Spec("内核", overview?.kernelRelease?.takeIf { it.isNotBlank() } ?: "未知"))
+            add(Spec("内核", known(overview?.kernelRelease) ?: "未知"))
         }
 
         return Content(
@@ -147,6 +149,13 @@ object ShareCardRenderer {
 
     private fun dateStamp(): String =
         SimpleDateFormat("yyyy-MM-dd", Locale.CHINA).format(Date())
+
+    /** 过滤掉「未知」「系统未公开」这类占位文字：卡片上不出现"未公开"字样。 */
+    private fun known(value: String?): String? {
+        val text = value?.trim().orEmpty()
+        if (text.isEmpty()) return null
+        return text.takeUnless { it == Labels.UNKNOWN || it == Labels.NOT_PUBLIC }
+    }
 
     /**
      * 同一份内容的**纯文本版**（发帖、发给别人排查问题时最常用）。

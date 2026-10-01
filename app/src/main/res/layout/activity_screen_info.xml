@@ -88,6 +88,20 @@
                         android:background="@color/divider" />
 
                     <TextView
+                        android:id="@+id/tvResolutionTier"
+                        style="@style/Text.Row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="11dp"
+                        android:paddingBottom="11dp"
+                        android:text="分辨率档位：—" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider" />
+
+                    <TextView
                         android:id="@+id/tvScreenSize"
                         style="@style/Text.Row"
                         android:layout_width="match_parent"
@@ -312,6 +326,100 @@
                         android:paddingBottom="11dp"
                         android:text="亮度提示：—" />
                 </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- HDR 实测：同一构图的两张图对照看 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    style="@style/Text.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="HDR 测试" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="同一张夕阳雪山的两版：普通版高光削顶、暗部压死；HDR 版高光有层次、暗部有细节。支持 HDR 时第二张会明显更有肉。" />
+
+                <ImageView
+                    android:id="@+id/ivHdrSdr"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="普通图片"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/hdr_test_sdr" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="↑ 普通图片（SDR 观感）：太阳与云层一片纯白、山谷接近死黑" />
+
+                <ImageView
+                    android:id="@+id/ivHdrHdr"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="HDR 图片"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/hdr_test_hdr" />
+
+                <TextView
+                    android:id="@+id/tvHdrTestResult"
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="↑ HDR 图片：同样的位置保留了高光渐变与暗部纹理" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="14dp"
+                    android:background="@color/divider" />
+
+                <TextView
+                    style="@style/Text.SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="黑位与高光裁切" />
+
+                <TextView
+                    style="@style/Text.SectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="下面每格相差 10% 灰度：左边几格应该勉强能分清、最右一格是纯白。分不清就是黑位被压死了。" />
+
+                <LinearLayout
+                    android:id="@+id/layoutGraySteps"
+                    android:layout_width="match_parent"
+                    android:layout_height="34dp"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

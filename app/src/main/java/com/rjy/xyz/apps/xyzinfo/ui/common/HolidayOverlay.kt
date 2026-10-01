@@ -43,6 +43,8 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
 
     private val particles = HolidayParticles(context)
     private val greeting = buildGreeting()
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val hideGreeting = Runnable { hideGreeting(animated = true) }
     private var started = false
 
     var holiday: Holiday? = null
@@ -76,6 +78,9 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
     fun stop() {
         started = false
         particles.stop()
+        // 页面被切走时祝福卡必须收掉：以前收尾动作挂在入场动画的结束回调上，
+        // 一旦中途 stop()，回调直接 return，卡片就永远留在那了（用户报的 bug）
+        hideGreeting(animated = false)
     }
 
     /**
@@ -85,6 +90,7 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
     private fun maybeShowGreeting() {
         if (greetedThisLaunch) return
         greetedThisLaunch = true
+        greeting.animate().cancel()
         greeting.alpha = 0f
         greeting.visibility = View.VISIBLE
         greeting.scaleX = 0.86f
@@ -97,20 +103,37 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
             .translationY(0f)
             .setStartDelay(GREETING_DELAY_MILLIS)
             .setDuration(GREETING_IN_MILLIS)
-            .withEndAction {
-                if (!started) return@withEndAction
-                greeting.animate()
-                    .alpha(0f)
-                    .translationY(-18f * resources.displayMetrics.density)
-                    .setStartDelay(GREETING_HOLD_MILLIS)
-                    .setDuration(GREETING_OUT_MILLIS)
-                    .withEndAction {
-                        greeting.animate().setStartDelay(0L)
-                        greeting.visibility = View.GONE
-                    }
-                    .start()
-            }
             .start()
+        /*
+         * 收尾用**独立定时器**，不依赖入场动画的结束回调：
+         * 只要定时器还在，无论中途有没有 stop() / 切页面，祝福卡都会按时消失。
+         */
+        handler.removeCallbacks(hideGreeting)
+        handler.postDelayed(hideGreeting, GREETING_DELAY_MILLIS + GREETING_IN_MILLIS + GREETING_HOLD_MILLIS)
+    }
+
+    /** 收掉祝福卡。[animated] = false 时立刻隐藏（页面切走用）。 */
+    private fun hideGreeting(animated: Boolean) {
+        handler.removeCallbacks(hideGreeting)
+        if (greeting.visibility != View.VISIBLE) return
+        greeting.animate().cancel()
+        if (!animated || !Anim.enabled(context)) {
+            greeting.visibility = View.GONE
+            greeting.alpha = 0f
+            return
+        }
+        greeting.animate()
+            .alpha(0f)
+            .translationY(-18f * resources.displayMetrics.density)
+            .setStartDelay(0L)
+            .setDuration(GREETING_OUT_MILLIS)
+            .withEndAction { greeting.visibility = View.GONE }
+            .start()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        handler.removeCallbacks(hideGreeting)
     }
 
     private fun buildGreeting(): TextView = TextView(context).apply {

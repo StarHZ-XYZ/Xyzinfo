@@ -30,6 +30,7 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
     private const val KEY_THERMAL_LOG = "thermal_log_enabled"
     private const val KEY_THERMAL_INTERVAL = "thermal_log_interval_minutes"
     private const val KEY_THERMAL_LIMIT = "thermal_record_limit"
+    private const val KEY_BATTERY_LOG = "battery_log_enabled"
     private const val KEY_HOME_GRID = "home_grid_style"
     private const val KEY_DEEPSEEK_KEY = "deepseek_api_key"
     private const val KEY_AI_MODE = "ai_mode"
@@ -457,6 +458,14 @@ private const val MAX_THERMAL_RECORD_LIMIT = 2000
         prefs(context).edit()
             .putInt(KEY_THERMAL_LIMIT, limit.coerceIn(20, MAX_THERMAL_RECORD_LIMIT))
             .apply()
+    }
+
+    /** 电池页是否自动记录充放电：默认关，用户点了开关才记。 */
+    fun batteryLogEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_BATTERY_LOG, false)
+
+    fun setBatteryLogEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_BATTERY_LOG, enabled).apply()
     }
 
     /** 最近一次测速结果（速度统一存字节/秒，显示时再按单位换算）。 */
