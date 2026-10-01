@@ -100,6 +100,15 @@
                 android:layout_weight="1"
                 android:text="分享"
                 android:textAllCaps="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCopyCard"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="复制文本"
+                android:textAllCaps="false" />
         </LinearLayout>
 
         <TextView

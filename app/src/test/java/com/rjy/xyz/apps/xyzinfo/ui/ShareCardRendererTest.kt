@@ -81,6 +81,18 @@ class ShareCardRendererTest {
         light.recycle()
     }
 
+    @Test
+    fun plainTextCarriesEveryField() {
+        val text = ShareCardRenderer.asPlainText(content)
+        assertTrue("要有机型名", text.contains("小米 Civi 1S"))
+        assertTrue("要有型号行", text.contains("2109119BC"))
+        // 每一条参数都要在文本里（图文同源，不能漏项）
+        content.specs.forEach { spec ->
+            assertTrue("缺 ${spec.label}", text.contains("${spec.label}：${spec.value}"))
+        }
+        assertTrue("要有落款", text.contains("XYZ-Devinfo"))
+    }
+
     private fun distinctColors(bitmap: Bitmap): Int {
         val pixels = IntArray(bitmap.width * bitmap.height)
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)

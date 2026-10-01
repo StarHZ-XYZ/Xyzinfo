@@ -42,6 +42,7 @@ class ShareCardActivity : AppCompatActivity() {
     private lateinit var binding: ActivityShareCardBinding
     private var theme: ShareTheme = ShareTheme.DEPTH
     private var card: Bitmap? = null
+    private var content: ShareCardRenderer.Content? = null
     private var pendingSaveAfterPermission = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +61,10 @@ class ShareCardActivity : AppCompatActivity() {
             Anim.pressFeedback(it)
             shareCard()
         }
+        binding.btnCopyCard.setOnClickListener {
+            Anim.pressFeedback(it)
+            copyAsText()
+        }
         buildThemeChips()
         generate()
     }
@@ -77,6 +82,7 @@ class ShareCardActivity : AppCompatActivity() {
         val withLogo = content.copy(
             logo = ShareCardRenderer.brandLogo(this, brand, LOGO_PX)
         )
+        this.content = withLogo
         val bitmap = ShareCardRenderer.render(this, withLogo, theme, brandColor(brand))
         card?.recycle()
         card = bitmap
@@ -216,6 +222,15 @@ class ShareCardActivity : AppCompatActivity() {
         }.onFailure {
             Toast.makeText(this, "生成分享文件失败：${it.message ?: "未知原因"}", Toast.LENGTH_LONG).show()
         }
+    }
+
+    /** 复制成纯文本：发帖 / 让别人帮忙看问题时最省事。 */
+    private fun copyAsText() {
+        val text = content?.let { ShareCardRenderer.asPlainText(it) } ?: return
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+            ?: return
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("XYZ-Devinfo 设备信息", text))
+        Toast.makeText(this, "设备信息已复制到剪贴板", Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroy() {

@@ -13,6 +13,8 @@
   底色自动压暗一档保证白字清楚）；
 - **保存到相册**（`Pictures/XyzInfo`，Android 10+ 走 MediaStore 不需要存储权限，
   Android 9 及以下会在需要时申请）或**走系统分享面板**发给任何人。
+- **复制文本**：同一份内容还能一键复制成纯文本（`ShareCardRenderer.asPlainText`），
+  发帖或发给别人排查问题时直接粘贴，图文同源不会对不上。
 
 实现要点：
 

@@ -134,6 +134,18 @@ object ShareCardRenderer {
     private fun dateStamp(): String =
         SimpleDateFormat("yyyy-MM-dd", Locale.CHINA).format(Date())
 
+    /**
+     * 同一份内容的**纯文本版**（发帖、发给别人排查问题时最常用）。
+     * 和卡片一个来源，所以图文永远不会对不上。
+     */
+    fun asPlainText(content: Content): String = buildString {
+        appendLine(content.deviceName)
+        appendLine(content.modelLine)
+        content.specs.forEach { appendLine("${it.label}：${it.value}") }
+        appendLine(content.footerLeft)
+        append(content.footerRight)
+    }
+
     /** 画一张卡片。[brandColor] 只在 [ShareTheme.BRAND] 下使用。 */
     fun render(
         context: Context,
