@@ -38,7 +38,16 @@ enum class ShareTheme(val id: String, val label: String) {
     BRAND("brand", "品牌色"),
 
     /** 彩霞：珊瑚橙 → 紫 → 蓝的三段渐变，发出去最抓眼。 */
-    RAINBOW("rainbow", "彩霞");
+    RAINBOW("rainbow", "彩霞"),
+
+    /** 青绿：深青 → 薄荷，和 App 自身的配色呼应。 */
+    TEAL("teal", "青绿"),
+
+    /** 随机：每次生成换一个色相（同色系渐变）。 */
+    RANDOM("random", "随机"),
+
+    /** 随机组合：每次生成随机挑 2~3 个色相拼渐变。 */
+    RANDOM_MIX("random_mix", "随机组合");
 
     companion object {
         fun of(id: String?): ShareTheme = values().firstOrNull { it.id == id } ?: DEPTH
@@ -174,11 +183,13 @@ object ShareCardRenderer {
         context: Context,
         content: Content,
         theme: ShareTheme = ShareTheme.DEPTH,
-        brandColor: Int = 0xFF3AA6A0.toInt()
+        brandColor: Int = 0xFF3AA6A0.toInt(),
+        /** 随机主题的种子：同一个种子画出同一套配色，换种子就换配色。 */
+        seed: Long = System.nanoTime()
     ): Bitmap {
         val bitmap = Bitmap.createBitmap(CARD_WIDTH, CARD_HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val palette = paletteFor(theme, brandColor)
+        val palette = paletteFor(theme, brandColor, seed)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         drawBackground(canvas, paint, palette)
@@ -202,7 +213,7 @@ object ShareCardRenderer {
         val middle: Int? = null
     )
 
-    private fun paletteFor(theme: ShareTheme, brandColor: Int): Palette = when (theme) {
+    private fun paletteFor(theme: ShareTheme, brandColor: Int, seed: Long): Palette = when (theme) {
         ShareTheme.DEPTH -> Palette(
             top = 0xFF11161F.toInt(),
             bottom = 0xFF0A0D13.toInt(),
@@ -254,6 +265,79 @@ object ShareCardRenderer {
             stroke = 0x38FFFFFF,
             tile = 0xFFFFFFFF.toInt(),
             middle = 0xFFB14FE0.toInt()
+        )
+
+        ShareTheme.TEAL -> Palette(
+            top = 0xFF0E5C63.toInt(),
+            bottom = 0xFF0B3A46.toInt(),
+            glow = 0x3399F2E4.toInt(),
+            title = Color.WHITE,
+            body = 0xFFE4F5F3.toInt(),
+            muted = 0x99FFFFFF.toInt(),
+            card = 0x14FFFFFF,
+            stroke = 0x2BFFFFFF,
+            tile = 0xFFF2F9F8.toInt()
+        )
+
+        // 随机：同一个种子 → 同一套配色（不会点一下保存就变色）
+        ShareTheme.RANDOM -> {
+            val random = java.util.Random(seed)
+            val hue = random.nextFloat() * 360f
+            val top = hslColor(hue, 0.62f, 0.34f)
+            Palette(
+                top = top,
+                bottom = darken(top, 0.52f),
+                glow = 0x38FFFFFF,
+                title = Color.WHITE,
+                body = 0xFFF2F6FA.toInt(),
+                muted = 0xCCFFFFFF.toInt(),
+                card = 0x1AFFFFFF,
+                stroke = 0x2EFFFFFF,
+                tile = 0xFFF2F4F7.toInt()
+            )
+        }
+
+        // 随机组合：随机挑 2~3 个色相拼渐变，但都压在同一个明度区间，保证白字看得清
+        ShareTheme.RANDOM_MIX -> {
+            val random = java.util.Random(seed)
+            val baseHue = random.nextFloat() * 360f
+            val spread = 40f + random.nextFloat() * 90f
+            val hue2 = (baseHue + spread) % 360f
+            val triStop = random.nextBoolean()
+            val hue3 = (baseHue + spread * 2) % 360f
+            Palette(
+                top = hslColor(baseHue, 0.66f, 0.36f),
+                bottom = hslColor(hue2, 0.66f, 0.24f),
+                glow = 0x38FFFFFF,
+                title = Color.WHITE,
+                body = 0xFFF4F7FA.toInt(),
+                muted = 0xCCFFFFFF.toInt(),
+                card = 0x1AFFFFFF,
+                stroke = 0x2EFFFFFF,
+                tile = 0xFFFFFFFF.toInt(),
+                middle = if (triStop) hslColor(hue3, 0.66f, 0.30f) else null
+            )
+        }
+    }
+
+    /** HSL → ARGB（只用来生成随机主题的底色，饱和度和明度都卡在能配白字的区间）。 */
+    private fun hslColor(hueDegrees: Float, saturation: Float, lightness: Float): Int {
+        val c = (1f - kotlin.math.abs(2f * lightness - 1f)) * saturation
+        val hp = (hueDegrees % 360f) / 60f
+        val x = c * (1f - kotlin.math.abs(hp % 2f - 1f))
+        val (r1, g1, b1) = when {
+            hp < 1f -> Triple(c, x, 0f)
+            hp < 2f -> Triple(x, c, 0f)
+            hp < 3f -> Triple(0f, c, x)
+            hp < 4f -> Triple(0f, x, c)
+            hp < 5f -> Triple(x, 0f, c)
+            else -> Triple(c, 0f, x)
+        }
+        val m = lightness - c / 2f
+        return Color.rgb(
+            ((r1 + m) * 255f).roundToInt().coerceIn(0, 255),
+            ((g1 + m) * 255f).roundToInt().coerceIn(0, 255),
+            ((b1 + m) * 255f).roundToInt().coerceIn(0, 255)
         )
     }
 

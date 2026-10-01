@@ -393,20 +393,32 @@
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnBatteryLogNow"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="46dp"
                         android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:maxLines="1"
                         android:text="马上记一条"
-                        android:textAllCaps="false" />
+                        android:textAllCaps="false"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnBatteryClear"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="46dp"
                         android:layout_marginStart="10dp"
                         android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:maxLines="1"
                         android:text="清空记录"
-                        android:textAllCaps="false" />
+                        android:textAllCaps="false"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp"
+                        app:strokeColor="?attr/colorPrimary" />
                 </LinearLayout>
 
                 <TextView

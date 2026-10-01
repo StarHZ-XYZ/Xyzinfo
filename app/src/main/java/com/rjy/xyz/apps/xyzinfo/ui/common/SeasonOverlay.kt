@@ -102,6 +102,13 @@ class SeasonOverlay @JvmOverloads constructor(
     /** 设置缓存：这三个开关原来是**每帧**读一次 SharedPreferences，白白占着主线程。 */
     private var enabledBySettings = true
     private var gravityEnabled = true
+    /**
+     * 传感器**实际**是否已注册（和设置里的开关分开记）。
+     *
+     * 1.0.9 修 bug：stop() 会注销传感器但不改开关标志位，回来时只比开关就会误判成"已经注册"，
+     * 于是四季 / 节日粒子会一直按上次的倾斜方向飘，跟着重力走的能力就没了。
+     */
+    private var sensorRegistered = false
     private var settingsCheckedAt = 0L
     private val sensorManager by lazy {
         context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
@@ -162,14 +169,16 @@ class SeasonOverlay @JvmOverloads constructor(
     private fun startGravitySensor() {
         val manager = sensorManager ?: return
         val sensor = manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
-        runCatching {
+        val ok = runCatching {
             manager.registerListener(gravityListener, sensor, SensorManager.SENSOR_DELAY_GAME)
-        }
+        }.isSuccess
+        sensorRegistered = ok
     }
 
     private fun stopGravitySensor() {
         val manager = sensorManager ?: return
         runCatching { manager.unregisterListener(gravityListener) }
+        sensorRegistered = false
     }
 
     /** 开关状态每秒最多读一次（每帧读 SharedPreferences 是没必要的开销）。 */
@@ -182,8 +191,10 @@ class SeasonOverlay @JvmOverloads constructor(
         val gravityNow = SettingsRepository.seasonGravity(context)
         if (gravityNow != gravityEnabled) {
             gravityEnabled = gravityNow
-            if (gravityNow) startGravitySensor() else stopGravitySensor()
         }
+        // 开关和"实际注册状态"分别判断：回来时该重新注册就重新注册
+        if (gravityEnabled && !sensorRegistered) startGravitySensor()
+        if (!gravityEnabled && sensorRegistered) stopGravitySensor()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {

@@ -45,6 +45,14 @@ class ShareCardActivity : AppCompatActivity() {
     private var content: ShareCardRenderer.Content? = null
     private var pendingSaveAfterPermission = false
 
+    /**
+     * 随机主题的种子。
+     *
+     * 同一个种子画出同一套配色 —— 所以选「随机」之后预览、保存、分享拿到的都是同一张卡片；
+     * 再点一次「随机」才换一套（见下面的 onClick）。
+     */
+    private var paletteSeed = System.currentTimeMillis()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityShareCardBinding.inflate(layoutInflater)
@@ -83,7 +91,7 @@ class ShareCardActivity : AppCompatActivity() {
             logo = ShareCardRenderer.brandLogo(this, brand, LOGO_PX)
         )
         this.content = withLogo
-        val bitmap = ShareCardRenderer.render(this, withLogo, theme, brandColor(brand))
+        val bitmap = ShareCardRenderer.render(this, withLogo, theme, brandColor(brand), paletteSeed)
         card?.recycle()
         card = bitmap
         binding.ivCardPreview.setImageDrawable(BitmapDrawable(resources, bitmap))
@@ -109,8 +117,14 @@ class ShareCardActivity : AppCompatActivity() {
                 isSelected = selected
                 isClickable = true
                 setOnClickListener {
-                    if (theme == item) return@setOnClickListener
+                    // 点已经选中的随机主题 = 换一套配色；点别的主题才切主题
+                    if (theme == item && item != ShareTheme.RANDOM && item != ShareTheme.RANDOM_MIX) {
+                        return@setOnClickListener
+                    }
                     theme = item
+                    if (item == ShareTheme.RANDOM || item == ShareTheme.RANDOM_MIX) {
+                        paletteSeed = System.currentTimeMillis()
+                    }
                     buildThemeChips()
                     generate()
                 }

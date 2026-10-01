@@ -72,12 +72,20 @@
             android:layout_marginTop="20dp"
             android:text="卡片配色" />
 
-        <LinearLayout
-            android:id="@+id/layoutThemeChips"
+        <!-- 配色多到 7 种，横滑一排更省地方 -->
+        <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:orientation="horizontal" />
+            android:overScrollMode="never"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/layoutThemeChips"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -88,28 +96,49 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSaveCard"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="46dp"
                 android:layout_weight="1"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:maxLines="1"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
                 android:text="保存到相册"
-                android:textAllCaps="false" />
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                app:cornerRadius="12dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnShareCard"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="46dp"
                 android:layout_marginStart="12dp"
                 android:layout_weight="1"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:maxLines="1"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
                 android:text="分享"
-                android:textAllCaps="false" />
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                app:cornerRadius="12dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCopyCard"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="46dp"
                 android:layout_marginStart="12dp"
                 android:layout_weight="1"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:maxLines="1"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
                 android:text="复制文本"
-                android:textAllCaps="false" />
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                app:cornerRadius="12dp" />
         </LinearLayout>
 
         <TextView
@@ -117,6 +146,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="卡片是本地生成的 1080×1620 PNG，不含任何网络请求；分享用系统面板，选谁由你决定" />
+            android:text="卡片是本地生成的 1080×1620 PNG，不含任何网络请求；分享用系统面板，选谁由你决定。选「随机 / 随机组合」后再点一次同一项，可以换一套配色" />
     </LinearLayout>
 </ScrollView>

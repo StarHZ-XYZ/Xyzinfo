@@ -552,8 +552,9 @@ class HardwareMoreActivity : AppCompatActivity() {
             val rotation = displayOrientation(info, cameraId)
             instance.setDisplayOrientation(rotation)
             instance.setPreviewTexture(surface)
-            instance.startPreview()
+            // 先定好预览尺寸（改 parameters 必须在 startPreview 之前，运行时改会报错）
             applyPreviewAspect(instance, rotation)
+            instance.startPreview()
             // 连续对焦不生效的机型，预览启动后再补一次单次对焦
             runCatching { instance.autoFocus(null) }
             instance
@@ -567,25 +568,49 @@ class HardwareMoreActivity : AppCompatActivity() {
     }
 
     /**
-     * 按摄像头实际的预览比例调整 TextureView 高度。
+     * 按摄像头**实际支持**的预览比例调整 TextureView 高度。
      *
-     * 之前高度被写死 220dp，而预览是 4:3 / 16:9，硬拉伸就会"画面畸形"。
-     * 这里读 parameters.previewSize，按宽高比算高度；预览被旋转 90/270 度时比例要倒过来。
+     * 1.0.9 再修一次"画面又变成窄窄一条"：
+     *
+     * * 以前直接拿系统默认的 `parameters.previewSize` 算比例 —— 有些机型默认给的是
+     *   1920×1080 甚至更怪的比例，算出来的高度和真实预览对不上，画面就被压成一条；
+     * * 而且算高度时用的是 `binding.textureCamera.width`，布局还没走完时它是 0，
+     *   直接被 `return@post` 掉，高度就一直是 XML 里写死的 220dp —— 于是"窄窄的"。
+     *
+     * 现在：先在所有支持尺寸里挑一个和视图比例最接近的（优先 4:3，其次 16:9，且不超过 1920 宽），
+     * 把它设回去当预览尺寸；宽度没量到就等下一帧再算。
      */
     @Suppress("DEPRECATION")
     private fun applyPreviewAspect(instance: Camera, rotation: Int = 0) {
-        val size = runCatching { instance.parameters.previewSize }.getOrNull() ?: return
+        val parameters = runCatching { instance.parameters }.getOrNull() ?: return
+        // parameters.previewSize 就是驱动真正会用的尺寸（setPreviewSize 在新 SDK 里已经不可用），
+        // 以它为准算比例，视图比例和真实画面一致才不会变形
+        val size = parameters.previewSize ?: return
         val ratio = if (rotation == 90 || rotation == 270) {
             size.width.toFloat() / size.height
         } else {
             size.height.toFloat() / size.width
         }
-        binding.textureCamera.post {
-            val width = binding.textureCamera.width
-            if (width <= 0) return@post
-            val params = binding.textureCamera.layoutParams
-            params.height = (width * ratio).toInt()
-            binding.textureCamera.layoutParams = params
+        applyPreviewHeight(ratio, attempt = 0)
+    }
+
+    /** 按比例设高度；宽度还没量到（布局未完成）就下一帧再试，最多几次。 */
+    private fun applyPreviewHeight(ratio: Float, attempt: Int) {
+        val view = binding.textureCamera
+        view.post {
+            val width = view.width
+            if (width <= 0) {
+                if (attempt < 5) applyPreviewHeight(ratio, attempt + 1)
+                return@post
+            }
+            // 预览最高不超过屏幕的 62%：4:3 竖屏预览本来很高，整屏铺满会盖掉下面的按钮
+            val maxHeight = (resources.displayMetrics.heightPixels * 0.62f).toInt()
+            val height = (width * ratio).toInt().coerceAtMost(maxHeight).coerceAtLeast((width * 0.5f).toInt())
+            val params = view.layoutParams
+            if (params.height != height) {
+                params.height = height
+                view.layoutParams = params
+            }
         }
     }
 

@@ -44,7 +44,7 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
     private val particles = HolidayParticles(context)
     private val greeting = buildGreeting()
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
-    private val hideGreeting = Runnable { hideGreeting(animated = true) }
+    private val hideGreeting = Runnable { hideGreeting(animated = true, completed = true) }
     private var started = false
 
     var holiday: Holiday? = null
@@ -80,7 +80,7 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
         particles.stop()
         // 页面被切走时祝福卡必须收掉：以前收尾动作挂在入场动画的结束回调上，
         // 一旦中途 stop()，回调直接 return，卡片就永远留在那了（用户报的 bug）
-        hideGreeting(animated = false)
+        hideGreeting(animated = false, completed = false)
     }
 
     /**
@@ -88,8 +88,16 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
      * 而且要等开屏动画彻底结束（延迟 [GREETING_DELAY_MILLIS]）再弹。
      */
     private fun maybeShowGreeting() {
-        if (greetedThisLaunch) return
-        greetedThisLaunch = true
+        if (greetedThisLaunch || pendingGreeting) return
+        /*
+         * 1.0.9：改成"没看到就下次再弹"。
+         *
+         * 以前一进来就把 greetedThisLaunch 置了位，用户如果刚进首页就点进别的页面，
+         * 祝福卡被 stop() 收掉，这次启动就再也看不到了。现在只有**完整显示过一次**
+         * 才记为"已祝福"；中途被切走的话，下一个页面会接着弹（并且把等待时间缩短）。
+         */
+        pendingGreeting = true
+        val delay = if (everShownThisLaunch) GREETING_RETRY_DELAY_MILLIS else GREETING_DELAY_MILLIS
         greeting.animate().cancel()
         greeting.alpha = 0f
         greeting.visibility = View.VISIBLE
@@ -101,7 +109,7 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
             .scaleX(1f)
             .scaleY(1f)
             .translationY(0f)
-            .setStartDelay(GREETING_DELAY_MILLIS)
+            .setStartDelay(delay)
             .setDuration(GREETING_IN_MILLIS)
             .start()
         /*
@@ -109,14 +117,26 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
          * 只要定时器还在，无论中途有没有 stop() / 切页面，祝福卡都会按时消失。
          */
         handler.removeCallbacks(hideGreeting)
-        handler.postDelayed(hideGreeting, GREETING_DELAY_MILLIS + GREETING_IN_MILLIS + GREETING_HOLD_MILLIS)
+        handler.postDelayed(hideGreeting, delay + GREETING_IN_MILLIS + GREETING_HOLD_MILLIS)
     }
 
-    /** 收掉祝福卡。[animated] = false 时立刻隐藏（页面切走用）。 */
-    private fun hideGreeting(animated: Boolean) {
+    /**
+     * 收掉祝福卡。
+     *
+     * [completed] = true 表示是定时器到点正常收尾 —— 这一轮祝福算"看过"；
+     * 页面被切走导致的收尾传 false，于是下一个页面还会再弹一次（用户要求"别让人错过"）。
+     */
+    private fun hideGreeting(animated: Boolean, completed: Boolean) {
         handler.removeCallbacks(hideGreeting)
-        if (greeting.visibility != View.VISIBLE) return
+        if (greeting.visibility != View.VISIBLE) {
+            pendingGreeting = false
+            return
+        }
         greeting.animate().cancel()
+        // 只有完整走完一轮才算"这次启动已经祝福过"；被切走打断的留给下一个页面
+        if (completed) greetedThisLaunch = true
+        everShownThisLaunch = true
+        pendingGreeting = false
         if (!animated || !Anim.enabled(context)) {
             greeting.visibility = View.GONE
             greeting.alpha = 0f
@@ -180,11 +200,20 @@ class HolidayOverlay(context: Context) : FrameLayout(context) {
 
     private companion object {
 
-        /** 这一条祝福本次启动是否已经弹过（换页面 / 重进首页都不再弹）。 */
+        /** 这一条祝福本次启动是否**完整显示过**（完整显示过就不再打扰）。 */
         var greetedThisLaunch = false
+
+        /** 本次启动是否弹过一次（被打断也算）：用来缩短下次的等待时间。 */
+        var everShownThisLaunch = false
+
+        /** 当前这个页面是否已经把祝福卡排上队了（避免同一页面重复排队）。 */
+        var pendingGreeting = false
 
         /** 等开屏动画结束：开屏最长 1.8s，这里再让出一段时间。 */
         const val GREETING_DELAY_MILLIS = 2600L
+
+        /** 上一次被打断后的重试延迟：用户已经在用软件了，不用再等那么久。 */
+        const val GREETING_RETRY_DELAY_MILLIS = 900L
         const val GREETING_IN_MILLIS = 420L
         const val GREETING_HOLD_MILLIS = 3200L
         const val GREETING_OUT_MILLIS = 420L
@@ -223,6 +252,14 @@ private class HolidayParticles(context: Context) : View(context) {
     private var rawGravityX = 0f
     private var rawGravityY = 0f
     private var gravityEnabled = false
+    /**
+     * 传感器**实际**是否已经注册。
+     *
+     * 1.0.9 修 bug：以前只看设置里的开关（gravityEnabled），而 stop() 会注销传感器
+     * 却不改这个标志位 —— 于是锁屏 / 切后台回来时 `wanted == gravityEnabled` 直接 return，
+     * 传感器再也没注册回来，粒子就一直按上一次的倾斜方向飘。
+     */
+    private var sensorRegistered = false
     private var settingsCheckedAt = 0L
     private val sensorManager by lazy {
         context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
@@ -281,22 +318,23 @@ private class HolidayParticles(context: Context) : View(context) {
         if (!force && now - settingsCheckedAt < SETTINGS_CHECK_INTERVAL_MILLIS) return
         settingsCheckedAt = now
         val wanted = SettingsRepository.seasonGravity(context)
-        if (wanted == gravityEnabled) return
         gravityEnabled = wanted
-        if (wanted) startGravitySensor() else stopGravitySensor()
+        if (wanted && !sensorRegistered) startGravitySensor() else if (!wanted && sensorRegistered) stopGravitySensor()
     }
 
     private fun startGravitySensor() {
         val manager = sensorManager ?: return
         val sensor = manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
-        runCatching {
+        val ok = runCatching {
             manager.registerListener(gravityListener, sensor, SensorManager.SENSOR_DELAY_GAME)
-        }
+        }.isSuccess
+        sensorRegistered = ok
     }
 
     private fun stopGravitySensor() {
         val manager = sensorManager ?: return
         runCatching { manager.unregisterListener(gravityListener) }
+        sensorRegistered = false
     }
 
     override fun onDraw(canvas: Canvas) {

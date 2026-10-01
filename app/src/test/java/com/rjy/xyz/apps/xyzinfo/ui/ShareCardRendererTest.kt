@@ -93,6 +93,43 @@ class ShareCardRendererTest {
         assertTrue("要有落款", text.contains("XYZ-Devinfo"))
     }
 
+    @Test
+    fun `新增的青绿与随机配色都够深_白字看得清`() {
+        val context = RuntimeEnvironment.getApplication()
+        // 随机主题用固定种子，保证测试可复现
+        listOf(
+            ShareTheme.TEAL,
+            ShareTheme.RANDOM,
+            ShareTheme.RANDOM_MIX
+        ).forEach { theme ->
+            val bitmap = ShareCardRenderer.render(context, content, theme, seed = 20261009L)
+            val topLeft = bitmap.getPixel(24, 24)
+            val bottomRight = bitmap.getPixel(bitmap.width - 24, bitmap.height - 24)
+            assertTrue("$theme 左上太亮，白字会糊", luminance(topLeft) < 0.62)
+            assertTrue("$theme 右下太亮，白字会糊", luminance(bottomRight) < 0.62)
+            assertTrue("$theme 的渐变两端不该一样", topLeft != bottomRight)
+            bitmap.recycle()
+        }
+    }
+
+    @Test
+    fun `随机配色同一个种子稳定_换种子就换色`() {
+        val context = RuntimeEnvironment.getApplication()
+        val first = ShareCardRenderer.render(context, content, ShareTheme.RANDOM, seed = 1L)
+        val same = ShareCardRenderer.render(context, content, ShareTheme.RANDOM, seed = 1L)
+        val other = ShareCardRenderer.render(context, content, ShareTheme.RANDOM, seed = 2L)
+        // 同一个种子：预览 / 保存 / 分享拿到的是同一张卡片
+        assertEquals("同种子应该画出同一套配色", first.getPixel(24, 24), same.getPixel(24, 24))
+        // 换种子：配色要变（否则「随机」就没意义了）
+        assertTrue("换种子后配色应该变化", first.getPixel(24, 24) != other.getPixel(24, 24))
+
+        val mix = ShareCardRenderer.render(context, content, ShareTheme.RANDOM_MIX, seed = 7L)
+        assertTrue("随机组合的中间色应该和两端不同",
+            mix.getPixel(24, 24) != mix.getPixel(mix.width / 2, mix.height / 2) ||
+                mix.getPixel(mix.width / 2, mix.height / 2) != mix.getPixel(mix.width - 24, mix.height - 24))
+        listOf(first, same, other, mix).forEach { it.recycle() }
+    }
+
     private fun distinctColors(bitmap: Bitmap): Int {
         val pixels = IntArray(bitmap.width * bitmap.height)
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
