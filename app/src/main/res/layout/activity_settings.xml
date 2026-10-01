@@ -213,7 +213,7 @@
                     style="@style/Text.SectionSubtitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="开启后雪花 / 枫叶 / 花瓣会顺着设备倾斜的方向斜着落（横屏、歪着拿都会跟着变）" />
+                    android:text="开启后雪花 / 枫叶 / 花瓣会顺着设备倾斜的方向斜着落；节日特效（灯笼 / 爱心 / 月饼 / 五角星…）也跟随同一个开关" />
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/switchHoliday"
