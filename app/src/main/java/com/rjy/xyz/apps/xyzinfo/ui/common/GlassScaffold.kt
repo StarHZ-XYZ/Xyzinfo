@@ -212,9 +212,10 @@ object GlassScaffold {
          * 大肥鱼主题：在每个页面的角落摆一条大肥鱼。
          *
          * 用户要求得很明确：**不改任何配色**，只是放一条可爱的大肥鱼。
-         * 所以这里只加一个 ImageView：不点用（isClickable=false，触摸事件会穿透到
-         * 下面的列表/滚动视图）、不挡内容（放在底栏上方或右下角、半透明）、
-         * 有动画总开关时做很轻的上下浮动 + 摆尾。
+         * 所以这里只加一个 ImageView：放在底栏上方或右下角、半透明、不挡内容。
+         *
+         * 1.0.7 起这条鱼**可以点了**：点一下它会甩一下尾巴（绕着鱼身快速来回摆几次再停下），
+         * 顺手给个轻微的回弹缩放。日常那种很轻的浮动 + 摆尾还在，点击只是插播一段动作。
          */
         if (SettingsRepository.deepSeekTheme(activity)) {
             val fishDensity = activity.resources.displayMetrics.density
@@ -224,10 +225,9 @@ object GlassScaffold {
                 setImageResource(R.drawable.ic_deepseek_fish)
                 scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
                 alpha = 0.92f
-                isClickable = false
-                isFocusable = false
-                importantForAccessibility =
-                    android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                isClickable = true
+                isFocusable = true
+                contentDescription = "大肥鱼：点一下它会摆摆尾巴"
                 layoutParams = FrameLayout.LayoutParams(fishWidth, fishHeight).apply {
                     gravity = Gravity.BOTTOM or Gravity.END
                     marginEnd = (12 * fishDensity).toInt()
@@ -279,6 +279,51 @@ object GlassScaffold {
                         }
                     }
                 )
+
+                /*
+                 * 点一下：先停掉日常的小浮动，甩一段尾巴（绕鱼身快速来回摆几次），
+                 * 顺手来一个轻微的回弹缩放；结束后再让日常动作接着跑。
+                 */
+                fish.setOnClickListener { view ->
+                    Anim.pressFeedback(view)
+                    bob.cancel()
+                    sway.cancel()
+                    val wag = android.animation.ObjectAnimator.ofFloat(
+                        fish, "rotation", 0f, 16f, -13f, 9f, -5f, 2f, 0f
+                    ).apply {
+                        duration = 760L
+                        interpolator = android.view.animation.DecelerateInterpolator()
+                    }
+                    val hop = android.animation.ObjectAnimator.ofFloat(
+                        fish, "translationY", 0f, -7f * fishDensity, 0f
+                    ).apply {
+                        duration = 460L
+                        interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                    }
+                    val popX = android.animation.ObjectAnimator.ofFloat(fish, "scaleX", 1f, 1.12f, 1f)
+                    val popY = android.animation.ObjectAnimator.ofFloat(fish, "scaleY", 1f, 1.12f, 1f)
+                    android.animation.AnimatorSet().apply {
+                        playTogether(wag, hop, popX, popY)
+                        addListener(object : android.animation.AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: android.animation.Animator) {
+                                fish.rotation = 0f
+                                fish.translationY = 0f
+                                // 页面还在前台就让日常动作继续；不在就保持静止
+                                val resumed = (activity as? androidx.lifecycle.LifecycleOwner)
+                                    ?.lifecycle?.currentState
+                                    ?.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED) == true
+                                if (resumed) {
+                                    bob.start()
+                                    sway.start()
+                                }
+                            }
+                        })
+                        start()
+                    }
+                }
+            } else {
+                // 动画总开关关掉时只给按压反馈，不做动作
+                fish.setOnClickListener { Anim.pressFeedback(it) }
             }
         }
 

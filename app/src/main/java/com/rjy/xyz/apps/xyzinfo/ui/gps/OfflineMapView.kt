@@ -6,26 +6,40 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Rect
+import android.graphics.Path
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
-import androidx.core.content.ContextCompat
-import com.rjy.xyz.apps.xyzinfo.R
-import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import com.rjy.xyz.apps.xyzinfo.data.LocalMapRepository
+import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
+import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.min
-import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
+import kotlin.math.pow
 
 /**
- * 内置离线地图（等距圆柱投影，1920px 世界地图打包在 assets 里）。
+ * 定位地图（1.0.7 重写）。
  *
- * 关键点是**缩放时的对齐**：放大之后必须让本机位置一直待在视图中心，
- * 而不是让地图围绕它自己的中心（经度 0°，也就是非洲西岸）放大——
- * 之前放大后看到非洲、缩小才看到中国，就是这个原因。
+ * 老版本的问题：底图是打包在 assets 里的世界地图（以及从它裁出来的国家 / 区域图），
+ * 放大到 4 倍以后视野里只剩一片同色的模糊区域 —— 用户看到的就是"定位之后一片空白"。
+ * 离线又没有瓦片服务，靠一张图是解决不了"看细节"的。
+ *
+ * 所以这里改成**以本机位置为中心的米级网格图**：
+ *
+ * * 底图（区域 / 世界地图）只在**缩小时**淡淡地铺一层，当个方位参考，放大后自动淡出；
+ * * 主体是**随缩放自适应的经纬网格**：线距始终保持在 90dp 左右，每条线标出真实经纬度；
+ * * 以本机为圆心画**距离环**（100m / 250m / 500m / 1km …），环上标米数；
+ * * 左下角一条**比例尺**（跟随缩放变化），右上角一个**指北针**；
+ * * 圆心是本机标记 + 精度圈，左上角用等宽字体写出到小数点后 6 位的经纬度。
+ *
+ * 这样无论缩放到哪一档，屏幕上永远有可读的坐标信息，不会再出现"一片空白"。
+ * 所有数据都在本机算，不需要网络、不需要定位权限之外的任何东西。
  */
 class OfflineMapView @JvmOverloads constructor(
     context: Context,
@@ -33,42 +47,40 @@ class OfflineMapView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
     private var map: Bitmap? = null
-    /** 当前使用的地图包（世界 / 国家 / 区域），按定位自动切换。 */
     private var pack: LocalMapRepository.MapPack = LocalMapRepository.WORLD
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply { isFilterBitmap = true }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val markerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val crosshairPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = 1.5f * resources.displayMetrics.density
+    private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = android.graphics.Typeface.MONOSPACE
     }
-    private val sourceRect = Rect()
+    private val chipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val sourceRect = android.graphics.Rect()
     private val destinationRect = RectF()
 
-    private val colorAccent = ThemeColors.accent(context)
+    private val accent = ThemeColors.accent(context)
+    private val density = resources.displayMetrics.density
 
     private var latitude: Double? = null
     private var longitude: Double? = null
     private var accuracyMeters: Float = 0f
 
-    /** 1 = 整幅世界地图铺满，档位越大越近。 */
+    /** 1 = 整幅底图铺满，越大越近；放大到 4 倍以上底图就淡出了。 */
     private var zoom = 1f
-
-    /** 用户手动拖动产生的偏移；缩放/回到本机时会清零。 */
     private var panX = 0f
     private var panY = 0f
-
-    /** 让本机位置保持在视图中心（用户一旦手动拖动就暂时关闭）。 */
     private var followPosition = true
-
-    private var drawWidth = 0f
-    private var drawHeight = 0f
     private var pulse = 0f
 
     private var lastX = 0f
     private var lastY = 0f
-    /** 地图变换日志的节流时间戳。 */
-    private var lastLogAt = 0L
+
+    /** 当前每一像素代表多少米（按纬度修正经度收缩）。 */
+    private var metersPerPixel = 0.0
+    /** 当前网格步长（度）。 */
+    private var gridStep = 1.0
 
     init {
         setWillNotDraw(false)
@@ -80,17 +92,14 @@ class OfflineMapView @JvmOverloads constructor(
         map = LocalMapRepository.load(context, pack)
     }
 
-    /** 经度 → 图内横向比例（按当前地图包自己的 bbox 换算）。 */
-    private fun fx(lon: Double): Float = ((lon - pack.left) / pack.spanLon).toFloat()
+    private val isDark: Boolean
+        get() = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
 
-    /** 纬度 → 图内纵向比例。 */
-    private fun fy(lat: Double): Float = ((pack.top - lat) / pack.spanLat).toFloat()
-
-    /** 当前地图包名字（界面提示用）。 */
+    /** 当前底图包名（界面提示用）。 */
     val currentPackLabel: String get() = pack.label
 
     fun updatePosition(lat: Double?, lon: Double?, accuracy: Float, recenter: Boolean = false) {
-        // 位置落在哪个地图包里就用哪张图：国家优先于区域，最后兜底世界地图
         val target = LocalMapRepository.findFor(lat, lon)
         if (target.code != pack.code) {
             pack = target
@@ -99,12 +108,7 @@ class OfflineMapView @JvmOverloads constructor(
         latitude = lat
         longitude = lon
         accuracyMeters = accuracy
-        if (recenter) {
-            zoom = DEFAULT_ZOOM
-            panX = 0f
-            panY = 0f
-            followPosition = true
-        }
+        if (recenter) resetView()
         invalidate()
     }
 
@@ -124,7 +128,6 @@ class OfflineMapView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** 回到本机：恢复默认缩放并让标记回到中心。 */
     fun resetView() {
         zoom = DEFAULT_ZOOM
         panX = 0f
@@ -139,134 +142,303 @@ class OfflineMapView @JvmOverloads constructor(
         val height = height.toFloat()
         if (width <= 0f || height <= 0f) return
 
-        canvas.drawColor(if (isDark) 0xFF0E1A24.toInt() else 0xFFE8EFF7.toInt())
-        val image = map
-        if (image != null) {
-            val fitScale = min(width / image.width, height / image.height)
-            drawWidth = image.width * fitScale * zoom
-            drawHeight = image.height * fitScale * zoom
-
-            /*
-             * 把「标记点」摆到视图中心。
-             *
-             * 标记在图片坐标系里的位置是 (drawWidth * fx, drawHeight * fy)，
-             * 想让屏幕坐标等于 width/2，就要 left = width/2 - drawWidth * fx。
-             * 之前写成 width/2 - markerX（少了左边那一项），缩放后标记会被推出屏幕，
-             * 视野正好停在地图自己的中心——经度 0°、纬度 0°，也就是非洲西岸几内亚湾。
-             */
-            val lat = latitude
-            val lon = longitude
-            var left: Float
-            var top: Float
-            if (followPosition && lat != null && lon != null) {
-                left = width / 2f - drawWidth * fx(lon)
-                top = height / 2f - drawHeight * fy(lat)
-            } else {
-                left = (width - drawWidth) / 2f + panX
-                top = (height - drawHeight) / 2f + panY
-            }
-            // 边界夹紧：放大后不让地图边缘露进视图里
-            left = if (drawWidth <= width) {
-                (width - drawWidth) / 2f
-            } else {
-                left.coerceIn(width - drawWidth, 0f)
-            }
-            top = if (drawHeight <= height) {
-                (height - drawHeight) / 2f
-            } else {
-                top.coerceIn(height - drawHeight, 0f)
-            }
-            destinationRect.set(left, top, left + drawWidth, top + drawHeight)
-            sourceRect.set(0, 0, image.width, image.height)
-            canvas.drawBitmap(image, sourceRect, destinationRect, bitmapPaint)
-            drawGraticule(canvas, destinationRect)
-            drawMarker(canvas, destinationRect)
-            logTransform(left, top, width, height)
-        }
+        canvas.drawColor(if (isDark) 0xFF0C1620.toInt() else 0xFFEDF3FA.toInt())
+        updateTransform(width, height)
+        drawBaseMap(canvas)
+        drawGraticule(canvas, width, height)
+        drawRings(canvas, width, height)
+        drawMarker(canvas)
+        drawScaleBar(canvas, height)
+        drawCompass(canvas, width)
+        drawCoordinateChip(canvas, width)
     }
+
+    // ---------- 变换（底图、网格、标记共用同一套，缩放拖动永远不会互相错位） ----------
+
+    /** 底图在视图里的位置与尺寸。 */
+    private var drawLeft = 0f
+    private var drawTop = 0f
+    private var drawWidth = 0f
+    private var drawHeight = 0f
+
+    private fun updateTransform(viewWidth: Float, viewHeight: Float) {
+        val image = map
+        val imageWidth = image?.width?.toFloat() ?: pack.spanLon.toFloat()
+        val imageHeight = image?.height?.toFloat() ?: pack.spanLat.toFloat()
+        val fitScale = min(viewWidth / imageWidth, viewHeight / imageHeight)
+        drawWidth = imageWidth * fitScale * zoom
+        drawHeight = imageHeight * fitScale * zoom
+
+        val lat = latitude
+        val lon = longitude
+        if (followPosition && lat != null && lon != null) {
+            drawLeft = viewWidth / 2f - drawWidth * fx(lon)
+            drawTop = viewHeight / 2f - drawHeight * fy(lat)
+        } else {
+            drawLeft = (viewWidth - drawWidth) / 2f + panX
+            drawTop = (viewHeight - drawHeight) / 2f + panY
+        }
+        drawLeft = if (drawWidth <= viewWidth) {
+            (viewWidth - drawWidth) / 2f
+        } else {
+            drawLeft.coerceIn(viewWidth - drawWidth, 0f)
+        }
+        drawTop = if (drawHeight <= viewHeight) {
+            (viewHeight - drawHeight) / 2f
+        } else {
+            drawTop.coerceIn(viewHeight - drawHeight, 0f)
+        }
+
+        // 每像素米数：整幅底图的经度跨度对应的实际距离 ÷ 绘制宽度
+        val centerLat = latitude ?: 0.0
+        metersPerPixel = pack.spanLon * METERS_PER_DEGREE * cos(Math.toRadians(centerLat)) / drawWidth
+        if (!metersPerPixel.isFinite() || metersPerPixel <= 0.0) metersPerPixel = 1.0
+        gridStep = chooseGridStep(metersPerPixel)
+    }
+
+    /** 经度 → 视图横坐标。 */
+    private fun screenX(lon: Double): Float =
+        drawLeft + ((lon - pack.left) / pack.spanLon * drawWidth).toFloat()
+
+    /** 纬度 → 视图纵坐标。 */
+    private fun screenY(lat: Double): Float =
+        drawTop + ((pack.top - lat) / pack.spanLat * drawHeight).toFloat()
+
+    // ---------- 底图（只在缩小时出现） ----------
+
+    private fun drawBaseMap(canvas: Canvas) {
+        val image = map ?: return
+        // 放大到 4 倍以上就不画底图了：那张图的精度到此为止，硬画只会是一片糊
+        val alpha = when {
+            zoom <= 2f -> 150
+            zoom <= 4f -> (150 * (4f - zoom) / 2f).toInt()
+            else -> 0
+        }
+        if (alpha <= 4) return
+
+        destinationRect.set(drawLeft, drawTop, drawLeft + drawWidth, drawTop + drawHeight)
+        sourceRect.set(0, 0, image.width, image.height)
+        bitmapPaint.alpha = alpha
+        canvas.drawBitmap(image, sourceRect, destinationRect, bitmapPaint)
+        bitmapPaint.alpha = 255
+    }
+
+    /** 经度 → 底图横向比例。 */
+    private fun fx(lon: Double): Float = ((lon - pack.left) / pack.spanLon).toFloat()
+
+    /** 纬度 → 底图纵向比例。 */
+    private fun fy(lat: Double): Float = ((pack.top - lat) / pack.spanLat).toFloat()
+
+    // ---------- 经纬网格 ----------
 
     /**
-     * 把地图变换的关键值打到 logcat（每秒最多一条）。
-     *
-     * 之前「放大后跑到非洲」就是这里的算式写错了，留一行日志方便以后在真机上直接核对
-     * 「标记是不是真的落在视图中心」。
+     * 选一个"整"的经纬步长，让屏幕上的线距落在 90dp 左右。
+     * 候选取的都是日常会用的刻度（0.0005° ≈ 55m 一直到 30°），越界自动往回退。
      */
-    private fun logTransform(left: Float, top: Float, viewWidth: Float, viewHeight: Float) {
-        val now = System.currentTimeMillis()
-        if (now - lastLogAt < 1000L) return
-        lastLogAt = now
-        val lat = latitude ?: return
-        val lon = longitude ?: return
-        val markerX = left + drawWidth * ((lon + 180.0) / 360.0).toFloat()
-        val markerY = top + drawHeight * ((90.0 - lat) / 180.0).toFloat()
-        android.util.Log.d(
-            "XyzMap",
-            "zoom=$zoom view=${viewWidth.toInt()}x${viewHeight.toInt()} " +
-                "draw=${drawWidth.toInt()}x${drawHeight.toInt()} " +
-                "left=${left.toInt()} top=${top.toInt()} " +
-                "marker=(${markerX.toInt()}, ${markerY.toInt()}) " +
-                "center=(${(viewWidth / 2).toInt()}, ${(viewHeight / 2).toInt()}) " +
-                "pos=($lat, $lon) follow=$followPosition"
-        )
+    private fun chooseGridStep(metersPerPixel: Double): Double {
+        val targetPx = 110.0 * density
+        val targetMeters = targetPx * metersPerPixel
+        val targetDegrees = targetMeters / (METERS_PER_DEGREE * cos(Math.toRadians(latitude ?: 0.0)))
+        return GRID_STEPS.firstOrNull { it >= targetDegrees } ?: GRID_STEPS.last()
     }
 
-    private val isDark: Boolean
-        get() = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-
-    private fun drawGraticule(canvas: Canvas, rect: RectF) {
-        val density = resources.displayMetrics.density
+    private fun drawGraticule(canvas: Canvas, width: Float, height: Float) {
+        val lat = latitude
+        val lon = longitude
         gridPaint.strokeWidth = 1f * density
-        gridPaint.color = if (isDark) 0x33FFFFFF else 0x22000000
-        for (lon in -180..180 step 30) {
-            val x = rect.left + rect.width() * ((lon + 180f) / 360f)
-            canvas.drawLine(x, rect.top, x, rect.bottom, gridPaint)
+        // 网格线是放大后的主要信息，对比度给足（太淡就等于没有）
+        gridPaint.color = if (isDark) 0x4DFFFFFF else 0x38000000
+        textPaint.textSize = 10f * density
+        textPaint.color = if (isDark) 0x99FFFFFF.toInt() else 0x99000000.toInt()
+
+        // 没有定位就只画一个装饰性网格，避免纯色空白
+        val centerLat = lat ?: ((pack.top + pack.bottom) / 2.0)
+        val centerLon = lon ?: ((pack.left + pack.right) / 2.0)
+        val pxPerDegreeLon = drawWidth / pack.spanLon
+        val pxPerDegreeLat = drawHeight / pack.spanLat
+        val halfLon = (width / 2f) / pxPerDegreeLon
+        val halfLat = (height / 2f) / pxPerDegreeLat
+
+        val startLon = floor((centerLon - halfLon) / gridStep) * gridStep
+        val endLon = centerLon + halfLon
+        var value = startLon
+        while (value <= endLon) {
+            val x = screenX(value)
+            if (x >= 0f && x <= width) {
+                canvas.drawLine(x, 0f, x, height, gridPaint)
+                canvas.drawText(formatLon(value), x + 4f * density, height - 42f * density, textPaint)
+            }
+            value += gridStep
         }
-        for (lat in -60..60 step 30) {
-            val y = rect.top + rect.height() * ((90f - lat) / 180f)
-            canvas.drawLine(rect.left, y, rect.right, y, gridPaint)
+
+        val startLat = floor((centerLat - halfLat) / gridStep) * gridStep
+        val endLat = centerLat + halfLat
+        var latValue = startLat
+        while (latValue <= endLat) {
+            val y = screenY(latValue)
+            if (y >= 0f && y <= height) {
+                canvas.drawLine(0f, y, width, y, gridPaint)
+                canvas.drawText(formatLat(latValue), 6f * density, y - 5f * density, textPaint)
+            }
+            latValue += gridStep
         }
-        gridPaint.color = if (isDark) 0x55FFFFFF else 0x40000000
-        val equatorY = rect.top + rect.height() * 0.5f
-        canvas.drawLine(rect.left, equatorY, rect.right, equatorY, gridPaint)
     }
 
-    private fun drawMarker(canvas: Canvas, rect: RectF) {
+    // ---------- 距离环 ----------
+
+    private fun drawRings(canvas: Canvas, width: Float, height: Float) {
         val lat = latitude ?: return
         val lon = longitude ?: return
-        val x = rect.left + rect.width() * fx(lon)
-        val y = rect.top + rect.height() * fy(lat)
-        val density = resources.displayMetrics.density
+        val cx = screenX(lon)
+        val cy = screenY(lat)
+        val step = niceDistance(max(metersPerPixel * height * 0.22, 50.0))
+        ringPaint.strokeWidth = 1f * density
+        textPaint.textSize = 10f * density
+        var ring = step
+        while (ring <= 20_000.0) {
+            val radiusPx = (ring / metersPerPixel).toFloat()
+            if (radiusPx > max(width, height) * 1.5f) break
+            if (radiusPx >= 18f * density) {
+                ringPaint.color = if (isDark) 0x597FE8E0 else 0x4D0E7C74
+                canvas.drawCircle(cx, cy, radiusPx, ringPaint)
+                textPaint.color = if (isDark) 0x99FFFFFF.toInt() else 0x99000000.toInt()
+                canvas.drawText(distanceLabel(ring), cx + 4f * density, cy - radiusPx + 11f * density, textPaint)
+            }
+            ring = if (ring < 1000) ring * 2 else ring + step
+        }
+    }
+
+    /** 取 1/2/5×10^n 里最接近 [value] 的"整"距离。 */
+    private fun niceDistance(value: Double): Double {
+        if (value <= 0) return 100.0
+        val exponent = floor(log10(value))
+        val base = 10.0.pow(exponent)
+        val normalized = value / base
+        val pick = when {
+            normalized <= 1.0 -> 1.0
+            normalized <= 2.0 -> 2.0
+            normalized <= 5.0 -> 5.0
+            else -> 10.0
+        }
+        return pick * base
+    }
+
+    private fun distanceLabel(meters: Double): String = when {
+        meters >= 1000 -> String.format(Locale.US, "%.0f km", meters / 1000.0)
+        else -> String.format(Locale.US, "%.0f m", meters)
+    }
+
+    // ---------- 标记 / 比例尺 / 指北针 / 坐标 ----------
+
+    private fun drawMarker(canvas: Canvas) {
+        val lat = latitude ?: return
+        val lon = longitude ?: return
+        val cx = screenX(lon)
+        val cy = screenY(lat)
 
         if (accuracyMeters > 0f) {
-            val metersPerPixel = 111_320.0 * 360.0 / rect.width() * cos(Math.toRadians(lat))
             val radius = (accuracyMeters / metersPerPixel).toFloat()
-                .coerceIn(4f * density, rect.width())
-            markerPaint.color = withAlpha(colorAccent, 0x33)
-            canvas.drawCircle(x, y, radius, markerPaint)
-            crosshairPaint.color = withAlpha(colorAccent, 0x66)
-            canvas.drawCircle(x, y, radius, crosshairPaint)
+                .coerceIn(6f * density, max(this.width.toFloat(), this.height.toFloat()))
+            markerPaint.color = withAlpha(accent, 0x26)
+            canvas.drawCircle(cx, cy, radius, markerPaint)
+            linePaint.strokeWidth = 1.2f * density
+            linePaint.color = withAlpha(accent, 0x66)
+            canvas.drawCircle(cx, cy, radius, linePaint)
         }
 
-        markerPaint.color = withAlpha(colorAccent, (70 * (1f - pulse)).toInt())
-        canvas.drawCircle(x, y, (10f + 16f * pulse) * density, markerPaint)
-        markerPaint.color = colorAccent
-        canvas.drawCircle(x, y, 5.5f * density, markerPaint)
+        markerPaint.color = withAlpha(accent, (70 * (1f - pulse)).toInt())
+        canvas.drawCircle(cx, cy, (10f + 16f * pulse) * density, markerPaint)
+        markerPaint.color = accent
+        canvas.drawCircle(cx, cy, 6f * density, markerPaint)
         markerPaint.color = Color.WHITE
-        canvas.drawCircle(x, y, 2.2f * density, markerPaint)
+        canvas.drawCircle(cx, cy, 2.4f * density, markerPaint)
 
-        crosshairPaint.color = withAlpha(colorAccent, 0xCC)
-        canvas.drawLine(x - 16f * density, y, x + 16f * density, y, crosshairPaint)
-        canvas.drawLine(x, y - 16f * density, x, y + 16f * density, crosshairPaint)
+        linePaint.strokeWidth = 1.6f * density
+        linePaint.color = withAlpha(accent, 0xCC)
+        val arm = 18f * density
+        canvas.drawLine(cx - arm, cy, cx + arm, cy, linePaint)
+        canvas.drawLine(cx, cy - arm, cx, cy + arm, linePaint)
 
-        if (!SettingsRepository.animationsEnabled(context)) {
-            pulse = 0f
-        } else {
+        if (SettingsRepository.animationsEnabled(context)) {
             pulse += 0.035f
             if (pulse >= 1f) pulse = 0f
             postInvalidateOnAnimation()
+        } else {
+            pulse = 0f
         }
     }
+
+    private fun drawScaleBar(canvas: Canvas, height: Float) {
+        val targetPx = 90f * density
+        val meters = niceDistance(targetPx * metersPerPixel)
+        val px = (meters / metersPerPixel).toFloat()
+        val left = 14f * density
+        val bottom = height - 14f * density
+        linePaint.strokeWidth = 2f * density
+        linePaint.color = if (isDark) 0xCCFFFFFF.toInt() else 0xCC000000.toInt()
+        canvas.drawLine(left, bottom, left + px, bottom, linePaint)
+        canvas.drawLine(left, bottom - 5f * density, left, bottom + 5f * density, linePaint)
+        canvas.drawLine(left + px, bottom - 5f * density, left + px, bottom + 5f * density, linePaint)
+        textPaint.textSize = 10f * density
+        textPaint.color = linePaint.color
+        canvas.drawText(distanceLabel(meters), left + 4f * density, bottom - 8f * density, textPaint)
+    }
+
+    private fun drawCompass(canvas: Canvas, width: Float) {
+        val cx = width - 30f * density
+        val cy = 44f * density
+        val r = 16f * density
+        linePaint.strokeWidth = 1.2f * density
+        linePaint.color = if (isDark) 0x66FFFFFF else 0x44000000
+        canvas.drawCircle(cx, cy, r, linePaint)
+        val arrow = Path().apply {
+            moveTo(cx, cy - r * 0.8f)
+            lineTo(cx - r * 0.36f, cy + r * 0.55f)
+            lineTo(cx, cy + r * 0.25f)
+            lineTo(cx + r * 0.36f, cy + r * 0.55f)
+            close()
+        }
+        markerPaint.color = if (isDark) 0xE6FFFFFF.toInt() else 0xE6000000.toInt()
+        canvas.drawPath(arrow, markerPaint)
+        textPaint.textSize = 9f * density
+        textPaint.color = markerPaint.color
+        textPaint.textAlign = Paint.Align.CENTER
+        canvas.drawText("N", cx, cy - r - 4f * density, textPaint)
+        textPaint.textAlign = Paint.Align.LEFT
+    }
+
+    /** 左上角坐标条：没有定位时给出提示，绝不留白。 */
+    private fun drawCoordinateChip(canvas: Canvas, width: Float) {
+        val lat = latitude
+        val lon = longitude
+        val text = if (lat != null && lon != null) {
+            String.format(Locale.US, "%.6f°N  %.6f°E", lat, lon).let {
+                if (lat < 0 || lon < 0) {
+                    String.format(Locale.US, "%s  %s", formatLat(lat), formatLon(lon))
+                } else {
+                    it
+                }
+            }
+        } else {
+            "等待定位…（底图：${pack.label}）"
+        }
+        textPaint.textSize = 11f * density
+        val padding = 8f * density
+        val textWidth = textPaint.measureText(text)
+        val rect = RectF(12f * density, 12f * density, min(12f * density + textWidth + padding * 2, width - 12f * density), 40f * density)
+        chipPaint.color = if (isDark) 0x99000000.toInt() else 0x99FFFFFF.toInt()
+        canvas.drawRoundRect(rect, 8f * density, 8f * density, chipPaint)
+        textPaint.color = if (isDark) 0xFFFFFFFF.toInt() else 0xFF11151A.toInt()
+        canvas.drawText(text, rect.left + padding, rect.top + 19f * density, textPaint)
+    }
+
+    private fun formatLat(value: Double): String =
+        String.format(Locale.US, "%.6f°%s", abs(value), if (value >= 0) "N" else "S")
+
+    private fun formatLon(value: Double): String =
+        String.format(Locale.US, "%.6f°%s", abs(value), if (value >= 0) "E" else "W")
+
+    // ---------- 触摸 ----------
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
@@ -279,13 +451,10 @@ class OfflineMapView @JvmOverloads constructor(
             MotionEvent.ACTION_MOVE -> {
                 val dx = event.x - lastX
                 val dy = event.y - lastY
-                if (zoom > 1f) {
-                    panX += dx
-                    panY += dy
-                    // 用户手动拖动后就不再强制居中，直到点「回到本机」
-                    followPosition = false
-                    invalidate()
-                }
+                panX += dx
+                panY += dy
+                followPosition = false
+                invalidate()
                 lastX = event.x
                 lastY = event.y
                 return true
@@ -300,8 +469,15 @@ class OfflineMapView @JvmOverloads constructor(
         (color and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
 
     private companion object {
-        const val MAP_ASSET = "world_map.png"
-        const val DEFAULT_ZOOM = 4f
+        /** 1° 纬度的长度（米）。经度方向要再乘 cos(纬度)。 */
+        const val METERS_PER_DEGREE = 111_320.0
+        const val DEFAULT_ZOOM = 2f
         const val MAX_ZOOM = 64f
+
+        /** 网格步长候选（度）：从 0.0005°（约 55 米）到 30°。 */
+        val GRID_STEPS = listOf(
+            0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1,
+            0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 15.0, 30.0
+        )
     }
 }

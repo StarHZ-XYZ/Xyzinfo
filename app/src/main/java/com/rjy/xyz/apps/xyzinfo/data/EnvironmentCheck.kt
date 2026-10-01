@@ -48,15 +48,54 @@ object EnvironmentCheck {
         "com.ludashi.dualspace", "com.qihoo.magic"
     )
 
+    /**
+     * root / 模块管理器类应用（1.0.7 新增）。
+     *
+     * 这些不一定代表"被 root"，但装了就说明用户有意在折腾环境，
+     * 所以给 RISK 并写明装的是哪个。
+     */
+    private val TOOL_PACKAGES = mapOf(
+        "com.topjohnwu.magisk" to "Magisk",
+        "io.github.huskydg.magisk" to "Magisk Delta",
+        "me.bmax.apatch" to "APatch",
+        "com.kingroot.kinguser" to "KingRoot",
+        "com.kingo.root" to "KingoRoot",
+        "com.zachspong.temprootremovejb" to "临时 root",
+        "de.robv.android.xposed.installer" to "Xposed Installer",
+        "org.meowcat.edxposed.manager" to "EdXposed Manager",
+        "org.lsposed.manager" to "LSPosed Manager",
+        "com.sollyu.android.appenv" to "应用变量",
+        "com.chelpus.lackypatch" to "幸运破解器",
+        "me.weishu.exp" to "太极"
+    )
+
+    /** 游戏修改器 / 虚拟定位 / 自动化脚本类（常见于"检测外挂"的场景）。 */
+    private val CHEAT_PACKAGES = mapOf(
+        "catch_.me_.if_.you_.can_" to "GameGuardian",
+        "com.cyjh.mobileanjian" to "按键精灵",
+        "com.goldou.mobileanjian" to "按键精灵（旧版）",
+        "com.lerist.fakelocation" to "Fake Location",
+        "com.blogspot.newapphorizons.fakegps" to "Fake GPS",
+        "com.lexa.fakegps" to "Fake GPS（旧版）",
+        "com.rong.yxt" to "虚拟定位工具"
+    )
+
     fun run(context: Context): Report {
         val items = mutableListOf<Item>()
         items += checkRootFiles(context)
         items += checkBuildTags()
+        items += checkRomIntegrity()
+        items += checkBootState()
+        items += checkMounts()
         items += checkDebugger(context)
         items += checkSelinux()
         items += checkEmulator()
         items += checkXposed()
         items += checkCloneApps(context)
+        items += checkRiskPackages(context)
+        items += checkAccessibilityServices(context)
+        items += checkDeviceAdmins(context)
+        items += checkProxyAndVpn(context)
         items += checkUserCertificates(context)
         return Report(items)
     }
@@ -152,6 +191,188 @@ object EnvironmentCheck {
             Item("分身 / 双开类应用", Level.SAFE, "未安装常见分身类应用")
         } else {
             Item("分身 / 双开类应用", Level.NOTICE, "已安装：${installed.joinToString("、")}")
+        }
+    }
+
+    // ---------- 1.0.7 新增的检测项 ----------
+
+    /**
+     * 系统属性读取：优先用隐藏的 `android.os.SystemProperties`，
+     * 拿不到就退回读 `/system/build.prop` 之类的文本（部分机型 SELinux 会拦）。
+     */
+    private fun systemProperty(key: String): String? {
+        runCatching {
+            val clazz = Class.forName("android.os.SystemProperties")
+            val get = clazz.getMethod("get", String::class.java)
+            val value = get.invoke(null, key) as? String
+            if (!value.isNullOrBlank()) return value
+        }
+        listOf("/system/build.prop", "/vendor/build.prop", "/odm/etc/build.prop").forEach { path ->
+            runCatching {
+                File(path).readLines()
+                    .firstOrNull { it.startsWith("$key=") }
+                    ?.substringAfter('=')
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { return it }
+            }
+        }
+        return null
+    }
+
+    /** ROM 是否是可调试 / 不安全的构建（userdebug、eng、ro.debuggable=1、ro.secure=0）。 */
+    private fun checkRomIntegrity(): Item {
+        val type = systemProperty("ro.build.type")
+        val debuggable = systemProperty("ro.debuggable")
+        val secure = systemProperty("ro.secure")
+        val marks = buildList {
+            if (type == "userdebug" || type == "eng") add("ro.build.type=$type")
+            if (debuggable == "1") add("ro.debuggable=1")
+            if (secure == "0") add("ro.secure=0")
+        }
+        return if (marks.isEmpty()) {
+            Item(
+                "ROM 构建类型",
+                Level.SAFE,
+                "正式版构建（ro.build.type=${type ?: "user"}，ro.secure=${secure ?: "1"}）"
+            )
+        } else {
+            Item("ROM 构建类型", Level.NOTICE, "非正式版构建：${marks.joinToString("、")}（第三方 ROM 常见）")
+        }
+    }
+
+    /** 引导链状态：verified boot 颜色 + bootloader 是否上锁。 */
+    private fun checkBootState(): Item {
+        val state = systemProperty("ro.boot.verifiedbootstate")
+        val locked = systemProperty("ro.boot.flash.locked")
+        val verity = systemProperty("ro.boot.veritymode")
+        val marks = buildList {
+            if (state == "orange") add("verifiedbootstate=orange（引导链被改过）")
+            if (state == "yellow") add("verifiedbootstate=yellow（自定义密钥）")
+            if (locked == "0") add("bootloader 已解锁")
+            if (verity == "disabled") add("dm-verity 已关闭")
+        }
+        return when {
+            marks.isEmpty() -> Item(
+                "引导链 / 锁状态",
+                Level.SAFE,
+                "state=${state ?: "未上报"}，locked=${locked ?: "1"}，verity=${verity ?: "enforcing"}"
+            )
+
+            state == "orange" || locked == "0" ->
+                Item("引导链 / 锁状态", Level.RISK, marks.joinToString("；"))
+
+            else -> Item("引导链 / 锁状态", Level.NOTICE, marks.joinToString("；"))
+        }
+    }
+
+    /** 挂载痕迹：Magisk 会把模块挂到 /system 上，overlay 与 rw 挂载也要点出来。 */
+    private fun checkMounts(): Item {
+        val lines = runCatching { File("/proc/mounts").readLines() }.getOrDefault(emptyList())
+        val magisk = lines.filter { it.contains("magisk", true) }
+        val overlay = lines.filter {
+            it.contains("/system") && (it.contains("overlay") || it.contains("tmpfs"))
+        }
+        val rwSystem = lines.filter {
+            it.contains("/system ") && it.split(" ").getOrNull(3)?.contains("rw") == true
+        }
+        return when {
+            magisk.isNotEmpty() -> Item(
+                "挂载痕迹",
+                Level.RISK,
+                "发现 magisk 挂载：${magisk.first().take(90)}"
+            )
+
+            overlay.isNotEmpty() || rwSystem.isNotEmpty() -> Item(
+                "挂载痕迹",
+                Level.NOTICE,
+                "系统分区存在 overlay / 可写挂载（${(overlay + rwSystem).size} 条）"
+            )
+
+            else -> Item("挂载痕迹", Level.SAFE, "挂载表里没有 magisk / overlay 痕迹")
+        }
+    }
+
+    /** 已安装的风险类应用（root 管理器、模块管理器、修改器、虚拟定位）。 */
+    private fun checkRiskPackages(context: Context): Item {
+        fun installed(map: Map<String, String>): List<String> = map.filter { (pkg, _) ->
+            runCatching {
+                context.packageManager.getPackageInfo(pkg, 0)
+                true
+            }.getOrDefault(false)
+        }.values.toList()
+
+        val tools = installed(TOOL_PACKAGES)
+        val cheats = installed(CHEAT_PACKAGES)
+        return when {
+            tools.isNotEmpty() -> Item(
+                "风险类应用",
+                Level.RISK,
+                "已安装：${tools.joinToString("、")}" + if (cheats.isNotEmpty()) "；还有 ${cheats.joinToString("、")}" else ""
+            )
+
+            cheats.isNotEmpty() -> Item("风险类应用", Level.NOTICE, "已安装：${cheats.joinToString("、")}")
+            else -> Item("风险类应用", Level.SAFE, "没有装常见的 root 管理器 / 修改器 / 虚拟定位")
+        }
+    }
+
+    /** 无障碍服务：自动化脚本和不少恶意软件都靠它，开着就提醒一句。 */
+    private fun checkAccessibilityServices(context: Context): Item = runCatching {
+        val raw = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ).orEmpty()
+        val services = raw.split(':').filter { it.isNotBlank() }
+        if (services.isEmpty()) {
+            Item("无障碍服务", Level.SAFE, "没有开启任何无障碍服务")
+        } else {
+            Item(
+                "无障碍服务",
+                Level.NOTICE,
+                "已开启 ${services.size} 个：${services.joinToString("、") { it.substringBefore('/') }.take(160)}"
+            )
+        }
+    }.getOrElse { Item("无障碍服务", Level.NOTICE, "读取失败：${it.message}") }
+
+    /** 设备管理员（部分企业管控 / 恶意软件会注册成设备管理员）。 */
+    private fun checkDeviceAdmins(context: Context): Item = runCatching {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE)
+            as? android.app.admin.DevicePolicyManager
+        val admins = dpm?.activeAdmins.orEmpty()
+        if (admins.isEmpty()) {
+            Item("设备管理员", Level.SAFE, "没有应用注册成设备管理员")
+        } else {
+            Item(
+                "设备管理员",
+                Level.NOTICE,
+                admins.joinToString("、") { it.packageName }
+            )
+        }
+    }.getOrElse { Item("设备管理员", Level.NOTICE, "读取失败：${it.message}") }
+
+    /** 全局代理 / VPN：抓包与"改环境"几乎都会先动这两样。 */
+    private fun checkProxyAndVpn(context: Context): Item {
+        val proxyHost = runCatching {
+            Settings.Global.getString(context.contentResolver, Settings.Global.HTTP_PROXY)
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+        val systemProxy = System.getProperty("http.proxyHost")?.takeIf { it.isNotBlank() }
+        val vpn = runCatching {
+            java.net.NetworkInterface.getNetworkInterfaces()?.toList()
+                ?.map { it.name }
+                ?.filter { name ->
+                    name.startsWith("tun") || name.startsWith("ppp") || name.startsWith("wg")
+                }
+                .orEmpty()
+        }.getOrDefault(emptyList())
+        val marks = buildList {
+            proxyHost?.let { add("全局代理 $it") }
+            systemProxy?.let { add("Java 代理 $it") }
+            if (vpn.isNotEmpty()) add("虚拟网卡 ${vpn.joinToString("、")}")
+        }
+        return if (marks.isEmpty()) {
+            Item("代理 / VPN", Level.SAFE, "没有设置全局代理，也没有虚拟网卡")
+        } else {
+            Item("代理 / VPN", Level.NOTICE, marks.joinToString("；") + "（抓包 / 改环境常见前提）")
         }
     }
 
