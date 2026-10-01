@@ -124,7 +124,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
         val density = resources.displayMetrics.density
-        val size = (22 * density).toInt()
+        // 26dp：真 logo 比原来的字母徽章细节多，给大一点才看得清
+        val size = (26 * density).toInt()
         binding.tvDeviceName.setCompoundDrawablesWithIntrinsicBounds(
             BrandLogoCatalog.drawable(this, brand, size), null, null, null
         )
@@ -253,13 +254,6 @@ class MainActivity : AppCompatActivity() {
             R.drawable.ic_module_network
         ) {
             open(com.rjy.xyz.apps.xyzinfo.ui.network.NetworkSpeedActivity::class.java)
-        }
-        addEntryCard(
-            "品牌图鉴",
-            "手机品牌 / 芯片厂商 logo 全集（全部矢量，放大不糊）",
-            R.drawable.ic_module_logos
-        ) {
-            open(com.rjy.xyz.apps.xyzinfo.ui.logos.LogoGalleryActivity::class.java)
         }
     }
 

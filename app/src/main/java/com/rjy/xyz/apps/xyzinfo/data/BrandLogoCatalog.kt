@@ -35,7 +35,17 @@ object BrandLogoCatalog {
          * 为 0 时退回 [badge] 文字徽章 —— 品牌表里几百个品牌不可能人人都有矢量图，
          * 有 logo 的用 logo、没有的用统一风格徽章，观感才一致。
          */
-        val logoRes: Int = 0
+        val logoRes: Int = 0,
+        /**
+         * logo 自带的衬底：0 = 不需要，1 = 垫一层浅色板（logo 本身近黑），
+         * 2 = 垫一层深色板（logo 本身接近纯白）。
+         *
+         * 为什么需要：OPPO / 索尼 / 荣耀的 logo 是纯黑字标，深色模式下会糊在背景里；
+         * Nothing / vivo / 黑莓是白色字标，浅色卡片上直接看不见。
+         * 与其强行给 logo 改色（品牌色就没了），不如垫一块对比色底板 —— 既保住原色，
+         * 两种主题下都清清楚楚，观感也更像一枚"图标"。
+         */
+        val logoTile: Int = 0
     )
 
     /**
@@ -48,11 +58,11 @@ object BrandLogoCatalog {
         Brand(listOf("redmi", "红米"), "红米", "RD", 0xFFFF6900, R.drawable.ic_logo_xiaomi),
         Brand(listOf("poco"), "POCO", "PC", 0xFFFFC400),
         Brand(listOf("huawei", "华为", "hwd"), "华为", "HW", 0xFFCF0A2C),
-        Brand(listOf("honor", "荣耀"), "荣耀", "HN", 0xFF0A84FF, R.drawable.ic_logo_honor),
-        Brand(listOf("oppo", "欧珀"), "OPPO", "OP", 0xFF1C9E4C, R.drawable.ic_logo_oppo),
+        Brand(listOf("honor", "荣耀"), "荣耀", "HN", 0xFF0A84FF, R.drawable.ic_logo_honor, 1),
+        Brand(listOf("oppo", "欧珀"), "OPPO", "OP", 0xFF1C9E4C, R.drawable.ic_logo_oppo, 1),
         Brand(listOf("oneplus", "一加"), "一加", "1+", 0xFFEB0028, R.drawable.ic_logo_oneplus),
         Brand(listOf("realme", "真我"), "真我", "RM", 0xFFD8A200, R.drawable.ic_logo_realme),
-        Brand(listOf("vivo", "维沃"), "vivo", "VV", 0xFF415FFF, R.drawable.ic_logo_vivo),
+        Brand(listOf("vivo", "维沃"), "vivo", "VV", 0xFF415FFF, R.drawable.ic_logo_vivo, 2),
         Brand(listOf("iqoo"), "iQOO", "iQ", 0xFF415FFF, R.drawable.ic_logo_iqoo),
         Brand(listOf("meizu", "魅族"), "魅族", "MZ", 0xFF00A9E0, R.drawable.ic_logo_meizu),
         Brand(listOf("zte", "中兴"), "中兴", "ZT", 0xFF0066B3, R.drawable.ic_logo_zte),
@@ -94,7 +104,7 @@ object BrandLogoCatalog {
         // ── 韩日 ──
         Brand(listOf("samsung", "三星"), "三星", "SS", 0xFF1428A0, R.drawable.ic_logo_samsung),
         Brand(listOf("lg electronics", "lge", "lg-"), "LG", "LG", 0xFFA50034),
-        Brand(listOf("sony", "索尼"), "索尼", "SN", 0xFF1A1A1A, R.drawable.ic_logo_sony),
+        Brand(listOf("sony", "索尼"), "索尼", "SN", 0xFF1A1A1A, R.drawable.ic_logo_sony, 1),
         Brand(listOf("sharp", "夏普"), "夏普", "SH", 0xFFE60012),
         Brand(listOf("kyocera", "京瓷"), "京瓷", "KY", 0xFFD32F2F),
         Brand(listOf("fujitsu", "富士通"), "富士通", "FJ", 0xFFD50000),
@@ -108,7 +118,7 @@ object BrandLogoCatalog {
         Brand(listOf("google"), "谷歌", "GO", 0xFF4285F4, R.drawable.ic_logo_google),
         Brand(listOf("nokia", "诺基亚"), "诺基亚", "NK", 0xFF124191, R.drawable.ic_logo_nokia),
         Brand(listOf("htc", "宏达电"), "HTC", "HTC", 0xFF0F9D58),
-        Brand(listOf("blackberry", "rim", "黑莓"), "黑莓", "BB", 0xFF1A1A1A, R.drawable.ic_logo_blackberry),
+        Brand(listOf("blackberry", "rim", "黑莓"), "黑莓", "BB", 0xFF1A1A1A, R.drawable.ic_logo_blackberry, 2),
         Brand(listOf("nvidia"), "NVIDIA", "NV", 0xFF76B900),
         Brand(listOf("amazon"), "Amazon", "AZ", 0xFFFF9900),
         Brand(listOf("microsoft", "surface"), "微软", "MS", 0xFF0078D4),
@@ -168,7 +178,7 @@ object BrandLogoCatalog {
         Brand(listOf("evercoss"), "Evercoss", "EC", 0xFFD32F2F),
         Brand(listOf("mito"), "MITO", "MI", 0xFF29B6F6),
         Brand(listOf("pixel", "google pixel"), "Pixel", "PX", 0xFF4285F4),
-        Brand(listOf("nothing", "nothing phone"), "Nothing", "NO", 0xFF1A1A1A, R.drawable.ic_logo_nothing)
+        Brand(listOf("nothing", "nothing phone"), "Nothing", "NO", 0xFF1A1A1A, R.drawable.ic_logo_nothing, 2)
     )
 
     /**
@@ -206,8 +216,12 @@ object BrandLogoCatalog {
         if (brand.logoRes != 0) {
             val logo = androidx.appcompat.content.res.AppCompatResources.getDrawable(context, brand.logoRes)
             if (logo != null) {
-                logo.setBounds(0, 0, sizePx, sizePx)
-                return logo
+                if (brand.logoTile == 0) {
+                    logo.setBounds(0, 0, sizePx, sizePx)
+                    return logo
+                }
+                // 近黑 / 近白的单色 logo：垫一块对比色底板，两种主题下都看得清
+                return tiledLogo(context, logo, sizePx, brand.logoTile == 2)
             }
         }
         val size = sizePx.coerceAtLeast(16)
@@ -246,6 +260,28 @@ object BrandLogoCatalog {
         canvas.drawText(brand.badge, size / 2f, baseline, paint)
 
         return BitmapDrawable(context.resources, bitmap)
+    }
+
+    /**
+     * 给 logo 垫一块圆角底板（[darkTile] = true 用深色板配浅色 logo）。
+     *
+     * 用 LayerDrawable 而不是先画成位图：矢量 logo 直接按目标尺寸绘制，
+     * 放大到任何尺寸都是清晰的；底板也只是个 shape drawable，几乎不占内存。
+     */
+    private fun tiledLogo(context: Context, logo: Drawable, sizePx: Int, darkTile: Boolean): Drawable {
+        val tileColor = if (darkTile) 0xFF23272E.toInt() else 0xFFFFFFFF.toInt()
+        val strokeColor = if (darkTile) 0xFF3A4048.toInt() else 0xFFD8DEE7.toInt()
+        val tile = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = sizePx * 0.30f
+            setColor(tileColor)
+            setStroke((sizePx * 0.045f).toInt().coerceAtLeast(1), strokeColor)
+        }
+        val inset = (sizePx * 0.18f).toInt()
+        logo.setBounds(inset, inset, sizePx - inset, sizePx - inset)
+        return android.graphics.drawable.LayerDrawable(arrayOf(tile, logo)).apply {
+            setBounds(0, 0, sizePx, sizePx)
+        }
     }
 
     private fun darken(color: Int, factor: Float): Int {
