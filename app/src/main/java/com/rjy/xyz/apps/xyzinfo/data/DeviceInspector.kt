@@ -57,7 +57,7 @@ object DeviceInspector {
 
         // 2) 机型库命中情况（有没有上市机型名）
         val deviceName = runCatching {
-            DeviceNameRepository.lookup(context, Build.DEVICE, Build.MODEL)
+            DeviceNameRepository.lookup(context)
         }.getOrNull()
         if (deviceName.isNullOrBlank()) {
             findings += Finding(

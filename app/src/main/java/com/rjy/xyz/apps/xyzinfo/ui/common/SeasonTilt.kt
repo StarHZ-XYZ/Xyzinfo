@@ -1,5 +1,6 @@
 package com.rjy.xyz.apps.xyzinfo.ui.common
 
+import android.view.Surface
 import kotlin.math.pow
 
 /**
@@ -22,6 +23,8 @@ import kotlin.math.pow
  */
 object SeasonTilt {
 
+    data class ScreenGravity(val x: Float, val y: Float)
+
     /** 最大下落偏角（弧度）。57° 已经很夸张了，配套的贴图倾斜也按它来。 */
     const val MAX_TILT_RADIANS = 1.0f
 
@@ -43,6 +46,24 @@ object SeasonTilt {
         val normalized = (magnitude / (1f - DEAD_ZONE)).coerceIn(0f, 1f)
         val shaped = normalized.toDouble().pow(SHAPING).toFloat()
         return if (raw < 0f) -shaped * MAX_TILT_RADIANS else shaped * MAX_TILT_RADIANS
+    }
+
+    /**
+     * 把设备坐标系里的加速度读数转换到**当前显示坐标系**。
+     *
+     * 传感器坐标固定跟随手机硬件，不会因为横屏自动换轴。只读 X 轴时，
+     * 横屏左右倾斜主要落在传感器 Y 轴上，所以旧逻辑几乎不动。
+     * 这里按 [rotation] 做轴交换与符号修正后再交给 [tiltFromAccelerometerX]。
+     */
+    fun toScreenGravity(
+        accelerometerX: Float,
+        accelerometerY: Float,
+        rotation: Int
+    ): ScreenGravity = when (rotation) {
+        Surface.ROTATION_90 -> ScreenGravity(-accelerometerY, accelerometerX)
+        Surface.ROTATION_180 -> ScreenGravity(-accelerometerX, -accelerometerY)
+        Surface.ROTATION_270 -> ScreenGravity(accelerometerY, -accelerometerX)
+        else -> ScreenGravity(accelerometerX, accelerometerY)
     }
 
     /** 标准重力加速度（SensorManager.GRAVITY_EARTH 的数值，放这里方便单测）。 */

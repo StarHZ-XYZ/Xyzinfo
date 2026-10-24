@@ -23,7 +23,8 @@ object DeviceFacts {
         "honor" to "HONOR",
         "samsung" to "Samsung",
         "oppo" to "OPPO",
-        "vivo" to "vivo"
+        "vivo" to "vivo",
+        "iqoo" to "iQOO"
     )
 
     /** 品牌 + 型号拼出的友好设备名，例如 “Xiaomi 15 Pro”。 */

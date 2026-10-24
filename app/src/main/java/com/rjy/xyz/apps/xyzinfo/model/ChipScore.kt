@@ -17,8 +17,14 @@ data class ChipScore(
     val single: Int,
     val multi: Int,
     val gpu: Int,
-    val year: Int
+    val year: Int,
+    /** 发布日期（YYYY-MM-DD 或 YYYY-MM）；老芯片未核实时为空。 */
+    val releaseDate: String? = null
 ) {
+    /** 排行榜时间列：优先显示发布日期，老数据才退回年份。 */
+    val dateLabel: String
+        get() = releaseDate?.takeIf { it.isNotBlank() } ?: "${year}年"
+
     /** 综合指数：以骁龙 778G = 1000 归一（单核 / 多核 / GPU 加权）。 */
     val composite: Int
         get() = (

@@ -121,7 +121,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="3dp"
-                        android:text="分数在同一刻度上，可直接和排行榜里的参考机型比较" />
+                        android:text="XYZ Index v2 · 骁龙 778G = 1000；与外部 Geekbench 参考榜分开显示" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -139,7 +139,7 @@
                             android:layout_height="wrap_content"
                             android:paddingTop="11dp"
                             android:paddingBottom="11dp"
-                            android:text="CPU 单核：—" />
+                            android:text="XYZ 单核指数：—" />
 
                         <View
                             android:layout_width="match_parent"
@@ -153,7 +153,7 @@
                             android:layout_height="wrap_content"
                             android:paddingTop="11dp"
                             android:paddingBottom="11dp"
-                            android:text="CPU 多核：—" />
+                            android:text="XYZ 多核指数：—" />
 
                         <View
                             android:layout_width="match_parent"
@@ -293,7 +293,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
-                        android:text="每个阶段都跑满固定秒数（标准模式合计 60 秒以上），分数取各项比值的加权几何平均值，单项异常不会把总分带飞。稳定性是长跑后半程与前半程的吞吐比，100 表示完全不掉速。跑分受温度、省电模式与后台占用影响，建议插电、关闭省电模式后再测。" />
+                        android:text="每个阶段都跑满固定秒数（标准模式合计 60 秒以上），XYZ 单核 / 多核指数分别以骁龙 778G = 1000 归一，并取各项比值的加权几何平均值，单项异常不会把总分带飞。XYZ Index 是本应用的独立口径，不冒充 Geekbench，也不与外部参考榜混排。稳定性是长跑后半程与前半程的吞吐比，100 表示完全不掉速。" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>

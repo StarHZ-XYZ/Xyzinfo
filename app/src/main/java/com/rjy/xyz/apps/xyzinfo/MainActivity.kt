@@ -108,7 +108,7 @@ class MainActivity : AppCompatActivity() {
      */
     private fun loadDeviceName() {
         Thread({
-            val name = DeviceNameRepository.lookup(this, Build.DEVICE, Build.MODEL)
+            val name = DeviceNameRepository.lookup(this)
             // 品牌徽标：不依赖机型库是否命中，用 Build 字段也能认出来
             val brand = BrandLogoCatalog.find(
                 Build.MANUFACTURER, Build.BRAND, name, Build.DEVICE, Build.MODEL

@@ -1,7 +1,9 @@
 package com.rjy.xyz.apps.xyzinfo.data
 
 import android.content.Context
+import android.os.Build
 import java.io.File
+import java.util.Locale
 import java.util.zip.GZIPInputStream
 
 /**
@@ -56,24 +58,104 @@ object DeviceNameRepository {
         if (modelNames == null) modelNames = read(context, "model_names")
     }
 
-    /** 先按设备代号查，再按系统型号查，返回「中文品牌 + 机型名」。 */
-    fun lookup(context: Context, device: String?, model: String?): String? {
+    /** 用当前系统里所有可用的设备标识查机型名。 */
+    fun lookup(context: Context): String? =
+        lookup(context, Build.DEVICE, Build.MODEL, Build.PRODUCT)
+
+    /**
+     * 同时查询系统型号、产品名和设备代号，返回信息最完整的「中文品牌 + 机型名」。
+     *
+     * 只按某一个字段优先会顾此失彼：小米 Civi 1S 的设备代号库比型号库更完整，
+     * 荣耀 / iQOO 的部分设备则刚好相反。这里先汇总所有命中的别名，再取信息量最大的
+     * 市场名；查询前还会去掉品牌前缀、空格和分隔符差异，兼容
+     * `HONOR ELP-AN00` / `ELP-AN00` 这类不同写法。
+     */
+    fun lookup(
+        context: Context,
+        device: String?,
+        model: String?,
+        product: String? = null
+    ): String? {
         load(context)
-        val byDevice = device?.trim()?.lowercase()?.let { deviceNames?.get(it) }
-        val byModel = model?.trim()?.lowercase()?.let { modelNames?.get(it) }
-        return (byDevice ?: byModel)?.let(::localizeBrand)
+        val models = modelNames.orEmpty()
+        val devices = deviceNames.orEmpty()
+        return listOf(model, product, device)
+            .flatMap { id ->
+                listOfNotNull(
+                    find(models, id),
+                    find(devices, id)
+                )
+            }
+            .map(::localizeMarketName)
+            .distinct()
+            .maxByOrNull(::marketNameScore)
     }
 
     /** 已收录条目数（代号库 + 型号库）。 */
     fun entryCount(): Int = (deviceNames?.size ?: 0) + (modelNames?.size ?: 0)
 
-    /** 把机型名开头的英文品牌换成中文，例如 “Xiaomi Civi 1S” → “小米 Civi 1S”。 */
-    private fun localizeBrand(name: String): String {
+    /** 把机型名里的英文品牌与子品牌整理成国内常见写法。 */
+    internal fun localizeMarketName(rawName: String): String {
+        var name = rawName.trim().replace(Regex("\\s+"), " ")
+        name = name.replaceFirst(
+            Regex("^Huawei\\s+Honor\\s*", RegexOption.IGNORE_CASE),
+            "荣耀 "
+        )
+        name = name.replaceFirst(
+            Regex("^Huawei\\s+荣耀\\s*", RegexOption.IGNORE_CASE),
+            "荣耀"
+        )
+        name = name.replaceFirst(
+            Regex("^Honor\\s+荣耀\\s*", RegexOption.IGNORE_CASE),
+            "荣耀"
+        )
+        name = name.replaceFirst(
+            Regex("^Honor(?=\\S)", RegexOption.IGNORE_CASE),
+            "荣耀"
+        )
+        name = name.replaceFirst(
+            Regex("^Honor\\s+", RegexOption.IGNORE_CASE),
+            "荣耀 "
+        )
+        name = name.replaceFirst(
+            Regex("^Vivo\\s+iQOO\\s*", RegexOption.IGNORE_CASE),
+            "iQOO "
+        )
+
         val firstSpace = name.indexOf(' ')
-        if (firstSpace <= 0) return name
+        if (firstSpace <= 0) return name.trim()
         val brand = name.substring(0, firstSpace)
-        val chinese = brandNames[brand.lowercase()] ?: return name
-        return chinese + name.substring(firstSpace)
+        val chinese = brandNames[brand.lowercase(Locale.ROOT)] ?: return name
+        return (chinese + name.substring(firstSpace)).trim()
+    }
+
+    private fun find(map: Map<String, String>, raw: String?): String? {
+        if (raw.isNullOrBlank()) return null
+        return lookupKeys(raw).firstNotNullOfOrNull { key -> map[key] }
+    }
+
+    /** 同等可信时选最具体的市场名，例如 Civi 1S 优先于 Civi、200 Pro 优先于 200。 */
+    private fun marketNameScore(name: String): Int =
+        name.count { !it.isWhitespace() }
+
+    /**
+     * 把设备标识整理成若干可比对的键。
+     *
+     * 例如 `HONOR ELP-AN00` 同时生成 `honor-elp-an00`、`elp-an00` 与无分隔符形式，
+     * 这样同一台机器无论 ROM 返回的是完整展示名还是内部型号都能命中。
+     */
+    private fun lookupKeys(raw: String): List<String> {
+        val base = raw.trim().lowercase(Locale.ROOT)
+        val normalized = base
+            .replace(Regex("[\\s_]+"), "-")
+            .replace(Regex("-+"), "-")
+        val stripped = BRAND_PREFIXES.firstOrNull { normalized.startsWith(it) }
+            ?.let { normalized.removePrefix(it) }
+            .orEmpty()
+        return listOf(normalized, stripped)
+            .filter { it.isNotBlank() }
+            .flatMap { value -> listOf(value, value.filter { it.isLetterOrDigit() }) }
+            .distinct()
     }
 
     /**
@@ -82,30 +164,54 @@ object DeviceNameRepository {
      * 注意：AAPT 会把 `.gz` 资源自动解压并去掉扩展名，因此这里先按 `.tsv` 读，
      * 读不到再退回 `.tsv.gz`（两种打包结果都能兼容）。
      */
-    private fun read(context: Context, baseName: String): Map<String, String> = runCatching {
-        val map = HashMap<String, String>(32768)
+    private fun read(context: Context, baseName: String): Map<String, String> {
         val updated = File(updatedDir(context), "$baseName.tsv.gz")
-
-        val reader = if (updated.exists()) {
-            GZIPInputStream(updated.inputStream()).bufferedReader()
-        } else {
-            // 注意：AAPT 会把 .gz 资源自动解压并去掉扩展名，先按 .tsv 读，读不到再退回 .tsv.gz
-            val plainStream = runCatching { context.assets.open("$baseName.tsv") }.getOrNull()
-            val raw = plainStream ?: context.assets.open("$baseName.tsv.gz")
-            if (plainStream != null) raw.bufferedReader() else GZIPInputStream(raw).bufferedReader()
+        if (updated.exists()) {
+            val repaired = runCatching {
+                updated.inputStream().use { input ->
+                    GZIPInputStream(input).bufferedReader().use(::parse)
+                }
+            }.getOrDefault(emptyMap())
+            if (repaired.isNotEmpty()) return repaired
+            // 下载缓存损坏时直接丢弃并回载内置资源，不能让型号库永久变成空表。
+            runCatching { updated.delete() }
         }
+        return runCatching {
+            // AAPT 会把 .gz 资源自动解压并去掉扩展名，先按 .tsv 读，读不到再退回 .tsv.gz。
+            val plain = runCatching { context.assets.open("$baseName.tsv") }.getOrNull()
+            if (plain != null) {
+                plain.bufferedReader().use(::parse)
+            } else {
+                GZIPInputStream(context.assets.open("$baseName.tsv.gz"))
+                    .bufferedReader()
+                    .use(::parse)
+            }
+        }.getOrDefault(emptyMap())
+    }
 
-        reader.useLines { lines ->
-                lines.forEach { line ->
-                    val separator = line.indexOf('\t')
-                    if (separator > 0) {
-                        map[line.substring(0, separator)] = line.substring(separator + 1)
-                    }
+    private fun parse(reader: java.io.BufferedReader): Map<String, String> {
+        val map = HashMap<String, String>(32768)
+        reader.lineSequence().forEach { line ->
+            val separator = line.indexOf('\t')
+            if (separator > 0) {
+                val value = line.substring(separator + 1)
+                lookupKeys(line.substring(0, separator)).forEach { key ->
+                    map.putIfAbsent(key, value)
                 }
             }
-        map
-    }.getOrDefault(emptyMap())
+        }
+        return map
+    }
 
     const val DEVICE_FILE = "device_names"
     const val MODEL_FILE = "model_names"
+
+    private val BRAND_PREFIXES = listOf(
+        "huawei-honor-",
+        "vivo-iqoo-",
+        "honor-",
+        "iqoo-",
+        "huawei-",
+        "vivo-"
+    )
 }

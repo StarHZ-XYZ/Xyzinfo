@@ -18,7 +18,7 @@ import java.io.File
 object RankingCache {
 
     private const val FILE_NAME = "ranking_cache.json"
-    private const val FORMAT_VERSION = 1
+    private const val FORMAT_VERSION = 3
     private const val MAX_ROWS = 400
 
     data class Row(

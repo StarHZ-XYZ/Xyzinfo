@@ -18,18 +18,23 @@ import kotlin.math.roundToInt
  */
 object BatteryInfoProvider {
 
-    private val DESIGN_CAPACITY_PATHS = listOf(
-        "/sys/class/power_supply/battery/charge_full_design",
-        "/sys/class/power_supply/battery/batt_full_design",
-        "/sys/class/power_supply/battery/energy_full_design",
-        "/sys/class/power_supply/maxfg/capacity_raw"
+    private data class CapacitySource(val path: String, val kind: CapacitySourceKind)
+
+    private val DESIGN_CAPACITY_SOURCES = listOf(
+        CapacitySource("/sys/class/power_supply/battery/charge_full_design", CapacitySourceKind.CHARGE),
+        CapacitySource("/sys/class/power_supply/bms/charge_full_design", CapacitySourceKind.CHARGE),
+        CapacitySource("/sys/class/power_supply/battery/batt_full_design", CapacitySourceKind.CHARGE),
+        CapacitySource("/sys/class/power_supply/battery/energy_full_design", CapacitySourceKind.ENERGY),
+        CapacitySource("/sys/class/power_supply/bms/energy_full_design", CapacitySourceKind.ENERGY)
     )
 
-    private val FULL_CAPACITY_PATHS = listOf(
-        "/sys/class/power_supply/battery/charge_full",
-        "/sys/class/power_supply/battery/batt_full",
-        "/sys/class/power_supply/battery/energy_full",
-        "/sys/class/power_supply/battery/fg_fullcapnom"
+    private val FULL_CAPACITY_SOURCES = listOf(
+        CapacitySource("/sys/class/power_supply/battery/charge_full", CapacitySourceKind.CHARGE),
+        CapacitySource("/sys/class/power_supply/bms/charge_full", CapacitySourceKind.CHARGE),
+        CapacitySource("/sys/class/power_supply/battery/batt_full", CapacitySourceKind.CHARGE),
+        CapacitySource("/sys/class/power_supply/battery/fg_fullcapnom", CapacitySourceKind.CHARGE),
+        CapacitySource("/sys/class/power_supply/battery/energy_full", CapacitySourceKind.ENERGY),
+        CapacitySource("/sys/class/power_supply/bms/energy_full", CapacitySourceKind.ENERGY)
     )
 
     private val CYCLE_COUNT_PATHS = listOf(
@@ -49,7 +54,6 @@ object BatteryInfoProvider {
         val percent = if (percentFromIntent >= 0) percentFromIntent else capacityProperty ?: -1
 
         val chargeCounterUah = property(batteryManager, BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
-        val fullCapacityMah = readCapacity(FULL_CAPACITY_PATHS)
         val currentNowUa = property(batteryManager, BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
         val currentAverageUa = property(batteryManager, BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE)
         val energyCounterNwh = property(batteryManager, BatteryManager.BATTERY_PROPERTY_ENERGY_COUNTER)
@@ -59,6 +63,8 @@ object BatteryInfoProvider {
         val voltageMv = batteryIntent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) ?: -1
         val temperatureTenths = batteryIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) ?: -1
         val technology = batteryIntent?.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY).orEmpty()
+        val designCapacityMah = readCapacity(DESIGN_CAPACITY_SOURCES, voltageMv)
+        val fullCapacityMah = readCapacity(FULL_CAPACITY_SOURCES, voltageMv)
 
         return BatteryInfo(
             levelRaw = level,
@@ -74,7 +80,7 @@ object BatteryInfoProvider {
             currentNowUa = currentNowUa,
             currentAverageUa = currentAverageUa,
             energyCounterNwh = energyCounterNwh,
-            designCapacityMah = readCapacity(DESIGN_CAPACITY_PATHS),
+            designCapacityMah = designCapacityMah,
             fullCapacityMah = fullCapacityMah,
             cycleCount = readCycleCount(),
             remainingCapacityMah = estimateRemainingCapacity(chargeCounterUah, fullCapacityMah, percent),
@@ -151,15 +157,11 @@ object BatteryInfoProvider {
         return value.takeIf { it != Int.MIN_VALUE }
     }
 
-    /** 设备节点单位不统一（µAh / mAh），统一换算为 mAh。 */
-    private fun readCapacity(paths: List<String>): Int? {
-        for (path in paths) {
-            val raw = ProcFs.readInt(path) ?: continue
-            if (raw <= 0) continue
-            when {
-                raw > 100_000 -> return (raw / 1000.0).roundToInt()
-                raw in 500..10_000 -> return raw
-            }
+    /** 按节点语义读取容量；读不到或数值明显不合理时继续尝试下一来源。 */
+    private fun readCapacity(sources: List<CapacitySource>, voltageMv: Int): Int? {
+        for (source in sources) {
+            val raw = ProcFs.readLong(source.path) ?: continue
+            BatteryCapacityParser.toMah(raw, source.kind, voltageMv)?.let { return it }
         }
         return null
     }

@@ -12,6 +12,9 @@ import android.content.Context
  */
 object SettingsRepository {
 
+    /** 跑分计分口径版本；升级后旧口径的成绩不能和新口径混用。 */
+    const val BENCHMARK_ENGINE_VERSION = 2
+
     private const val PREFS = "xyzinfo_settings"
 
     private const val KEY_GLASS_BAR = "glass_bottom_bar"
@@ -42,6 +45,9 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
     private const val KEY_LAST_AT = "last_at"
     private const val KEY_LAST_DETAIL = "last_detail"
     private const val KEY_LAST_STABILITY = "last_stability"
+    private const val KEY_LAST_ENGINE_VERSION = "last_engine_version"
+    private const val KEY_DIAGNOSTICS_UNLOCKED = "diagnostics_unlocked"
+    private const val KEY_LIGHTWEIGHT_MODE = "lightweight_mode"
 
     private const val KEY_SPEED_UNIT = "speed_unit"
     private const val KEY_SPEED_CONNECTIONS = "speed_connections"
@@ -78,10 +84,29 @@ private const val MAX_THERMAL_RECORD_LIMIT = 2000
     // ---------- 丝滑动画 ----------
 
     fun animationsEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_ANIMATIONS, true)
+        !lightweightMode(context) && prefs(context).getBoolean(KEY_ANIMATIONS, true)
 
     fun setAnimationsEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_ANIMATIONS, enabled).apply()
+    }
+
+    /** 隐藏诊断入口是否已经通过“关于”卡片七连击解锁。 */
+    fun diagnosticsUnlocked(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_DIAGNOSTICS_UNLOCKED, false)
+
+    fun unlockDiagnostics(context: Context) {
+        prefs(context).edit().putBoolean(KEY_DIAGNOSTICS_UNLOCKED, true).apply()
+    }
+
+    /**
+     * 轻量稳定模式：关闭所有装饰动画、飘落特效和底栏实时模糊。
+     * 不修改用户原有的外观开关，退出后恢复原设置。
+     */
+    fun lightweightMode(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_LIGHTWEIGHT_MODE, false)
+
+    fun setLightweightMode(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_LIGHTWEIGHT_MODE, enabled).apply()
     }
 
     // ---------- 深度跑分 ----------
@@ -268,7 +293,7 @@ private const val MAX_THERMAL_RECORD_LIMIT = 2000
 
     // ---------- 最近一次跑分成绩 ----------
 
-    /** 最近一次跑分（用于在排行榜里插入「本机实测」那一行）。 */
+    /** 最近一次本机 XYZ Index；与外部 Geekbench 参考榜分开使用。 */
     data class SavedBenchmark(
         val single: Int,
         val multi: Int,
@@ -294,11 +319,13 @@ private const val MAX_THERMAL_RECORD_LIMIT = 2000
             .putLong(KEY_LAST_AT, System.currentTimeMillis())
             .putString(KEY_LAST_DETAIL, detail)
             .putInt(KEY_LAST_STABILITY, stabilityPercent)
+            .putInt(KEY_LAST_ENGINE_VERSION, BENCHMARK_ENGINE_VERSION)
             .apply()
     }
 
     fun lastBenchmark(context: Context): SavedBenchmark? {
         val p = prefs(context)
+        if (p.getInt(KEY_LAST_ENGINE_VERSION, 0) != BENCHMARK_ENGINE_VERSION) return null
         val single = p.getInt(KEY_LAST_SINGLE, -1)
         val multi = p.getInt(KEY_LAST_MULTI, -1)
         if (single <= 0 || multi <= 0) return null
@@ -321,6 +348,7 @@ private const val MAX_THERMAL_RECORD_LIMIT = 2000
             .remove(KEY_LAST_AT)
             .remove(KEY_LAST_DETAIL)
             .remove(KEY_LAST_STABILITY)
+            .remove(KEY_LAST_ENGINE_VERSION)
             .apply()
     }
 

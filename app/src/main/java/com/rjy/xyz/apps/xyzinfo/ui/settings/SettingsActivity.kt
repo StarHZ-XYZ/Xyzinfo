@@ -26,6 +26,8 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
+    private var aboutTapCount = 0
+    private var lastAboutTapAt = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -301,6 +303,18 @@ class SettingsActivity : AppCompatActivity() {
                 "机型库：Google Play 认证设备清单 + 社区补充\n" +
                 "开源协议：MIT"
         )
+        binding.btnOpenDiagnostics.visibility =
+            if (SettingsRepository.diagnosticsUnlocked(this)) TextView.VISIBLE else TextView.GONE
+        binding.tvAbout.setOnClickListener { revealDiagnosticsOnSecretTap() }
+        binding.btnOpenDiagnostics.setOnClickListener {
+            Anim.pressFeedback(it)
+            startActivity(
+                android.content.Intent(
+                    this,
+                    com.rjy.xyz.apps.xyzinfo.ui.about.DiagnosticsActivity::class.java
+                )
+            )
+        }
         binding.btnOpenGithub.setOnClickListener {
             Anim.pressFeedback(it)
             runCatching {
@@ -319,6 +333,31 @@ class SettingsActivity : AppCompatActivity() {
             )
         }
         setupFishAssistant()
+    }
+
+    /** 隐藏特性：2.5 秒内连续点「关于」信息 7 次，解锁诊断与恢复工具。 */
+    private fun revealDiagnosticsOnSecretTap() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastAboutTapAt > 2_500L) aboutTapCount = 0
+        lastAboutTapAt = now
+        if (SettingsRepository.diagnosticsUnlocked(this)) {
+            binding.btnOpenDiagnostics.visibility = TextView.VISIBLE
+            Toast.makeText(this, "诊断中心已解锁，入口在更新日志下方", Toast.LENGTH_SHORT).show()
+            return
+        }
+        aboutTapCount++
+        when (aboutTapCount) {
+            in 4..6 -> Toast.makeText(
+                this,
+                "还差 ${7 - aboutTapCount} 次…",
+                Toast.LENGTH_SHORT
+            ).show()
+            7 -> {
+                SettingsRepository.unlockDiagnostics(this)
+                binding.btnOpenDiagnostics.visibility = TextView.VISIBLE
+                Toast.makeText(this, "已解锁隐藏诊断中心", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     /** 大肥鱼助手：填 API Key（直连官方接口）或切到官方免费版网页。 */

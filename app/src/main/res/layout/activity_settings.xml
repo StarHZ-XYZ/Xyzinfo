@@ -511,6 +511,19 @@
                     app:cornerRadius="12dp"
                     app:strokeColor="?attr/colorPrimary" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnOpenDiagnostics"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="打开隐藏诊断中心"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="13sp"
+                    android:visibility="gone"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="?attr/colorPrimary" />
+
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"

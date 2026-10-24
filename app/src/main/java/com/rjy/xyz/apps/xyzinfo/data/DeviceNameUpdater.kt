@@ -3,6 +3,7 @@ package com.rjy.xyz.apps.xyzinfo.data
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -32,6 +33,8 @@ object DeviceNameUpdater {
 
     private const val VERSION_FILE = "device_names_version.txt"
     private const val MIN_ENTRIES = 500
+    private const val MAX_ENTRIES = 500_000
+    private const val MAX_DOWNLOAD_BYTES = 16 * 1024 * 1024
 
     private val DATA_FILES = listOf(
         "${DeviceNameRepository.DEVICE_FILE}.tsv.gz",
@@ -115,7 +118,21 @@ object DeviceNameUpdater {
         }
         try {
             if (connection.responseCode != HttpURLConnection.HTTP_OK) return null
-            connection.inputStream.use { it.readBytes() }
+            val length = connection.contentLengthLong
+            if (length > MAX_DOWNLOAD_BYTES) return null
+            connection.inputStream.use { input ->
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    total += read
+                    if (total > MAX_DOWNLOAD_BYTES) return null
+                    output.write(buffer, 0, read)
+                }
+                output.toByteArray()
+            }
         } finally {
             connection.disconnect()
         }
@@ -127,8 +144,14 @@ object DeviceNameUpdater {
         if (bytes[0] != 0x1F.toByte() || bytes[1] != 0x8B.toByte()) return 0
         return runCatching {
             var count = 0
-            GZIPInputStream(bytes.inputStream()).bufferedReader().useLines { lines ->
-                lines.forEach { if (it.contains('\t')) count++ }
+            GZIPInputStream(bytes.inputStream()).bufferedReader().use { reader ->
+                while (true) {
+                    val line = reader.readLine() ?: break
+                    val separator = line.indexOf('\t')
+                    if (separator <= 0 || line.length > 4096) continue
+                    if (line.substring(separator + 1).isNotBlank()) count++
+                    if (count > MAX_ENTRIES) return@runCatching 0
+                }
             }
             count
         }.getOrDefault(0)

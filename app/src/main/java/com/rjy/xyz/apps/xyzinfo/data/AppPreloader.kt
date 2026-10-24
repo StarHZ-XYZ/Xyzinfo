@@ -18,7 +18,7 @@ object AppPreloader {
             DeviceNameRepository.load(context)
         }
         step(onStep, "正在识别机型名…") {
-            DeviceNameRepository.lookup(context, android.os.Build.DEVICE, android.os.Build.MODEL)
+            DeviceNameRepository.lookup(context)
         }
         step(onStep, "正在识别系统与芯片…") {
             DeviceOverviewProvider.load()

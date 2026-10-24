@@ -3,8 +3,9 @@ package com.rjy.xyz.apps.xyzinfo.model
 /**
  * 本机跑分结果（v0.7 起带上了稳定性与各阶段明细）。
  *
- * 分数与 [ChipScore] 在同一刻度上：单核 / 多核是 Geekbench 6 量级，
- * GPU 是以骁龙 778G = 1000 为基准的相对指数，因此可以直接和排行榜比。
+ * CPU 单核 / 多核是 **XYZ Performance Index**，标定机骁龙 778G = 1000；
+ * GPU 是本应用图形负载的相对指数。CPU 不再冒充 Geekbench 6，也不会和
+ * [ChipScore] 的外部参考分数混排。
  */
 data class BenchmarkResult(
     val cpuSingleScore: Int,

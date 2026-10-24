@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 排行榜页：极客湾参考榜单 + 本机实测插入 -->
+<!-- 排行榜页：极客湾参考榜单；本机 XYZ Index 独立展示，不与参考分数混排 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -70,7 +70,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:text="去跑分，把本机实测插进榜单"
+                    android:text="去跑分，查看本机 XYZ Index"
                     android:textColor="?attr/colorPrimary"
                     android:textSize="13sp"
                     app:cornerRadius="12dp"

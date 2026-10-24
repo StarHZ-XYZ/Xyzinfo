@@ -79,6 +79,17 @@ class BrandLogoCatalogTest {
     }
 
     @Test
+    fun `荣耀超宽字标不能再被固有尺寸裁掉后半截`() {
+        val honor = BrandLogoCatalog.drawable(context, brand("荣耀"), 78)
+
+        assertEquals("槽位高度应保持调用方要求的尺寸", 78, honor.intrinsicHeight)
+        assertTrue(
+            "荣耀原图接近 5:1；固有宽度 ${honor.intrinsicWidth}px 会把 HONOR 右侧裁掉",
+            honor.intrinsicWidth.toDouble() / honor.intrinsicHeight >= 4.75
+        )
+    }
+
+    @Test
     fun `所有内置logo资源都能取到`() {
         BrandLogoCatalog.BRANDS.filter { it.logoRes != 0 }.forEach { item ->
             assertNotNull("${item.displayName} 的 logo 取不到", BrandLogoCatalog.drawable(context, item, 64))

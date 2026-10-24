@@ -30,6 +30,14 @@ class SocSpecRepositoryTest {
             SocSpecRepository.findBestSpec(listOf("SM8850"), emptyList(), null)?.displayName
         )
         assertEquals(
+            "骁龙 8 Elite Gen 6",
+            SocSpecRepository.findBestSpec(listOf("SM8950"), emptyList(), null)?.displayName
+        )
+        assertEquals(
+            "骁龙 8 Elite Extreme Gen 6",
+            SocSpecRepository.findBestSpec(listOf("SM8975"), emptyList(), null)?.displayName
+        )
+        assertEquals(
             "天玑 9500",
             SocSpecRepository.findBestSpec(listOf("MT6993"), emptyList(), null)?.displayName
         )

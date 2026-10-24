@@ -370,24 +370,29 @@ object GlassScaffold {
         // 给内容留出底栏高度，避免最后一段内容被玻璃挡住
         reserveBottomSpace(content, reserved)
 
-        // 玻璃要真的糊东西：把内容视图交给底栏当取样源
-        bar.attachBackdrop(content)
-        bar.autoAnimateOnSelect = false
-        // 滚动时按 110ms 节流刷新模糊层（≈9fps），所以底下的内容在玻璃里是"活的"；
-        // 另外停止滚动 260ms 后再补一次全质量刷新，避免停下来时还留着低帧的画面。
-        val blurRefresh = Runnable { bar.requestBackdropRefresh(immediate = true) }
-        val scrollView = content as? android.widget.ScrollView
-        scrollView?.setOnScrollChangeListener { _, _, _, _, _ ->
-            bar.requestBackdropRefresh()
-            scrollView.removeCallbacks(blurRefresh)
-            scrollView.postDelayed(blurRefresh, 260L)
+        if (SettingsRepository.lightweightMode(activity)) {
+            // 轻量稳定模式不创建实时模糊采样，避免低内存设备在滚动时反复分配位图。
+            bar.setBackdropEnabled(false)
+        } else {
+            // 玻璃要真的糊东西：把内容视图交给底栏当取样源
+            bar.attachBackdrop(content)
+            bar.autoAnimateOnSelect = false
+            // 滚动时按 110ms 节流刷新模糊层（≈9fps），所以底下的内容在玻璃里是"活的"；
+            // 另外停止滚动 260ms 后再补一次全质量刷新，避免停下来时还留着低帧的画面。
+            val blurRefresh = Runnable { bar.requestBackdropRefresh(immediate = true) }
+            val scrollView = content as? android.widget.ScrollView
+            scrollView?.setOnScrollChangeListener { _, _, _, _, _ ->
+                bar.requestBackdropRefresh()
+                scrollView.removeCallbacks(blurRefresh)
+                scrollView.postDelayed(blurRefresh, 260L)
+            }
+            content.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                bar.requestBackdropRefresh(immediate = true)
+            }
+            // 页面数据是异步加载的，起来之后再补两次快照，避免玻璃里一直是空背景
+            bar.postDelayed({ bar.requestBackdropRefresh(immediate = true) }, 320L)
+            bar.postDelayed({ bar.requestBackdropRefresh(immediate = true) }, 1000L)
         }
-        content.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            bar.requestBackdropRefresh(immediate = true)
-        }
-        // 页面数据是异步加载的，起来之后再补两次快照，避免玻璃里一直是空背景
-        bar.postDelayed({ bar.requestBackdropRefresh(immediate = true) }, 320L)
-        bar.postDelayed({ bar.requestBackdropRefresh(immediate = true) }, 1000L)
 
         bar.bind(tabs(), currentTab) { index, reselected ->
             if (index == currentTab) {

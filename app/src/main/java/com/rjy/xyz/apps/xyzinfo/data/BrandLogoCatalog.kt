@@ -8,6 +8,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.DrawableWrapper
 import kotlin.math.min
 import com.rjy.xyz.apps.xyzinfo.R
 
@@ -221,7 +222,9 @@ object BrandLogoCatalog {
                  *
                  * 这批 logo 大多是"宽字标"：联发科 3.9:1、OPPO 4.1:1、Nothing 5.3:1。
                  * 原来不管什么 logo 都塞进正方框里，宽字标被压成一条 8dp 高的细线，根本看不清。
-                 * 现在宽度按比例算（最多 2.6 倍高度），字标就能铺开，清晰度直接翻倍。
+                 * 现在宽度按真实比例算，字标就能完整铺开，清晰度直接翻倍。
+                 * 返回值还会报告换算后的固有尺寸，否则 TextView 仍会按资源原始的
+                 * 24dp 宽度裁掉荣耀这类接近 5:1 的超宽字标。
                  */
                 val aspect = if (logo.intrinsicHeight > 0) {
                     logo.intrinsicWidth.toFloat() / logo.intrinsicHeight
@@ -229,10 +232,10 @@ object BrandLogoCatalog {
                     1f
                 }
                 val boxHeight = sizePx
-                val boxWidth = (sizePx * aspect.coerceIn(0.5f, 2.6f)).toInt().coerceAtLeast(sizePx / 2)
+                val boxWidth = (sizePx * aspect.coerceIn(0.5f, 6f)).toInt().coerceAtLeast(sizePx / 2)
                 if (brand.logoTile == 0) {
                     logo.setBounds(0, 0, boxWidth, boxHeight)
-                    return logo
+                    return FixedSizeDrawable(logo, boxWidth, boxHeight)
                 }
                 // 近黑 / 近白的单色 logo：垫一块对比色底板，两种主题下都看得清
                 return tiledLogo(logo, boxWidth, boxHeight, brand.logoTile == 2)
@@ -293,10 +296,34 @@ object BrandLogoCatalog {
         }
         val insetX = (widthPx * 0.12f).toInt()
         val insetY = (heightPx * 0.16f).toInt()
-        logo.setBounds(insetX, insetY, widthPx - insetX, heightPx - insetY)
-        return android.graphics.drawable.LayerDrawable(arrayOf(tile, logo)).apply {
+        return FixedSizeLayerDrawable(arrayOf(tile, logo), widthPx, heightPx).apply {
+            setLayerInset(1, insetX, insetY, insetX, insetY)
             setBounds(0, 0, widthPx, heightPx)
         }
+    }
+
+    /**
+     * 保留子 drawable 的绘制能力，但向 TextView / ImageView 报告真实槽位尺寸。
+     *
+     * `setCompoundDrawablesWithIntrinsicBounds` 会用固有尺寸重置 bounds。
+     * 只对 VectorDrawable 调用 setBounds 不够：控件随后仍按 24dp 的原始固有宽度裁切。
+     */
+    private class FixedSizeDrawable(
+        drawable: Drawable,
+        private val widthPx: Int,
+        private val heightPx: Int
+    ) : DrawableWrapper(drawable) {
+        override fun getIntrinsicWidth(): Int = widthPx
+        override fun getIntrinsicHeight(): Int = heightPx
+    }
+
+    private class FixedSizeLayerDrawable(
+        layers: Array<Drawable>,
+        private val widthPx: Int,
+        private val heightPx: Int
+    ) : android.graphics.drawable.LayerDrawable(layers) {
+        override fun getIntrinsicWidth(): Int = widthPx
+        override fun getIntrinsicHeight(): Int = heightPx
     }
 
     private fun darken(color: Int, factor: Float): Int {

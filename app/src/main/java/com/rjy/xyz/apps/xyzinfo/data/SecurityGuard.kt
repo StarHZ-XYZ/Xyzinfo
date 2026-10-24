@@ -57,6 +57,14 @@ object SecurityGuard {
         }
     }
 
+    /** 隐藏诊断页使用的只读状态，不会触发退出。 */
+    fun diagnosticStatus(context: Context): String = when {
+        BuildConfig.DEBUG -> "开发包（调试保护按设计跳过）"
+        !isSignatureTrusted(context) -> "签名校验未通过"
+        isBeingDebugged() -> "检测到调试/跟踪环境"
+        else -> "签名校验通过，未发现调试器"
+    }
+
     /** jdwp 调试器 / ptrace 挂载检测。 */
     private fun isBeingDebugged(): Boolean {
         if (Debug.isDebuggerConnected() || Debug.waitingForDebugger()) return true

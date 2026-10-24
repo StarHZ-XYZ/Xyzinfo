@@ -31,7 +31,7 @@ import kotlin.math.roundToInt
 import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 
 /**
- * 性能排行榜（数据来自极客湾公开榜单）。
+ * 性能排行榜（CPU 参考数据来自极客湾公开榜单）。
  *
  * 交互按反馈改过：
  * - **不自动加载**：整张榜上百行，进页面就铺开会明显发顿，现在要点「加载排行榜」才生成；
@@ -55,7 +55,7 @@ class RankingActivity : AppCompatActivity() {
 
     private enum class State { IDLE, RENDERING, READY }
 
-    /** 榜单里的一行：要么是参考芯片，要么是本机实测。 */
+    /** 外部参考榜单里的一行；本机 XYZ Index 只放在概览中，不参与排序。 */
     private data class RankRow(
         val name: String,
         val value: Int,
@@ -92,7 +92,8 @@ class RankingActivity : AppCompatActivity() {
         binding.tvRankingNote.append(
             "\n\n单核 / 多核为 Geekbench 6 量级的参考值，GPU 为相对指数（骁龙 778G = 1000）。" +
                 "同一颗芯片在不同机型上的成绩会因散热与频率策略浮动，榜单给的是该芯片的典型水平；" +
-                "本机实测用的是本应用的算法，只是换算到同一刻度上便于比较，不代表官方成绩。"
+                "本机 XYZ Index 使用独立工作负载，不与这些 Geekbench 参考值混排，避免不同口径直接比较。" +
+                "时间列优先显示芯片发布日期；尚未核实到具体日期的老芯片显示发布年份。"
         )
 
         binding.btnApplyRankingUpdate.setOnClickListener { applyRankingUpdate() }
@@ -254,24 +255,14 @@ class RankingActivity : AppCompatActivity() {
 
     /** 只做数据整理（排序 / 筛选 / 拼概览），不碰 UI，所以放后台线程。 */
     private fun prepare(key: String): PreparedRanking {
-        val measured = SettingsRepository.lastBenchmark(this)
         val rows = ArrayList<RankRow>(96)
         GeekerwanScores.ranked(metric, brand).take(90).forEach { score ->
             rows += RankRow(
                 name = if (score.name == matched?.name) "${score.name}（本机芯片）" else score.name,
                 value = metric.valueOf(score),
-                year = score.year.toString(),
+                year = score.dateLabel,
                 isMeasured = false,
                 isMatched = score.name == matched?.name
-            )
-        }
-        if (measured != null) {
-            rows += RankRow(
-                name = "本机实测（${deviceChipName ?: "当前设备"}）",
-                value = measuredValue(measured),
-                year = "实测",
-                isMeasured = true,
-                isMatched = false
             )
         }
         rows.sortByDescending { it.value }
@@ -319,10 +310,9 @@ class RankingActivity : AppCompatActivity() {
                 append("\n该芯片暂未收录到榜单，下面仍可看到全部参考机型")
             }
             if (measured != null) {
-                append("\n本机实测：综合 ${measuredValue(measured, RankingMetric.COMPOSITE)}")
-                append("（单核 ${measured.single} / 多核 ${measured.multi}")
+                append("\n本机 XYZ Index：单核 ${measured.single} / 多核 ${measured.multi}")
                 if (measured.gpu != null) append(" / GPU ${measured.gpu}")
-                append("）")
+                append("（独立工作负载，不参与上方芯片排序）")
             } else {
                 append("\n本机还没跑过分，跑一次就会插进榜单")
             }
@@ -501,26 +491,6 @@ class RankingActivity : AppCompatActivity() {
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { marginEnd = dp(8f) }
         return chip
-    }
-
-    private fun measuredValue(
-        measured: SettingsRepository.SavedBenchmark,
-        metricOverride: RankingMetric = metric
-    ): Int = when (metricOverride) {
-        RankingMetric.SINGLE -> measured.single
-        RankingMetric.MULTI -> measured.multi
-        RankingMetric.GPU -> measured.gpu ?: 0
-        RankingMetric.COMPOSITE -> measuredComposite(measured)
-    }
-
-    /** 本机实测综合指数：GPU 缺失时按 CPU 两项重新归一，避免被拖到榜底。 */
-    private fun measuredComposite(measured: SettingsRepository.SavedBenchmark): Int {
-        val cpu = 0.35 * measured.single / ChipScore.SINGLE_ANCHOR +
-            0.35 * measured.multi / ChipScore.MULTI_ANCHOR
-        val gpu = measured.gpu
-        val weight = if (gpu == null) 0.70 else 1.0
-        val gpuPart = if (gpu == null) 0.0 else 0.30 * gpu / ChipScore.GPU_ANCHOR
-        return ((cpu + gpuPart) / weight * 1000).roundToInt()
     }
 
     private fun dp(value: Float): Int = (value * resources.displayMetrics.density).roundToInt()

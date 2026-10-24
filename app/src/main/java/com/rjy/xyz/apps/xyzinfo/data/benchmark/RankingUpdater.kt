@@ -4,6 +4,7 @@ import android.content.Context
 import com.rjy.xyz.apps.xyzinfo.model.ChipScore
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -35,10 +36,13 @@ object RankingUpdater {
     private const val VERSION_FILE = "ranking_version.txt"
     private const val DATA_FILE = "geekerwan_scores.json"
     private const val MIN_ENTRIES = 20
+    private const val MAX_ENTRIES = 500
+    private const val MAX_DOWNLOAD_BYTES = 2 * 1024 * 1024
+    private val DATE_PATTERN = Regex("""^\d{4}(?:-\d{2}){0,2}$""")
 
     data class CheckResult(val currentVersion: String, val remoteVersion: String?) {
         val hasUpdate: Boolean
-            get() = !remoteVersion.isNullOrBlank() && remoteVersion != currentVersion
+            get() = !remoteVersion.isNullOrBlank() && remoteVersion > currentVersion
     }
 
     data class UpdateResult(val success: Boolean, val message: String, val version: String? = null)
@@ -57,6 +61,14 @@ object RankingUpdater {
     fun loadCached(context: Context) {
         val file = File(dir(context), DATA_FILE)
         if (!file.exists()) {
+            GeekerwanScores.useBuiltIn()
+            return
+        }
+        val cachedVersion = localVersion(context)
+        if (cachedVersion < GeekerwanScores.SNAPSHOT) {
+            // 内置榜单已经比旧缓存新：旧缓存不能盖住随应用发布的新芯片数据。
+            runCatching { file.delete() }
+            runCatching { File(dir(context), VERSION_FILE).delete() }
             GeekerwanScores.useBuiltIn()
             return
         }
@@ -95,6 +107,12 @@ object RankingUpdater {
         SOURCES.forEach { base ->
             val version = runCatching { getText("$base/$VERSION_FILE") }.getOrNull()?.trim()
             if (version.isNullOrBlank()) return@forEach
+            if (version <= localVersion(context)) {
+                return UpdateResult(
+                    false,
+                    "远端版本 $version 不高于当前 ${localVersion(context)}，已忽略旧数据"
+                )
+            }
             val json = runCatching { getText("$base/$DATA_FILE") }.getOrNull()
             if (json.isNullOrBlank()) {
                 lastError = "榜单数据下载失败"
@@ -121,18 +139,31 @@ object RankingUpdater {
 
     internal fun parseDataset(json: String): List<ChipScore> {
         val array = JSONArray(json)
+        if (array.length() > MAX_ENTRIES) return emptyList()
         val chips = ArrayList<ChipScore>(array.length())
+        val names = HashSet<String>(array.length())
         for (index in 0 until array.length()) {
             val item = array.optJSONObject(index) ?: continue
             val name = item.optString("name").trim()
-            if (name.isEmpty()) continue
+            if (name.isEmpty() || name.length > 80) continue
+            val key = name.lowercase()
+            if (!names.add(key)) continue
+            val single = item.optInt("single")
+            val multi = item.optInt("multi")
+            val gpu = item.optInt("gpu")
+            val year = item.optInt("year")
+            if (single !in 50..15_000 || multi !in 100..40_000 || gpu !in 50..30_000) continue
+            if (year !in 2000..2100) continue
+            val releaseDate = item.optString("releaseDate").trim().takeIf { it.isNotEmpty() }
+            if (releaseDate != null && !DATE_PATTERN.matches(releaseDate)) continue
             chips += ChipScore(
                 name = name,
-                brand = item.optString("brand").ifBlank { "其他" },
-                single = item.optInt("single"),
-                multi = item.optInt("multi"),
-                gpu = item.optInt("gpu"),
-                year = item.optInt("year")
+                brand = item.optString("brand").trim().take(40).ifBlank { "其他" },
+                single = single,
+                multi = multi,
+                gpu = gpu,
+                year = year,
+                releaseDate = releaseDate
             )
         }
         return chips
@@ -150,6 +181,7 @@ object RankingUpdater {
                     put("multi", chip.multi)
                     put("gpu", chip.gpu)
                     put("year", chip.year)
+                    chip.releaseDate?.let { put("releaseDate", it) }
                 }
             )
         }
@@ -166,7 +198,21 @@ object RankingUpdater {
         }
         try {
             if (connection.responseCode != HttpURLConnection.HTTP_OK) return null
-            connection.inputStream.use { it.readBytes().decodeToString() }
+            val length = connection.contentLengthLong
+            if (length > MAX_DOWNLOAD_BYTES) return null
+            connection.inputStream.use { input ->
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    total += read
+                    if (total > MAX_DOWNLOAD_BYTES) return null
+                    output.write(buffer, 0, read)
+                }
+                output.toByteArray().decodeToString()
+            }
         } finally {
             runCatching { connection.disconnect() }
         }

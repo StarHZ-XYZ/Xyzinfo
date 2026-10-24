@@ -22,6 +22,11 @@ class GeekerwanScoresTest {
     fun `更长的型号名不会被短名抢走`() {
         assertEquals("骁龙 8 Elite", GeekerwanScores.match("骁龙 8 Elite")?.name)
         assertEquals("骁龙 8 Elite Gen 5", GeekerwanScores.match("骁龙 8 Elite Gen 5")?.name)
+        assertEquals("骁龙 8 Elite Gen 6", GeekerwanScores.match("骁龙 8 Elite Gen 6")?.name)
+        assertEquals(
+            "骁龙 8 Elite Extreme Gen 6",
+            GeekerwanScores.match("骁龙 8 Elite Extreme Gen 6")?.name
+        )
     }
 
     @Test
@@ -59,5 +64,34 @@ class GeekerwanScoresTest {
     fun `倍数换算`() {
         assertEquals(2.0, GeekerwanScores.ratio(2000, 1000), 0.001)
         assertEquals(0.0, GeekerwanScores.ratio(2000, 0), 0.001)
+    }
+
+    @Test
+    fun `第六代双旗舰已收录且排序正确`() {
+        val extreme = GeekerwanScores.match("骁龙 8 Elite Extreme Gen 6")!!
+        val standard = GeekerwanScores.match("骁龙 8 Elite Gen 6")!!
+        val previous = GeekerwanScores.match("骁龙 8 Elite Gen 5")!!
+        assertEquals(2026, extreme.year)
+        assertTrue(extreme.single > standard.single)
+        assertTrue(standard.single > previous.single)
+        assertTrue(extreme.multi > standard.multi)
+        assertTrue(standard.multi > previous.multi)
+        assertEquals("2026-09-22", extreme.dateLabel)
+        assertEquals("2025-09", previous.dateLabel)
+    }
+
+    @Test
+    fun `已知芯片档位不会发生代际倒挂`() {
+        val sevenSevenEight = GeekerwanScores.match("骁龙 778G")!!
+        val dimensity9000 = GeekerwanScores.match("天玑 9000")!!
+        val gen3 = GeekerwanScores.match("骁龙 8 Gen 3")!!
+        val elite5 = GeekerwanScores.match("骁龙 8 Elite Gen 5")!!
+
+        assertTrue(sevenSevenEight.single < dimensity9000.single)
+        assertTrue(sevenSevenEight.multi < dimensity9000.multi)
+        assertTrue(gen3.single < elite5.single)
+        assertTrue(gen3.multi < elite5.multi)
+        assertTrue(gen3.composite < elite5.composite)
+        assertEquals("2023年", gen3.dateLabel)
     }
 }

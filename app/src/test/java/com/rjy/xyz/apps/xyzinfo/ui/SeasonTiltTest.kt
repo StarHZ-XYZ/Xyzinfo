@@ -1,6 +1,7 @@
 package com.rjy.xyz.apps.xyzinfo.ui
 
 import com.rjy.xyz.apps.xyzinfo.ui.common.SeasonTilt
+import android.view.Surface
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -52,5 +53,33 @@ class SeasonTiltTest {
         val large = SeasonTilt.tiltFromAccelerometerX(-0.95f * g)
         assertTrue(small < medium)
         assertTrue(medium < large)
+    }
+
+    @Test
+    fun `横屏时传感器 Y 轴成为屏幕左右轴`() {
+        val portrait = SeasonTilt.toScreenGravity(0f, g, Surface.ROTATION_0)
+        assertEquals(0f, portrait.x, 0.0001f)
+
+        val landscape90 = SeasonTilt.toScreenGravity(0f, g, Surface.ROTATION_90)
+        assertEquals(-g, landscape90.x, 0.0001f)
+        assertTrue(
+            "横屏向右歪时应产生正偏角，实际 ${SeasonTilt.tiltFromAccelerometerX(landscape90.x)}",
+            SeasonTilt.tiltFromAccelerometerX(landscape90.x) > 0f
+        )
+
+        val landscape270 = SeasonTilt.toScreenGravity(0f, g, Surface.ROTATION_270)
+        assertEquals(g, landscape270.x, 0.0001f)
+        assertTrue(SeasonTilt.tiltFromAccelerometerX(landscape270.x) < 0f)
+    }
+
+    @Test
+    fun `倒置与横屏同时修正垂直轴`() {
+        val upsideDown = SeasonTilt.toScreenGravity(-g, 0f, Surface.ROTATION_180)
+        assertEquals(g, upsideDown.x, 0.0001f)
+        assertEquals(0f, upsideDown.y, 0.0001f)
+
+        val landscape = SeasonTilt.toScreenGravity(g, 0f, Surface.ROTATION_90)
+        assertEquals(0f, landscape.x, 0.0001f)
+        assertEquals(g, landscape.y, 0.0001f)
     }
 }

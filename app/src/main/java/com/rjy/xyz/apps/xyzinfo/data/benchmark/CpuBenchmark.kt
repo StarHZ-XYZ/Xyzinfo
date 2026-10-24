@@ -13,7 +13,7 @@ import kotlin.math.ln
 import kotlin.math.roundToInt
 
 /**
- * CPU 跑分（v0.7 重写，1.0.1 修偏 + 加压）。
+ * CPU 跑分（1.1.0 计分内核重写）。
  *
  * 1. **按时间跑，不按次数跑**：每个阶段跑满固定秒数（标准模式合计约 80 秒），
  *    慢机器不会被固定迭代次数拖成几分钟，快机器也不会因为采样窗口太短而抖；
@@ -23,19 +23,23 @@ import kotlin.math.roundToInt
  * 3. **给出稳定性**：多核长跑期间每 250ms 采样一次，用后半程与前半程的吞吐比
  *    反映降频程度，而不是只丢一个孤零零的分数。
  *
- * ## 1.0.1 修掉的「第一次跑分偏低」
+ * ## 1.1.0 为什么要重做计分
  *
- * 老实现有两个坑：
+ * 旧版把自建负载的加权指数乘上 `1.01 / 2.90` 后直接冒充 Geekbench 6 分数，
+ * 再和外部榜单混排。这套倍率只在一个 778G 基准点上相等，换架构后完全失去可比性；
+ * 多核阶段还会被固定倍率二次放大，于是较新的中端/上代旗舰可能压过最新旗舰。
  *
- * 1. 只预热了单核的三条路径，**多核那几条路径是第一次在正式测量阶段才被 JIT / OSR 编译**的，
- *    于是第一次跑的时候，多核阶段前半段其实在"边编译边跑"；
- * 2. 每个阶段把**准备动作**（分配缓冲区、首次触页、首次调用 Deflater、建矩阵）也算进了计时窗口，
- *    而这些开销第一次跑最贵；更糟的是速率按**名义秒数**换算，准备慢多少就少记多少工作量。
- *
- * 现在：**预热覆盖全部测量路径**（含多核），每个阶段的准备都放在计时开始之前，
- * 速率一律用**实测耗时**换算。结果就是第一次跑和第二次跑基本一致。
+ * 现在输出明确命名为 **XYZ Performance Index**：只比较本应用工作负载下的单核 /
+ * 多核吞吐，两个维度都以骁龙 778G = 1000。它不再冒充 Geekbench，也不插入外部
+ * Geekbench 参考排行榜。矩阵阶段每轮重新清零，避免浮点累加溢出到 Infinity 后影响计时。
  */
 object CpuBenchmark {
+
+    /** 计分口径版本。升级后旧成绩不再和新成绩混在一起展示。 */
+    const val INDEX_VERSION = 2
+
+    /** 两套指数的公共锚点：标定机在本应用负载下均为 1000。 */
+    const val ANCHOR_SCORE = 1000.0
 
     /** 标定用的日志标签：把各阶段实测速率打到 logcat，换机器标定基准时看这里。 */
     private const val TAG = "XyzInfoBench"
@@ -84,26 +88,24 @@ object CpuBenchmark {
         val details: List<Int>
     )
 
-    // ---------- 标定基准：骁龙 778G（Adreno 642L / 4×A78 + 4×A55）真机实测 ----------
+    // ---------- 标定基准：骁龙 778G（4×A78 + 4×A55）真机实测 ----------
     //
-    // 这些数字是"指数 1000"的定义：本机（778G）实测速率填在这里，就等于 1000 分，
-    // 乘上 SINGLE_SCALE / MULTI_SCALE 后落在 1010 / 2900 —— 与应用内参考榜单
-    // 给「骁龙 778G」的 1010 / 2900 完全对齐，本机实测那一行才不会和榜单打架。
+    // 这些数字是 XYZ Index = 1000 的定义。单核和多核各自独立归一，不再借用
+    // Geekbench 的多核倍率；不同芯片的排序由原始吞吐决定，而不是固定工程系数。
 
-    private const val REF_INTEGER_OPS = 3.05e8
-    private const val REF_FLOAT_FLOPS = 1.75e8
-    private const val REF_COMPRESS_MB = 600.0
-    private const val REF_SORT_ELEMENTS = 1.23e7
-    private const val REF_CRYPTO_OPS = 2.00e8
-    private const val REF_MEMORY_MB = 11000.0
-    private const val REF_MULTI_OPS = 9.30e8
-    private const val REF_MULTI_FLOPS = 7.75e8
-    private const val REF_MULTI_COMPRESS_MB = 1530.0
-    private const val REF_MULTI_MEMORY_MB = 10450.0
-
-    /** 指数 1000（= 骁龙 778G）换算到 Geekbench 6 量级的比例。 */
-    private const val SINGLE_SCALE = 1.01
-    private const val MULTI_SCALE = 2.90
+    // 2026-10 在 Xiaomi Civi 1S（骁龙 778G）上重新实测。旧基准来自早期版本，
+    // 当前 ART / 内核下整数与浮点分别快了约 3.6x / 3.4x；继续沿用旧值会让
+    // 同一台 778G 自动变成 2000+，从而虚假超过天玑 9000。
+    private const val REF_INTEGER_OPS = 1.091e9
+    private const val REF_FLOAT_FLOPS = 5.98e8
+    private const val REF_COMPRESS_MB = 910.0
+    private const val REF_SORT_ELEMENTS = 1.5751e7
+    private const val REF_CRYPTO_OPS = 4.81e8
+    private const val REF_MEMORY_MB = 10299.0
+    private const val REF_MULTI_OPS = 4.558e9
+    private const val REF_MULTI_FLOPS = 4.297e9
+    private const val REF_MULTI_COMPRESS_MB = 3091.0
+    private const val REF_MULTI_MEMORY_MB = 9348.0
 
     private const val BATCH = 4096
 
@@ -359,7 +361,16 @@ object CpuBenchmark {
             cores = Runtime.getRuntime().availableProcessors(),
             threads = threads,
             stabilityPercent = multi.stabilityPercent,
-            multiSpeedup = if (scored.single > 0) scored.multi.toDouble() / scored.single else 0.0,
+            multiSpeedup = multiSpeedup(
+                integerOps,
+                floatFlops,
+                compressMb,
+                memoryMb,
+                multi.opsPerSecond,
+                multiFlops,
+                multiCompressMb,
+                multiMemoryMb
+            ),
             totalSeconds = total,
             stages = listOf(
                 BenchmarkStage("单核整数", fmt("%.0f Mops/s", integerOps / 1e6), scored.details[0]),
@@ -382,9 +393,8 @@ object CpuBenchmark {
      * 把实测速率换成同一刻度的分数。
      *
      * 单核 / 多核都取各项比值的**加权几何平均**（比值先夹到 0.2~5 倍），
-     * 这样某一项因为实现差异偏得离谱时不会把总分带飞；最后再乘 [SINGLE_SCALE] /
-     * [MULTI_SCALE]，让指数 1000（骁龙 778G）落在 1010 / 2900 —— 与参考榜单给
-     * 「骁龙 778G」的 1010 / 2900 同一刻度。
+     * 这样某一项因为实现差异偏得离谱时不会把总分带飞。结果直接作为
+     * XYZ Performance Index，标定机为 1000；不再伪装成 Geekbench 分数。
      */
     fun scores(
         integerOps: Double,
@@ -418,8 +428,8 @@ object CpuBenchmark {
         val multiIndex = weightedGeometricMean(multiRates) * 1000
 
         return Scores(
-            single = (singleIndex * SINGLE_SCALE).roundToInt(),
-            multi = (multiIndex * MULTI_SCALE).roundToInt(),
+            single = singleIndex.roundToInt(),
+            multi = multiIndex.roundToInt(),
             singleIndex = singleIndex,
             multiIndex = multiIndex,
             details = (singleRates + multiRates).map { (it.first * 1000).roundToInt() }
@@ -435,6 +445,33 @@ object CpuBenchmark {
             weight += w
         }
         return exp(weighted / weight)
+    }
+
+    /**
+     * 多核相对单核的真实吞吐倍率。
+     *
+     * 不能用两个 XYZ 指数相除：它们虽然都以 778G = 1000，但单核与多核各有独立基准。
+     * 这里只比较同类负载的“多核总吞吐 / 单核吞吐”，避免界面出现 0.98x 这种假加速比。
+     */
+    internal fun multiSpeedup(
+        integerOps: Double,
+        floatFlops: Double,
+        compressMb: Double,
+        memoryMb: Double,
+        multiOps: Double,
+        multiFlops: Double,
+        multiCompressMb: Double,
+        multiMemoryMb: Double
+    ): Double {
+        if (listOf(integerOps, floatFlops, compressMb, memoryMb).any { it <= 0.0 }) return 0.0
+        return weightedGeometricMean(
+            listOf(
+                multiOps / integerOps to 0.35,
+                multiFlops / floatFlops to 0.35,
+                multiCompressMb / compressMb to 0.20,
+                multiMemoryMb / memoryMb to 0.10
+            )
+        )
     }
 
     // ---------- 计时工具 ----------
@@ -485,6 +522,7 @@ object CpuBenchmark {
             for (row in 0 until size) {
                 val leftRow = left[row]
                 val resultRow = result[row]
+                resultRow.fill(0.0)
                 for (k in 0 until size) {
                     val factor = leftRow[k]
                     val rightRow = right[k]
@@ -696,6 +734,7 @@ object CpuBenchmark {
                 for (row in 0 until size) {
                     val leftRow = left[row]
                     val resultRow = result[row]
+                    resultRow.fill(0.0)
                     for (k in 0 until size) {
                         val factor = leftRow[k]
                         val rightRow = right[k]

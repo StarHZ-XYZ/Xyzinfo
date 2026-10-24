@@ -40,7 +40,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
  *
  * - CPU 阶段由 [CpuBenchmark] 按时间跑满（标准 60 秒以上），并给出稳定性；
  * - GPU 阶段把压力视图**全屏**铺开，20 秒 / 4 种场景轮换，同时给出 1% low 与填充率；
- * - 结果会存起来，排行榜页据此插入「本机实测」那一行。
+ * - 本机结果保存为独立的 XYZ Index；不再插入外部 Geekbench 参考榜。
  */
 class BenchmarkActivity : AppCompatActivity() {
 
@@ -121,8 +121,8 @@ class BenchmarkActivity : AppCompatActivity() {
     /** 进入页面时把上次的成绩也显示出来，方便对比这次是不是更稳。 */
     private fun showSavedResult() {
         val saved = SettingsRepository.lastBenchmark(this) ?: return
-        binding.tvCpuSingleScore.setInfoRow("CPU 单核：${saved.single}")
-        binding.tvCpuMultiScore.setInfoRow("CPU 多核：${saved.multi}")
+        binding.tvCpuSingleScore.setInfoRow("XYZ 单核指数：${saved.single}")
+        binding.tvCpuMultiScore.setInfoRow("XYZ 多核指数：${saved.multi}")
         binding.tvGpuScore.setInfoRow("GPU：${saved.gpu ?: "未测"}")
         binding.tvStability.setInfoRow(
             if (saved.stabilityPercent > 0) {
@@ -415,11 +415,11 @@ class BenchmarkActivity : AppCompatActivity() {
 
         binding.tvCpuSingleScore.countUpWith(
             result.cpuSingleScore,
-            render = { "CPU 单核：$it" }
+            render = { "XYZ 单核指数：$it" }
         )
         binding.tvCpuMultiScore.countUpWith(
             result.cpuMultiScore,
-            render = { "CPU 多核：$it" }
+            render = { "XYZ 多核指数：$it" }
         )
         binding.tvGpuScore.countUpWith(
             result.gpuScore ?: 0,

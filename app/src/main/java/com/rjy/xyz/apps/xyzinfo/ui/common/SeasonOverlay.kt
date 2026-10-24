@@ -17,6 +17,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.Surface
 import android.view.View
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import java.util.Calendar
@@ -228,13 +229,18 @@ class SeasonOverlay @JvmOverloads constructor(
          * 贴图也一起倾斜同样的角度，叶子 / 雪花"顺着重力倒"的观感非常直接。
          */
         val tiltEnabled = gravityEnabled
-        val tilt = if (tiltEnabled) SeasonTilt.tiltFromAccelerometerX(rawGravityX) else 0f
+        val screenGravity = SeasonTilt.toScreenGravity(
+            rawGravityX,
+            rawGravityY,
+            display?.rotation ?: Surface.ROTATION_0
+        )
+        val tilt = if (tiltEnabled) SeasonTilt.tiltFromAccelerometerX(screenGravity.x) else 0f
         val tiltSin = sin(tilt)
         val tiltCos = cos(tilt)
         val tiltDegrees = Math.toDegrees(tilt.toDouble()).toFloat()
         // 竖着拿（屏幕朝人）时 y 分量最大，落速略快一点点，手感更接近"真的在往下掉"
         val speedScale = if (tiltEnabled) {
-            (1f + (rawGravityY / SeasonTilt.SensorGravity).coerceIn(-1f, 1f) * 0.18f)
+            (1f + (screenGravity.y / SeasonTilt.SensorGravity).coerceIn(-1f, 1f) * 0.18f)
         } else {
             1f
         }

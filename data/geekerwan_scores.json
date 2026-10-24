@@ -1,11 +1,30 @@
 [
   {
+    "name": "骁龙 8 Elite Extreme Gen 6",
+    "brand": "骁龙",
+    "single": 4380,
+    "multi": 14000,
+    "gpu": 5200,
+    "year": 2026,
+    "releaseDate": "2026-09-22"
+  },
+  {
+    "name": "骁龙 8 Elite Gen 6",
+    "brand": "骁龙",
+    "single": 4100,
+    "multi": 12800,
+    "gpu": 4800,
+    "year": 2026,
+    "releaseDate": "2026-09-22"
+  },
+  {
     "name": "骁龙 8 Elite Gen 5",
     "brand": "骁龙",
     "single": 3500,
     "multi": 10500,
     "gpu": 4300,
-    "year": 2025
+    "year": 2025,
+    "releaseDate": "2025-09"
   },
   {
     "name": "骁龙 8 Elite Gen 5 for Galaxy",
@@ -13,7 +32,8 @@
     "single": 3600,
     "multi": 10800,
     "gpu": 4500,
-    "year": 2026
+    "year": 2026,
+    "releaseDate": "2026-02"
   },
   {
     "name": "骁龙 8 Elite",
@@ -29,7 +49,8 @@
     "single": 3150,
     "multi": 10000,
     "gpu": 4100,
-    "year": 2025
+    "year": 2025,
+    "releaseDate": "2025-01-22"
   },
   {
     "name": "骁龙 8 Gen 3",
@@ -53,7 +74,8 @@
     "single": 2150,
     "multi": 6300,
     "gpu": 2700,
-    "year": 2025
+    "year": 2025,
+    "releaseDate": "2025-04-02"
   },
   {
     "name": "骁龙 8s Gen 3",
@@ -197,7 +219,8 @@
     "single": 1300,
     "multi": 3700,
     "gpu": 1300,
-    "year": 2025
+    "year": 2025,
+    "releaseDate": "2025-05-15"
   },
   {
     "name": "骁龙 7 Gen 3",
@@ -285,7 +308,8 @@
     "single": 1150,
     "multi": 3200,
     "gpu": 800,
-    "year": 2025
+    "year": 2025,
+    "releaseDate": "2025-02-12"
   },
   {
     "name": "骁龙 6 Gen 3",
@@ -341,7 +365,8 @@
     "single": 3300,
     "multi": 10000,
     "gpu": 4100,
-    "year": 2025
+    "year": 2025,
+    "releaseDate": "2025-09-22"
   },
   {
     "name": "天玑 9400",
@@ -357,7 +382,8 @@
     "single": 2650,
     "multi": 8300,
     "gpu": 3300,
-    "year": 2025
+    "year": 2025,
+    "releaseDate": "2025-05-14"
   },
   {
     "name": "天玑 9300+",
@@ -413,7 +439,8 @@
     "single": 1900,
     "multi": 5600,
     "gpu": 2400,
-    "year": 2025
+    "year": 2025,
+    "releaseDate": "2025-06"
   },
   {
     "name": "天玑 8400",
@@ -461,7 +488,8 @@
     "single": 1150,
     "multi": 3200,
     "gpu": 950,
-    "year": 2025
+    "year": 2025,
+    "releaseDate": "2025-06"
   },
   {
     "name": "天玑 7300",
@@ -613,7 +641,8 @@
     "single": 2900,
     "multi": 9000,
     "gpu": 3500,
-    "year": 2026
+    "year": 2026,
+    "releaseDate": "2026-02"
   },
   {
     "name": "Exynos 2500",
@@ -797,7 +826,8 @@
     "single": 1900,
     "multi": 4900,
     "gpu": 2100,
-    "year": 2025
+    "year": 2025,
+    "releaseDate": "2025-08-20"
   },
   {
     "name": "Tensor G4",
@@ -837,7 +867,8 @@
     "single": 2750,
     "multi": 8300,
     "gpu": 3200,
-    "year": 2025
+    "year": 2025,
+    "releaseDate": "2025-05-22"
   },
   {
     "name": "紫光展锐 T820",

@@ -16,6 +16,7 @@ import android.text.Spanned
 import android.text.style.AbsoluteSizeSpan
 import android.text.style.StyleSpan
 import android.view.Gravity
+import android.view.Surface
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -362,12 +363,17 @@ private class HolidayParticles(context: Context) : View(context) {
          * tilt 是下落方向相对竖直方向的偏角，速度分量就是 (sin, cos)，
          * 贴图也跟着倾斜同样的角度 —— 灯笼 / 爱心"顺着重力倒"。
          */
-        val tilt = if (gravityEnabled) SeasonTilt.tiltFromAccelerometerX(rawGravityX) else 0f
+        val screenGravity = SeasonTilt.toScreenGravity(
+            rawGravityX,
+            rawGravityY,
+            display?.rotation ?: Surface.ROTATION_0
+        )
+        val tilt = if (gravityEnabled) SeasonTilt.tiltFromAccelerometerX(screenGravity.x) else 0f
         val tiltSin = sin(tilt)
         val tiltCos = cos(tilt)
         val tiltDegrees = Math.toDegrees(tilt.toDouble()).toFloat()
         val speedScale = if (gravityEnabled) {
-            (1f + (rawGravityY / SeasonTilt.SensorGravity).coerceIn(-1f, 1f) * 0.18f)
+            (1f + (screenGravity.y / SeasonTilt.SensorGravity).coerceIn(-1f, 1f) * 0.18f)
         } else {
             1f
         }

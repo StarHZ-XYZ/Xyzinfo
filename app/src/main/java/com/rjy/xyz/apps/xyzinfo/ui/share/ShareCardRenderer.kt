@@ -94,7 +94,7 @@ object ShareCardRenderer {
          * 库没命中才退回 Build.MODEL（内部型号，例如 2109119BC）——
          * 用户反馈"卡片上显示的是手机内部型号而不是实际型号"就是这里以前直接用了 rawModel。
          */
-        val deviceName = DeviceNameRepository.lookup(context, Build.DEVICE, Build.MODEL)
+        val deviceName = DeviceNameRepository.lookup(context)
             ?.takeIf { it.isNotBlank() }
             ?: overview?.displayName?.takeIf { it.isNotBlank() }
             ?: Build.MODEL

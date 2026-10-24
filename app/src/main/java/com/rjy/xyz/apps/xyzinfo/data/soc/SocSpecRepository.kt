@@ -14,6 +14,39 @@ object SocSpecRepository {
         // Snapdragon
         // =========================
         SocSpec(
+            displayName = "骁龙 8 Elite Extreme Gen 6",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "顶级旗舰",
+            aliases = listOf(
+                "SM8975",
+                "SNAPDRAGON8ELITEEXTREMEGEN6",
+                "SNAPDRAGON8ELITEGEN6PRO",
+                "骁龙8超级至尊版GEN6",
+                "8EE6"
+            ),
+            cpuClusters = "2+3+3（最高 5GHz）",
+            cpuArchitecture = "ARMv9 / Oryon",
+            gpuName = "Adreno 8 系（Gen 6 Extreme）",
+            graphicsApi = "OpenGL ES / Vulkan"
+        ),
+        SocSpec(
+            displayName = "骁龙 8 Elite Gen 6",
+            brandName = "高通骁龙",
+            badgeText = "骁龙",
+            performanceLevel = "顶级旗舰",
+            aliases = listOf(
+                "SM8950",
+                "SNAPDRAGON8ELITEGEN6",
+                "骁龙8至尊版GEN6",
+                "8E6"
+            ),
+            cpuClusters = "2+3+3（Gen 6）",
+            cpuArchitecture = "ARMv9 / Oryon",
+            gpuName = "Adreno 8 系（Gen 6）",
+            graphicsApi = "OpenGL ES / Vulkan"
+        ),
+        SocSpec(
             displayName = "骁龙 8 Elite",
             brandName = "高通骁龙",
             badgeText = "骁龙",
