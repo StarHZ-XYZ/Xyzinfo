@@ -48,6 +48,7 @@ private const val KEY_DEEPSEEK_THEME = "deepseek_theme"
     private const val KEY_LAST_ENGINE_VERSION = "last_engine_version"
     private const val KEY_DIAGNOSTICS_UNLOCKED = "diagnostics_unlocked"
     private const val KEY_LIGHTWEIGHT_MODE = "lightweight_mode"
+    private const val KEY_DEVICE_FORM_OVERRIDE = "device_form_override"
 
     private const val KEY_SPEED_UNIT = "speed_unit"
     private const val KEY_SPEED_CONNECTIONS = "speed_connections"
@@ -107,6 +108,15 @@ private const val MAX_THERMAL_RECORD_LIMIT = 2000
 
     fun setLightweightMode(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_LIGHTWEIGHT_MODE, enabled).apply()
+    }
+
+    /** 设备形态校正：auto / foldable / tablet / phone。 */
+    fun deviceFormOverride(context: Context): String =
+        prefs(context).getString(KEY_DEVICE_FORM_OVERRIDE, "auto") ?: "auto"
+
+    fun setDeviceFormOverride(context: Context, value: String) {
+        val safe = value.takeIf { it in setOf("auto", "foldable", "tablet", "phone") } ?: "auto"
+        prefs(context).edit().putString(KEY_DEVICE_FORM_OVERRIDE, safe).apply()
     }
 
     // ---------- 深度跑分 ----------

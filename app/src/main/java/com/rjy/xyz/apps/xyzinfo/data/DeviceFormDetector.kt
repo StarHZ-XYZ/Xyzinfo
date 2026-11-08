@@ -61,6 +61,9 @@ object DeviceFormDetector {
     @Volatile
     private var cachedFoldableHardware: Boolean? = null
 
+    @Volatile
+    private var cachedIdentityText: String? = null
+
     fun detect(context: Context): DeviceFormInfo {
         val configuration = context.resources.configuration
         val widthDp = configuration.screenWidthDp
@@ -81,8 +84,15 @@ object DeviceFormDetector {
             hasWatchFeature,
             hasTvFeature
         )
-        val foldable = specialForm == null && isFoldableHardware(context)
-        val form = classify(
+        val foldable = specialForm == null && (
+            isFoldableHardware(context) ||
+                shouldInferFoldableFromLayout(
+                    identityText(context),
+                    smallest,
+                    hasFeature(context, PackageManager.FEATURE_TELEPHONY)
+                )
+            )
+        val detectedForm = classify(
             FormSignals(
                 uiModeType = uiModeType,
                 hasAutomotiveFeature = hasAutomotiveFeature,
@@ -93,6 +103,12 @@ object DeviceFormDetector {
                 smallestWidthDp = smallest
             )
         )
+        val form = when (SettingsRepository.deviceFormOverride(context)) {
+            "foldable" -> DeviceForm.FOLDABLE
+            "tablet" -> DeviceForm.TABLET
+            "phone" -> DeviceForm.PHONE
+            else -> detectedForm
+        }
         return DeviceFormInfo(
             form = form,
             widthDp = widthDp,
@@ -167,7 +183,6 @@ object DeviceFormDetector {
 
     private fun detectFoldableHardware(context: Context): Boolean {
         if (hasHingeEvidence(context)) return true
-
         val properties = SystemPropertiesReader.readAll()
         val marketName = runCatching { DeviceNameRepository.lookup(context) }.getOrNull()
         val identity = buildList {
@@ -180,9 +195,24 @@ object DeviceFormDetector {
             add(properties["ro.product.marketname"].orEmpty())
             add(properties["ro.product.vendor.marketname"].orEmpty())
             add(properties["ro.product.odm.marketname"].orEmpty())
+            add(properties["ro.product.name"].orEmpty())
+            add(properties["ro.product.device"].orEmpty())
+            add(properties["ro.product.vendor.name"].orEmpty())
+            add(properties["ro.product.vendor.device"].orEmpty())
+            add(properties["ro.product.odm.name"].orEmpty())
+            add(properties["ro.product.odm.device"].orEmpty())
+            add(properties["ro.system.product.device"].orEmpty())
         }.joinToString(" ")
+        cachedIdentityText = identity
         return looksLikeFoldable(identity, properties)
     }
+
+    private fun identityText(context: Context): String =
+        cachedIdentityText ?: synchronized(this) {
+            cachedIdentityText ?: detectFoldableHardware(context).let {
+                cachedIdentityText.orEmpty()
+            }
+        }
 
     private fun hasHingeEvidence(context: Context): Boolean {
         val packageManager = context.packageManager
@@ -206,7 +236,7 @@ object DeviceFormDetector {
             .lowercase(Locale.ROOT)
         if (FOLDABLE_NAME_PATTERNS.any { it.containsMatchIn(text) }) return true
 
-        return FOLDABLE_FLAG_KEYS.any { key ->
+        return (FOLDABLE_FLAG_KEYS + EXTRA_FOLDABLE_FLAG_KEYS).any { key ->
             val value = properties[key]?.trim()?.lowercase(Locale.ROOT).orEmpty()
             value.split(',').map(String::trim).any {
                 it == "1" || it == "true" || it == "yes" || it == "foldable"
@@ -225,7 +255,14 @@ object DeviceFormDetector {
         "com.samsung.android.hardware.foldable",
         "com.huawei.hardware.foldable",
         "com.honor.hardware.foldable",
-        "com.motorola.hardware.foldable"
+        "com.hihonor.hardware.foldable",
+        "com.motorola.hardware.foldable",
+        "com.oplus.hardware.foldable",
+        "com.coloros.hardware.foldable",
+        "com.vivo.hardware.foldable",
+        "com.iqoo.hardware.foldable",
+        "com.xiaomi.hardware.foldable",
+        "miui.hardware.foldable"
     )
 
     /** 只匹配完整型号词，避免普通手机 / 平板因为普通英文单词误判。 */
@@ -249,6 +286,44 @@ object DeviceFormDetector {
         "ro.product.is_foldable",
         "ro.vendor.product.is_foldable",
         "ro.hardware.foldable"
+    )
+
+    /**
+     * 某些厂商既不暴露铰链传感器，也没有折叠 feature。展开后仍为大屏、同时保留电话能力，
+     * 且市场名明确不是 Pad / Tab / 平板时，按折叠屏兜底。这样可以覆盖未进入机型库的新机，
+     * 同时避免把普通平板误判成折叠屏。
+     */
+    internal fun shouldInferFoldableFromLayout(
+        identity: String,
+        smallestWidthDp: Int,
+        hasTelephony: Boolean
+    ): Boolean {
+        if (smallestWidthDp < TABLET_MIN_WIDTH_DP || !hasTelephony) return false
+        val text = identity.lowercase(Locale.ROOT)
+        if (TABLET_NAME_PATTERNS.any { it.containsMatchIn(text) }) return false
+        return FOLDABLE_VENDORS.any { text.contains(it) }
+    }
+
+    private val TABLET_NAME_PATTERNS = listOf(
+        Regex("""\bpad\b"""),
+        Regex("""\btablet\b"""),
+        Regex("""\bgalaxy\s+tab\b"""),
+        Regex("""\bhonor\s+pad\b"""),
+        Regex("""\bhuawei\s+matepad\b""")
+    )
+
+    private val FOLDABLE_VENDORS = listOf(
+        "honor", "huawei", "samsung", "xiaomi", "redmi", "vivo", "iqoo",
+        "oppo", "oneplus", "motorola", "lenovo", "nubia", "zte", "tecno", "infinix"
+    )
+
+    private val EXTRA_FOLDABLE_FLAG_KEYS = setOf(
+        "ro.config.is_foldable",
+        "ro.vendor.config.foldable",
+        "ro.product.foldable",
+        "ro.vendor.product.foldable",
+        "ro.hardware.is_foldable",
+        "ro.config.foldable_support"
     )
 
     private val OTHER_UI_MODE_TYPES = setOf(

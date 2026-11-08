@@ -103,6 +103,10 @@
         <activity
             android:name=".ui.share.ShareCardActivity"
             android:exported="false" />
+        <!-- 设备横向对比（1.1.x）：本机导出快照 / 导入另一台设备快照并排对比 -->
+        <activity
+            android:name=".ui.compare.DeviceCompareActivity"
+            android:exported="false" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

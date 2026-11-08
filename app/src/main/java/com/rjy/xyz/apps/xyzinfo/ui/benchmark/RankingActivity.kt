@@ -1,6 +1,5 @@
 package com.rjy.xyz.apps.xyzinfo.ui.benchmark
 
-import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -80,11 +79,7 @@ class RankingActivity : AppCompatActivity() {
         glassBar = GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_RANKING)
 
         binding.btnRunBenchmark.setOnClickListener {
-            startActivity(
-                Intent(this, BenchmarkActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            )
-            finish()
+            GlassScaffold.navigateToTab(this, GlassScaffold.TAB_BENCHMARK)
         }
         binding.tvRankingNote.setInfoRow(
             "数据来源：极客湾（Geekerwan）公开榜单，快照 ${GeekerwanScores.SNAPSHOT}"

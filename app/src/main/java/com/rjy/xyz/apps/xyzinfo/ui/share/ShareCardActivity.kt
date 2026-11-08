@@ -28,6 +28,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import com.rjy.xyz.apps.xyzinfo.ui.compare.DeviceCompareActivity
 import java.io.File
 import java.io.FileOutputStream
 
@@ -72,6 +73,10 @@ class ShareCardActivity : AppCompatActivity() {
         binding.btnCopyCard.setOnClickListener {
             Anim.pressFeedback(it)
             copyAsText()
+        }
+        binding.btnCompare.setOnClickListener {
+            Anim.pressFeedback(it)
+            startActivity(Intent(this, DeviceCompareActivity::class.java))
         }
         buildThemeChips()
         generate()

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 模块图标：设备对比（左实右空两个矩形，一眼可辨「并排比一比」） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 左：实心矩形（本机） -->
+    <path
+        android:fillColor="?attr/colorPrimary"
+        android:pathData="M3.3,3.5 L10.7,3.5 L10.7,20.5 L3.3,20.5 Z" />
+    <!-- 右：空心矩形（对比机），evenOdd 挖出内框 -->
+    <path
+        android:fillColor="?attr/colorPrimary"
+        android:fillType="evenOdd"
+        android:pathData="M13.3,3.5 L20.7,3.5 L20.7,20.5 L13.3,20.5 Z M15.1,5.3 L15.1,18.7 L18.9,18.7 L18.9,5.3 Z" />
+</vector>

@@ -79,13 +79,17 @@ class BrandLogoCatalogTest {
     }
 
     @Test
-    fun `荣耀超宽字标不能再被固有尺寸裁掉后半截`() {
+    fun `荣耀字标完整显示且不会拉成大扁条`() {
         val honor = BrandLogoCatalog.drawable(context, brand("荣耀"), 78)
 
         assertEquals("槽位高度应保持调用方要求的尺寸", 78, honor.intrinsicHeight)
         assertTrue(
-            "荣耀原图接近 5:1；固有宽度 ${honor.intrinsicWidth}px 会把 HONOR 右侧裁掉",
-            honor.intrinsicWidth.toDouble() / honor.intrinsicHeight >= 4.75
+            "荣耀字标槽位过宽会挤压标题，实际 ${honor.intrinsicWidth}px",
+            honor.intrinsicWidth.toDouble() / honor.intrinsicHeight <= 2.9
+        )
+        assertTrue(
+            "槽位也不能缩到看不清，实际 ${honor.intrinsicWidth}px",
+            honor.intrinsicWidth >= 78 * 2
         )
     }
 

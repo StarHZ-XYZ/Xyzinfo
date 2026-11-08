@@ -29,6 +29,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.sensor.SensorInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.soc.SocInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.system.SystemInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.telephony.TelephonyInfoActivity
+import com.rjy.xyz.apps.xyzinfo.ui.compare.DeviceCompareActivity
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
@@ -46,6 +47,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var firstResume = true
+    @Volatile private var deviceNameLookupInFlight = false
+    private var lastDeviceNameLookupAt = 0L
     /** 代码生成的硬件测试入口卡片，宫格排版时要一起排。 */
     /** 代码生成的入口卡片列表（硬件测试、杂项），宫格排版要一起排。 */
     private val extraCards = mutableListOf<android.view.View>()
@@ -107,19 +110,27 @@ class MainActivity : AppCompatActivity() {
      * 映射库约 420KB 压缩数据，解析放在后台线程，读完再刷新标题。
      */
     private fun loadDeviceName() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (deviceNameLookupInFlight || now - lastDeviceNameLookupAt < 700L) return
+        deviceNameLookupInFlight = true
+        lastDeviceNameLookupAt = now
         Thread({
-            val name = DeviceNameRepository.lookup(this)
-            // 品牌徽标：不依赖机型库是否命中，用 Build 字段也能认出来
-            val brand = BrandLogoCatalog.find(
-                Build.MANUFACTURER, Build.BRAND, name, Build.DEVICE, Build.MODEL
-            )
-            runOnUiThread {
-                if (isFinishing) return@runOnUiThread
-                if (name != null) {
-                    binding.tvDeviceName.text = name
-                    binding.tvDeviceName.setTextColor(brandColor(name))
+            try {
+                val name = DeviceNameRepository.lookup(this)
+                // 品牌徽标：不依赖机型库是否命中，用 Build 字段也能认出来
+                val brand = BrandLogoCatalog.find(
+                    Build.MANUFACTURER, Build.BRAND, name, Build.DEVICE, Build.MODEL
+                )
+                runOnUiThread {
+                    if (isFinishing) return@runOnUiThread
+                    if (name != null) {
+                        binding.tvDeviceName.text = name
+                        binding.tvDeviceName.setTextColor(brandColor(name))
+                    }
+                    applyBrandBadge(brand)
                 }
-                applyBrandBadge(brand)
+            } finally {
+                deviceNameLookupInFlight = false
             }
         }, "device-name-lookup").start()
     }
@@ -131,12 +142,12 @@ class MainActivity : AppCompatActivity() {
             return
         }
         val density = resources.displayMetrics.density
-        // 26dp：真 logo 比原来的字母徽章细节多，给大一点才看得清
-        val size = (26 * density).toInt()
+        // 22dp 与 21sp 标题同高，宽字标在槽位内按比例缩放，不再压过机型名。
+        val size = (22 * density).toInt()
         binding.tvDeviceName.setCompoundDrawablesWithIntrinsicBounds(
             BrandLogoCatalog.drawable(this, brand, size), null, null, null
         )
-        binding.tvDeviceName.compoundDrawablePadding = (10 * density).toInt()
+        binding.tvDeviceName.compoundDrawablePadding = (8 * density).toInt()
     }
 
     /** 主流品牌官方色（中英文都覆盖），让首页机型名一眼可辨品牌。 */
@@ -261,6 +272,13 @@ class MainActivity : AppCompatActivity() {
             R.drawable.ic_module_network
         ) {
             open(com.rjy.xyz.apps.xyzinfo.ui.network.NetworkSpeedActivity::class.java)
+        }
+        addEntryCard(
+            "设备对比",
+            "两台设备参数并排比一比：本机导出快照，另一台导入对比",
+            R.drawable.ic_module_compare
+        ) {
+            open(DeviceCompareActivity::class.java)
         }
     }
 

@@ -34,6 +34,7 @@ object DiagnosticCenter {
             appendLine("版本：${BuildConfig.VERSION_NAME}（${BuildConfig.BUILD_NUMBER}）")
             appendLine("设备：${model ?: "未识别"} / ${Build.MANUFACTURER} ${Build.MODEL}")
             appendLine("形态：${form?.description ?: "未识别"}")
+            appendLine("形态校正：${SettingsRepository.deviceFormOverride(context)}")
             appendLine("安全状态：${SecurityGuard.diagnosticStatus(context)}")
             appendLine("XYZ Index：v${CpuBenchmark.INDEX_VERSION}")
             appendLine("跑分口径：${SettingsRepository.BENCHMARK_ENGINE_VERSION}")

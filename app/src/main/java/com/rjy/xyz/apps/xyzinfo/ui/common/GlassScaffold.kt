@@ -2,11 +2,15 @@ package com.rjy.xyz.apps.xyzinfo.ui.common
 
 import android.app.Activity
 import android.content.Intent
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.app.ActivityOptionsCompat
+import androidx.activity.OnBackPressedCallback
 import androidx.core.view.ViewCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowInsetsCompat
@@ -36,6 +40,10 @@ object GlassScaffold {
     /** 子页面（芯片 / 内存 / 屏幕 / 电池 / 传感器 / 系统 / 通信 / GPS）：不属于任何标签。 */
     const val TAB_NONE = -1
 
+    /** 防止快速连点同时创建多个标签页。 */
+    @Volatile
+    private var navigationLockedUntil = 0L
+
     fun tabs(): List<GlassBottomBar.Tab> = listOf(
         GlassBottomBar.Tab(R.drawable.ic_nav_home, "首页"),
         GlassBottomBar.Tab(R.drawable.ic_nav_benchmark, "跑分"),
@@ -51,6 +59,56 @@ object GlassScaffold {
         TAB_SETTINGS -> SettingsActivity::class.java
         TAB_FISH -> com.rjy.xyz.apps.xyzinfo.ui.fish.FishAiActivity::class.java
         else -> MainActivity::class.java
+    }
+
+    /**
+     * 平级标签切换：优先把已经存在的页面实例带回前台，绝不先 finish 当前页。
+     *
+     * 这样滚动位置、已加载数据、筛选状态和未完成的输入都会保留；新页面首次创建时才
+     * 播放入场动画，之后都只是页面级淡入，不再出现“点一下像重新加载”的观感。
+     */
+    fun navigateToTab(activity: AppCompatActivity, target: Int) {
+        if (target !in 0..TAB_SETTINGS) return
+        val now = SystemClock.elapsedRealtime()
+        if (now < navigationLockedUntil) return
+        navigationLockedUntil = now + 220L
+
+        val intent = tabIntent(activity, target)
+        if (SettingsRepository.animationsEnabled(activity)) {
+            val options = ActivityOptionsCompat.makeCustomAnimation(
+                activity,
+                R.anim.tab_enter,
+                R.anim.tab_exit
+            )
+            ActivityCompat.startActivity(activity, intent, options.toBundle())
+        } else {
+            activity.startActivity(intent)
+        }
+    }
+
+    internal fun tabIntent(activity: Activity, target: Int): Intent =
+        Intent(activity, activityFor(target)).addFlags(
+            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        )
+
+    /**
+     * 标签页复用后，系统返回键仍保持“回首页 / 再按退到桌面”的层级，
+     * 而不是在服务间按访问顺序乱跳。
+     */
+    private fun installTabBackBehavior(activity: AppCompatActivity, currentTab: Int) {
+        if (currentTab == TAB_NONE) return
+        activity.onBackPressedDispatcher.addCallback(
+            activity,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (currentTab == TAB_HOME) {
+                        activity.moveTaskToBack(true)
+                    } else {
+                        navigateToTab(activity, TAB_HOME)
+                    }
+                }
+            }
+        )
     }
 
     /**
@@ -398,18 +456,7 @@ object GlassScaffold {
             if (index == currentTab) {
                 if (reselected) content.smoothScrollToTop()
             } else {
-                /*
-                 * 平级标签之间切换：先把当前页结束掉，再用 CLEAR_TOP + SINGLE_TOP 打开目标页，
-                 * 让任务栈始终保持成「首页 + 一个标签页」两层。
-                 *
-                 * 之前用 REORDER_TO_FRONT 会把已经存在的页面提到前台，栈会变成
-                 * 「首页 → 设置 → 排行」这种乱序，于是出现「点了首页却弹出别的页面」。
-                 */
-                activity.startActivity(
-                    Intent(activity, activityFor(index))
-                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                )
-                activity.finish()
+                navigateToTab(activity, index)
             }
         }
         // 底栏创建后每次都要重算一遍（布局完成前拿不到 item 位置）
@@ -438,6 +485,7 @@ object GlassScaffold {
             )
         }
 
+        installTabBackBehavior(activity, currentTab)
         activity.setContentView(container)
         ViewCompat.requestApplyInsets(container)
         animateEntrance(content)

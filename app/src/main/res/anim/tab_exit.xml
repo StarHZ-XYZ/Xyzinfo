@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="180"
+    android:interpolator="@interpolator/xyz_accelerate">
+    <alpha
+        android:fromAlpha="1.0"
+        android:toAlpha="0.82" />
+    <scale
+        android:fromXScale="1.0"
+        android:fromYScale="1.0"
+        android:toXScale="1.008"
+        android:toYScale="1.004"
+        android:pivotX="50%"
+        android:pivotY="48%" />
+</set>

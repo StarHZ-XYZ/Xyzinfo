@@ -139,6 +139,22 @@
                 android:textAllCaps="false"
                 android:textSize="13sp"
                 app:cornerRadius="12dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCompare"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:maxLines="1"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:text="去对比"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                app:cornerRadius="12dp" />
         </LinearLayout>
 
         <TextView

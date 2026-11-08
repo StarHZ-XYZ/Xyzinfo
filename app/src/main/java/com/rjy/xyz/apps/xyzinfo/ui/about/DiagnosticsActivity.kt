@@ -31,6 +31,21 @@ class DiagnosticsActivity : AppCompatActivity() {
             Anim.pressFeedback(it)
             copyReport()
         }
+        val formButtons = mapOf(
+            "auto" to binding.btnFormAuto,
+            "foldable" to binding.btnFormFoldable,
+            "tablet" to binding.btnFormTablet,
+            "phone" to binding.btnFormPhone
+        )
+        binding.groupFormOverride.check(
+            formButtons[SettingsRepository.deviceFormOverride(this)]?.id ?: binding.btnFormAuto.id
+        )
+        binding.groupFormOverride.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val value = formButtons.entries.firstOrNull { it.value.id == checkedId }?.key ?: "auto"
+            SettingsRepository.setDeviceFormOverride(this, value)
+            render()
+        }
         binding.btnToggleLightweight.setOnClickListener {
             Anim.pressFeedback(it)
             val enabled = !SettingsRepository.lightweightMode(this)

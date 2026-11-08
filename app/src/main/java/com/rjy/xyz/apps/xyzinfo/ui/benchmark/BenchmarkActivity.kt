@@ -81,10 +81,7 @@ class BenchmarkActivity : AppCompatActivity() {
 
         binding.btnStartBenchmark.setOnClickListener { startBenchmark() }
         binding.btnOpenRanking.setOnClickListener {
-            startActivity(
-                Intent(this, RankingActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            )
+            GlassScaffold.navigateToTab(this, GlassScaffold.TAB_RANKING)
         }
         Anim.pressFeedback(binding.btnOpenRanking)
 

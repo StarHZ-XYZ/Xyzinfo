@@ -139,4 +139,30 @@ class DeviceFormDetectorTest {
             )
         )
     }
+
+    @Test
+    fun `未知厂商折叠机可由宽屏电话能力兜底`() {
+        assertTrue(
+            DeviceFormDetector.shouldInferFoldableFromLayout(
+                identity = "HONOR 新机 / FCP-AN00",
+                smallestWidthDp = 720,
+                hasTelephony = true
+            )
+        )
+        assertFalse(
+            "普通平板即使有 LTE 也不能被折叠屏兜底吞掉",
+            DeviceFormDetector.shouldInferFoldableFromLayout(
+                identity = "HONOR Pad V9 / ELN-L09",
+                smallestWidthDp = 720,
+                hasTelephony = true
+            )
+        )
+        assertFalse(
+            DeviceFormDetector.shouldInferFoldableFromLayout(
+                identity = "HONOR 新机 / FCP-AN00",
+                smallestWidthDp = 720,
+                hasTelephony = false
+            )
+        )
+    }
 }

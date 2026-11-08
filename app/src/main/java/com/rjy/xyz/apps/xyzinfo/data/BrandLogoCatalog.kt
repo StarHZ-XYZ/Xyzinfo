@@ -220,11 +220,10 @@ object BrandLogoCatalog {
                 /*
                  * **按 logo 自己的比例给槽位**。
                  *
-                 * 这批 logo 大多是"宽字标"：联发科 3.9:1、OPPO 4.1:1、Nothing 5.3:1。
-                 * 原来不管什么 logo 都塞进正方框里，宽字标被压成一条 8dp 高的细线，根本看不清。
-                 * 现在宽度按真实比例算，字标就能完整铺开，清晰度直接翻倍。
-                 * 返回值还会报告换算后的固有尺寸，否则 TextView 仍会按资源原始的
-                 * 24dp 宽度裁掉荣耀这类接近 5:1 的超宽字标。
+                 * 这批 logo 大多是宽字标：联发科 3.9:1、OPPO 4.1:1、Nothing 5.3:1。
+                 * 不能直接塞进正方框（会被压成细线），也不能按原比例无限拉宽
+                 * （荣耀 HONOR 会占掉半个标题行）。这里给槽位设一个宽度上限，再在槽位内
+                 * 按原比例居中绘制，既不裁切、不拉伸，也不会显示成大而扁的一整条。
                  */
                 val aspect = if (logo.intrinsicHeight > 0) {
                     logo.intrinsicWidth.toFloat() / logo.intrinsicHeight
@@ -232,9 +231,11 @@ object BrandLogoCatalog {
                     1f
                 }
                 val boxHeight = sizePx
-                val boxWidth = (sizePx * aspect.coerceIn(0.5f, 6f)).toInt().coerceAtLeast(sizePx / 2)
+                val boxWidth = (sizePx * aspect.coerceIn(0.5f, MAX_LOGO_ASPECT))
+                    .toInt()
+                    .coerceAtLeast(sizePx / 2)
                 if (brand.logoTile == 0) {
-                    logo.setBounds(0, 0, boxWidth, boxHeight)
+                    logo.setBounds(fittedBounds(logo, boxWidth, boxHeight))
                     return FixedSizeDrawable(logo, boxWidth, boxHeight)
                 }
                 // 近黑 / 近白的单色 logo：垫一块对比色底板，两种主题下都看得清
@@ -302,6 +303,20 @@ object BrandLogoCatalog {
         }
     }
 
+    /** 在固定槽位内按原比例居中，避免宽字标被强迫拉伸。 */
+    private fun fittedBounds(logo: Drawable, widthPx: Int, heightPx: Int): android.graphics.Rect {
+        val aspect = if (logo.intrinsicHeight > 0) {
+            logo.intrinsicWidth.toFloat() / logo.intrinsicHeight
+        } else {
+            1f
+        }
+        val drawWidth = min(widthPx.toFloat(), heightPx * aspect)
+        val drawHeight = drawWidth / aspect
+        val left = ((widthPx - drawWidth) / 2f).toInt()
+        val top = ((heightPx - drawHeight) / 2f).toInt()
+        return android.graphics.Rect(left, top, left + drawWidth.toInt(), top + drawHeight.toInt())
+    }
+
     /**
      * 保留子 drawable 的绘制能力，但向 TextView / ImageView 报告真实槽位尺寸。
      *
@@ -342,4 +357,6 @@ object BrandLogoCatalog {
 
     @Suppress("unused")
     private fun clamp(value: Int, max: Int) = min(value, max)
+
+    private const val MAX_LOGO_ASPECT = 2.8f
 }
