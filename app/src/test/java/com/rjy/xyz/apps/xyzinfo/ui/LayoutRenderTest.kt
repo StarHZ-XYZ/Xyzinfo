@@ -11,9 +11,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.sensor.SensorInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.soc.SocInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.system.SystemInfoActivity
-import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkActivity
-import com.rjy.xyz.apps.xyzinfo.ui.benchmark.RankingActivity
-import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
+import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.hardware.ScreenTestActivity
 import com.rjy.xyz.apps.xyzinfo.ui.hardware.HardwareMoreActivity
 import com.rjy.xyz.apps.xyzinfo.ui.misc.MiscActivity
@@ -22,7 +20,6 @@ import com.rjy.xyz.apps.xyzinfo.ui.gps.GpsInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.env.EnvironmentCheckActivity
 import com.rjy.xyz.apps.xyzinfo.ui.thermal.ThermalActivity
 import com.rjy.xyz.apps.xyzinfo.ui.inspect.DeviceInspectActivity
-import com.rjy.xyz.apps.xyzinfo.ui.fish.FishAiActivity
 import com.rjy.xyz.apps.xyzinfo.ui.network.NetworkSpeedActivity
 import com.rjy.xyz.apps.xyzinfo.ui.share.ShareCardActivity
 import org.junit.Test
@@ -48,29 +45,24 @@ import java.io.File
 class LayoutRenderTest {
 
     private val screens: List<Pair<String, Class<out AppCompatActivity>>> = listOf(
-        "1-main" to MainActivity::class.java,
         "2-soc" to SocInfoActivity::class.java,
         "3-ram" to RamInfoActivity::class.java,
         "4-screen" to ScreenInfoActivity::class.java,
         "5-battery" to BatteryInfoActivity::class.java,
         "6-sensor" to SensorInfoActivity::class.java,
         "7-system" to SystemInfoActivity::class.java,
-        "8-benchmark" to BenchmarkActivity::class.java,
-        "9-ranking" to RankingActivity::class.java,
-        "10-settings" to SettingsActivity::class.java
         // 0.9 新增页面：全部纳入渲染自检，用来抓「布局里用了不支持的属性」这类
         // 只有真正 inflate 才会暴露的崩溃（TextureView 加 background 就是这么发现的）
-        ,"11-gps" to GpsInfoActivity::class.java
-        ,"12-screen-test" to ScreenTestActivity::class.java
-        ,"13-hardware-more" to HardwareMoreActivity::class.java
-        ,"14-misc" to MiscActivity::class.java
-        ,"15-changelog" to ChangelogActivity::class.java
-        ,"16-env-check" to EnvironmentCheckActivity::class.java
-        ,"17-inspect" to DeviceInspectActivity::class.java
-        ,"18-fish-ai" to FishAiActivity::class.java
-        ,"19-thermal" to ThermalActivity::class.java
-        ,"20-network-speed" to NetworkSpeedActivity::class.java
-        ,"21-share-card" to ShareCardActivity::class.java
+        "11-gps" to GpsInfoActivity::class.java,
+        "12-screen-test" to ScreenTestActivity::class.java,
+        "13-hardware-more" to HardwareMoreActivity::class.java,
+        "14-misc" to MiscActivity::class.java,
+        "15-changelog" to ChangelogActivity::class.java,
+        "16-env-check" to EnvironmentCheckActivity::class.java,
+        "17-inspect" to DeviceInspectActivity::class.java,
+        "19-thermal" to ThermalActivity::class.java,
+        "20-network-speed" to NetworkSpeedActivity::class.java,
+        "21-share-card" to ShareCardActivity::class.java
     )
 
     @Test
@@ -91,6 +83,22 @@ class LayoutRenderTest {
             bitmap.recycle()
             activity.finish()
         }
+        val shell = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        listOf(
+            "1-main" to GlassScaffold.TAB_HOME,
+            "8-benchmark" to GlassScaffold.TAB_BENCHMARK,
+            "9-ranking" to GlassScaffold.TAB_RANKING,
+            "10-settings" to GlassScaffold.TAB_SETTINGS,
+            "18-fish-ai" to GlassScaffold.TAB_FISH
+        ).forEach { (name, tab) ->
+            if (tab != GlassScaffold.TAB_HOME) shell.switchTab(tab)
+            val bitmap = capture(shell.window.decorView)
+            File(outputDir, "$name.png").outputStream().use { stream ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+            }
+            bitmap.recycle()
+        }
+        shell.finish()
         println("渲染输出目录: ${outputDir.absolutePath}")
     }
 

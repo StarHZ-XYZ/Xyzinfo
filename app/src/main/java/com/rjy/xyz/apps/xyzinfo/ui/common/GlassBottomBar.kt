@@ -322,7 +322,13 @@ class GlassBottomBar @JvmOverloads constructor(
                 } else {
                     // 原地点击：保留原来的"重复点当前标签弹一下"行为
                     val reselected = commit == tabIndexAtDown && commit == selectedIndex
-                    if (reselected) pulse() else moveTo(commit, Anim.enabled(context))
+                    if (reselected) {
+                        pulse()
+                    } else if (autoAnimateOnSelect) {
+                        // 页面即将切换时，旧页面底栏不要先把光标挪过去再随窗口退出；
+                        // 否则退出动画里会短暂出现一根错位绿线。目标页会自行初始化正确位置。
+                        moveTo(commit, Anim.enabled(context))
+                    }
                     onTabSelected?.invoke(commit, reselected)
                 }
             }
@@ -683,7 +689,8 @@ class GlassBottomBar @JvmOverloads constructor(
         }
 
         // 4) 选中项：指示线 + 辉光
-        if (selectedIndex != NO_TAB) {
+        // 首次布局完成前 centerOf() 仍是 0；这一帧必须不画，避免光标从最左侧闪一下。
+        if (selectedIndex != NO_TAB && indicatorCenterX > 0f) {
             val itemWidth = (items.getOrNull(selectedIndex)?.width ?: 0).toFloat()
             val lineWidth = (itemWidth * 0.42f).coerceIn(dp(28f), dp(84f))
             val lineTop = dp(1.5f)

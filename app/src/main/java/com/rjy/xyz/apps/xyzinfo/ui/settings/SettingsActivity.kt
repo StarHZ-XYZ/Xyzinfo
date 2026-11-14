@@ -1,12 +1,16 @@
 package com.rjy.xyz.apps.xyzinfo.ui.settings
 
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
 import com.rjy.xyz.apps.xyzinfo.R
 import com.rjy.xyz.apps.xyzinfo.data.BingWallpaperRepository
 import com.rjy.xyz.apps.xyzinfo.BuildConfig
@@ -15,6 +19,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.Season
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivitySettingsBinding
 import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
+import com.rjy.xyz.apps.xyzinfo.ui.common.TabPage
 import com.rjy.xyz.apps.xyzinfo.ui.common.UpdateControls
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
@@ -23,19 +28,31 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 /**
  * 设置页：外观开关（液态玻璃底栏 / 丝滑动画）、跑分模式、机型库更新与关于信息。
  */
-class SettingsActivity : AppCompatActivity() {
+class SettingsTabFragment : Fragment(), TabPage {
 
-    private lateinit var binding: ActivitySettingsBinding
+    private var _binding: ActivitySettingsBinding? = null
+    private val binding get() = requireNotNull(_binding)
+    private val hostContext get() = requireContext()
+    private val isFinishing get() = !isAdded || _binding == null
+
+    private fun recreate() = requireActivity().recreate()
+
+    private fun runOnUiThread(action: () -> Unit) {
+        activity?.runOnUiThread(action)
+    }
     private var aboutTapCount = 0
     private var lastAboutTapAt = 0L
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivitySettingsBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        binding.root.applySystemBarPadding()
-        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_SETTINGS)
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View = ActivitySettingsBinding.inflate(inflater, container, false).also {
+        _binding = it
+    }.root
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
         setupAppearance()
         setupWallpaper()
         setupBenchmark()
@@ -43,36 +60,45 @@ class SettingsActivity : AppCompatActivity() {
         setupAbout()
     }
 
+    override fun onDestroyView() {
+        _binding = null
+        super.onDestroyView()
+    }
+
+    override fun scrollToTop() {
+        (_binding?.root as? android.widget.ScrollView)?.smoothScrollTo(0, 0)
+    }
+
     private fun setupAppearance() {
-        binding.switchAnimations.isChecked = SettingsRepository.animationsEnabled(this)
+        binding.switchAnimations.isChecked = SettingsRepository.animationsEnabled(hostContext)
         binding.switchAnimations.setOnCheckedChangeListener { _, checked ->
-            SettingsRepository.setAnimationsEnabled(this, checked)
+            SettingsRepository.setAnimationsEnabled(hostContext, checked)
             // 粒子层是运行时挂上去的，改完重建页面让开关立刻生效
             recreate()
         }
 
-        binding.switchParticles.isChecked = SettingsRepository.particleEffectEnabled(this)
+        binding.switchParticles.isChecked = SettingsRepository.particleEffectEnabled(hostContext)
         binding.switchParticles.setOnCheckedChangeListener { _, checked ->
-            SettingsRepository.setParticleEffectEnabled(this, checked)
+            SettingsRepository.setParticleEffectEnabled(hostContext, checked)
             recreate()
         }
 
-        binding.switchFollowSystemColor.isChecked = SettingsRepository.followSystemColor(this)
+        binding.switchFollowSystemColor.isChecked = SettingsRepository.followSystemColor(hostContext)
         binding.switchFollowSystemColor.setOnCheckedChangeListener { _, checked ->
-            SettingsRepository.setFollowSystemColor(this, checked)
+            SettingsRepository.setFollowSystemColor(hostContext, checked)
             Toast.makeText(
-                this,
+                hostContext,
                 if (checked) "已开启莫奈取色，重进应用后完全生效" else "已恢复应用默认配色",
                 Toast.LENGTH_SHORT
             ).show()
             recreate()
         }
 
-        binding.switchDeepSeekTheme.isChecked = SettingsRepository.deepSeekTheme(this)
+        binding.switchDeepSeekTheme.isChecked = SettingsRepository.deepSeekTheme(hostContext)
         binding.switchDeepSeekTheme.setOnCheckedChangeListener { _, checked ->
-            SettingsRepository.setDeepSeekTheme(this, checked)
+            SettingsRepository.setDeepSeekTheme(hostContext, checked)
             Toast.makeText(
-                this,
+                hostContext,
                 if (checked) "已开启大肥鱼主题：每页角落会有条大肥鱼" else "已关闭大肥鱼主题",
                 Toast.LENGTH_SHORT
             ).show()
@@ -80,37 +106,37 @@ class SettingsActivity : AppCompatActivity() {
             recreate()
         }
 
-        binding.switchSeason.isChecked = SettingsRepository.seasonEffectEnabled(this)
+        binding.switchSeason.isChecked = SettingsRepository.seasonEffectEnabled(hostContext)
         buildDarkModeChips()
         updateSeasonHint()
         buildSeasonChips()
-        binding.switchSeasonGravity.isChecked = SettingsRepository.seasonGravity(this)
+        binding.switchSeasonGravity.isChecked = SettingsRepository.seasonGravity(hostContext)
         binding.tvSeasonGravityHint.alpha = if (binding.switchSeasonGravity.isChecked) 1f else 0.5f
         binding.switchSeasonGravity.setOnCheckedChangeListener { _, checked ->
-            SettingsRepository.setSeasonGravity(this, checked)
+            SettingsRepository.setSeasonGravity(hostContext, checked)
             binding.tvSeasonGravityHint.alpha = if (checked) 1f else 0.5f
         }
         binding.switchSeason.setOnCheckedChangeListener { _, checked ->
             // 总开关：一次关掉四季氛围与节日特效
-            SettingsRepository.setSeasonEffectEnabled(this, checked)
+            SettingsRepository.setSeasonEffectEnabled(hostContext, checked)
             binding.switchHoliday.isEnabled = checked
             binding.tvHolidayHint.alpha = if (checked && binding.switchHoliday.isChecked) 1f else 0.5f
             recreate()
         }
 
-        binding.switchHoliday.isChecked = SettingsRepository.holidayEffectEnabled(this)
-        val fallingOn = SettingsRepository.seasonEffectEnabled(this)
+        binding.switchHoliday.isChecked = SettingsRepository.holidayEffectEnabled(hostContext)
+        val fallingOn = SettingsRepository.seasonEffectEnabled(hostContext)
         binding.switchHoliday.isEnabled = fallingOn
         binding.tvHolidayHint.alpha = if (fallingOn && binding.switchHoliday.isChecked) 1f else 0.5f
         binding.switchHoliday.setOnCheckedChangeListener { _, checked ->
-            SettingsRepository.setHolidayEffectEnabled(this, checked)
+            SettingsRepository.setHolidayEffectEnabled(hostContext, checked)
             binding.tvHolidayHint.alpha =
-                if (checked && SettingsRepository.seasonEffectEnabled(this)) 1f else 0.5f
+                if (checked && SettingsRepository.seasonEffectEnabled(hostContext)) 1f else 0.5f
         }
 
-        binding.switchHomeGrid.isChecked = SettingsRepository.homeGridStyle(this)
+        binding.switchHomeGrid.isChecked = SettingsRepository.homeGridStyle(hostContext)
         binding.switchHomeGrid.setOnCheckedChangeListener { _, checked ->
-            SettingsRepository.setHomeGridStyle(this, checked)
+            SettingsRepository.setHomeGridStyle(hostContext, checked)
             recreate()
         }
 
@@ -130,13 +156,13 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupWallpaper() {
-        binding.switchWallpaper.isChecked = SettingsRepository.bingWallpaperEnabled(this)
+        binding.switchWallpaper.isChecked = SettingsRepository.bingWallpaperEnabled(hostContext)
         binding.switchWallpaper.setOnCheckedChangeListener { _, checked ->
-            SettingsRepository.setBingWallpaperEnabled(this, checked)
-            if (checked && !BingWallpaperRepository.isUpToDate(this)) {
+            SettingsRepository.setBingWallpaperEnabled(hostContext, checked)
+            if (checked && !BingWallpaperRepository.isUpToDate(hostContext)) {
                 binding.tvWallpaperInfo.text = "正在下载必应今日壁纸…"
                 Thread({
-                    val result = BingWallpaperRepository.download(this)
+                    val result = BingWallpaperRepository.download(hostContext.applicationContext)
                     runOnUiThread {
                         if (isFinishing) return@runOnUiThread
                         binding.tvWallpaperInfo.text = result.message
@@ -149,7 +175,7 @@ class SettingsActivity : AppCompatActivity() {
         }
         updateWallpaperInfo()
 
-        val scrim = SettingsRepository.wallpaperScrim(this)
+        val scrim = SettingsRepository.wallpaperScrim(hostContext)
         binding.seekScrim.progress = scrim - 45
         binding.tvScrimValue.text = scrimLabel(scrim)
         binding.seekScrim.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -160,7 +186,7 @@ class SettingsActivity : AppCompatActivity() {
             override fun onStartTrackingTouch(bar: SeekBar?) = Unit
 
             override fun onStopTrackingTouch(bar: SeekBar?) {
-                SettingsRepository.setWallpaperScrim(this@SettingsActivity, (bar?.progress ?: 27) + 45)
+                SettingsRepository.setWallpaperScrim(hostContext, (bar?.progress ?: 27) + 45)
                 recreate()
             }
         })
@@ -169,11 +195,11 @@ class SettingsActivity : AppCompatActivity() {
             Anim.pressFeedback(it)
             binding.tvWallpaperInfo.text = "正在换一张…"
             Thread({
-                val result = BingWallpaperRepository.download(this, (1..7).random())
+                val result = BingWallpaperRepository.download(hostContext.applicationContext, (1..7).random())
                 runOnUiThread {
                     if (isFinishing) return@runOnUiThread
                     binding.tvWallpaperInfo.text = result.message
-                    SettingsRepository.setBingWallpaperEnabled(this, true)
+                    SettingsRepository.setBingWallpaperEnabled(hostContext, true)
                     recreate()
                 }
             }, "bing-wallpaper-next").start()
@@ -186,22 +212,22 @@ class SettingsActivity : AppCompatActivity() {
     /** 深色模式：跟随系统 / 浅色 / 深色 三个胶囊，点一下立刻全局生效。 */
     private fun buildDarkModeChips() {
         val modes = listOf(0 to "跟随系统", 1 to "浅色", 2 to "深色")
-        val current = SettingsRepository.darkMode(this)
+        val current = SettingsRepository.darkMode(hostContext)
         binding.layoutDarkModeChips.removeAllViews()
         modes.forEach { (mode, label) ->
-            val chip = TextView(this).apply {
+            val chip = TextView(hostContext).apply {
                 text = label
                 textSize = 12.5f
                 gravity = android.view.Gravity.CENTER
                 setPadding(dp(14f), dp(7f), dp(14f), dp(7f))
                 setTextColor(
-                    if (mode == current) ThemeColors.accent(this@SettingsActivity) else ContextCompat.getColor(this@SettingsActivity, R.color.text_secondary)
+                    if (mode == current) ThemeColors.accent(hostContext) else ContextCompat.getColor(hostContext, R.color.text_secondary)
                 )
-                background = ContextCompat.getDrawable(this@SettingsActivity, R.drawable.bg_chip_filter)
+                background = ContextCompat.getDrawable(hostContext, R.drawable.bg_chip_filter)
                 isSelected = mode == current
                 isClickable = true
                 setOnClickListener {
-                    SettingsRepository.setDarkMode(this@SettingsActivity, mode)
+                    SettingsRepository.setDarkMode(hostContext, mode)
                     androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
                         when (mode) {
                             1 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
@@ -220,9 +246,9 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun updateSeasonHint() {
-        val manual = SettingsRepository.seasonMode(this) != "auto"
+        val manual = SettingsRepository.seasonMode(hostContext) != "auto"
         binding.tvSeasonHint.text = (if (manual) "已手动锁定：" else "自动模式（按当前月份）：") +
-            Season.resolve(this).label
+            Season.resolve(hostContext).label
     }
 
     /** 自动 / 春 / 夏 / 秋 / 冬 五个胶囊按钮，点一下就锁定（点「自动」恢复按月份）。 */
@@ -234,23 +260,23 @@ class SettingsActivity : AppCompatActivity() {
             "autumn" to "秋",
             "winter" to "冬"
         )
-        val current = SettingsRepository.seasonMode(this)
+        val current = SettingsRepository.seasonMode(hostContext)
         binding.layoutSeasonChips.removeAllViews()
         modes.forEach { (mode, label) ->
-            val chip = TextView(this).apply {
+            val chip = TextView(hostContext).apply {
                 text = label
                 textSize = 12.5f
                 gravity = android.view.Gravity.CENTER
                 setPadding(dp(14f), dp(7f), dp(14f), dp(7f))
                 setTextColor(
-                    if (mode == current) ThemeColors.accent(this@SettingsActivity) else ContextCompat.getColor(this@SettingsActivity, R.color.text_secondary)
+                    if (mode == current) ThemeColors.accent(hostContext) else ContextCompat.getColor(hostContext, R.color.text_secondary)
                 )
-                background = ContextCompat.getDrawable(this@SettingsActivity, R.drawable.bg_chip_filter)
+                background = ContextCompat.getDrawable(hostContext, R.drawable.bg_chip_filter)
                 isSelected = mode == current
                 isClickable = true
                 setOnClickListener {
-                    SettingsRepository.setSeasonMode(this@SettingsActivity, mode)
-                    SettingsRepository.setSeasonEffectEnabled(this@SettingsActivity, true)
+                    SettingsRepository.setSeasonMode(hostContext, mode)
+                    SettingsRepository.setSeasonEffectEnabled(hostContext, true)
                     recreate()
                 }
             }
@@ -265,7 +291,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun dp(value: Float): Int = (value * resources.displayMetrics.density).toInt()
 
     private fun updateWallpaperInfo() {
-        val current = BingWallpaperRepository.current(this)
+        val current = BingWallpaperRepository.current(hostContext)
         binding.tvWallpaperInfo.text = if (current == null) {
             "还没有下载过壁纸：打开上面的开关会立刻抓取必应当天的图"
         } else {
@@ -274,22 +300,23 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupBenchmark() {
-        binding.switchDeepBenchmark.isChecked = SettingsRepository.deepBenchmarkEnabled(this)
+        binding.switchDeepBenchmark.isChecked = SettingsRepository.deepBenchmarkEnabled(hostContext)
         binding.switchDeepBenchmark.setOnCheckedChangeListener { _, checked ->
-            SettingsRepository.setDeepBenchmarkEnabled(this, checked)
+            SettingsRepository.setDeepBenchmarkEnabled(hostContext, checked)
         }
 
         binding.btnClearBenchmark.setOnClickListener {
             Anim.pressFeedback(it)
-            SettingsRepository.clearBenchmark(this)
-            Toast.makeText(this, "已清除本机跑分记录，排行榜里不再显示实测行", Toast.LENGTH_SHORT).show()
+            SettingsRepository.clearBenchmark(hostContext)
+            Toast.makeText(hostContext, "已清除本机跑分记录，排行榜里不再显示实测行", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun setupData() {
-        UpdateControls.refreshStatus(this, binding.tvDataStatus)
-        UpdateControls.attachUpdate(this, binding.btnUpdateData, binding.tvDataStatus)
-        UpdateControls.attachReset(this, binding.btnResetData, binding.tvDataStatus)
+        val host = requireActivity() as AppCompatActivity
+        UpdateControls.refreshStatus(host, binding.tvDataStatus)
+        UpdateControls.attachUpdate(host, binding.btnUpdateData, binding.tvDataStatus)
+        UpdateControls.attachReset(host, binding.btnResetData, binding.tvDataStatus)
         Anim.pressFeedback(binding.btnUpdateData, binding.btnResetData, binding.btnClearBenchmark)
     }
 
@@ -304,13 +331,13 @@ class SettingsActivity : AppCompatActivity() {
                 "开源协议：MIT"
         )
         binding.btnOpenDiagnostics.visibility =
-            if (SettingsRepository.diagnosticsUnlocked(this)) TextView.VISIBLE else TextView.GONE
+            if (SettingsRepository.diagnosticsUnlocked(hostContext)) TextView.VISIBLE else TextView.GONE
         binding.tvAbout.setOnClickListener { revealDiagnosticsOnSecretTap() }
         binding.btnOpenDiagnostics.setOnClickListener {
             Anim.pressFeedback(it)
-            startActivity(
+                hostContext.startActivity(
                 android.content.Intent(
-                    this,
+                        hostContext,
                     com.rjy.xyz.apps.xyzinfo.ui.about.DiagnosticsActivity::class.java
                 )
             )
@@ -318,18 +345,18 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnOpenGithub.setOnClickListener {
             Anim.pressFeedback(it)
             runCatching {
-                startActivity(
+                hostContext.startActivity(
                     android.content.Intent(
                         android.content.Intent.ACTION_VIEW,
                         android.net.Uri.parse("https://github.com/StarHZ-XYZ/Xyzinfo")
                     )
                 )
-            }.onFailure { Toast.makeText(this, "没有可用的浏览器", Toast.LENGTH_SHORT).show() }
+            }.onFailure { Toast.makeText(hostContext, "没有可用的浏览器", Toast.LENGTH_SHORT).show() }
         }
         binding.btnOpenChangelog.setOnClickListener {
             Anim.pressFeedback(it)
-            startActivity(
-                android.content.Intent(this, com.rjy.xyz.apps.xyzinfo.ui.about.ChangelogActivity::class.java)
+            hostContext.startActivity(
+                android.content.Intent(hostContext, com.rjy.xyz.apps.xyzinfo.ui.about.ChangelogActivity::class.java)
             )
         }
         setupFishAssistant()
@@ -340,54 +367,54 @@ class SettingsActivity : AppCompatActivity() {
         val now = android.os.SystemClock.elapsedRealtime()
         if (now - lastAboutTapAt > 2_500L) aboutTapCount = 0
         lastAboutTapAt = now
-        if (SettingsRepository.diagnosticsUnlocked(this)) {
+        if (SettingsRepository.diagnosticsUnlocked(hostContext)) {
             binding.btnOpenDiagnostics.visibility = TextView.VISIBLE
-            Toast.makeText(this, "诊断中心已解锁，入口在更新日志下方", Toast.LENGTH_SHORT).show()
+            Toast.makeText(hostContext, "诊断中心已解锁，入口在更新日志下方", Toast.LENGTH_SHORT).show()
             return
         }
         aboutTapCount++
         when (aboutTapCount) {
             in 4..6 -> Toast.makeText(
-                this,
+                hostContext,
                 "还差 ${7 - aboutTapCount} 次…",
                 Toast.LENGTH_SHORT
             ).show()
             7 -> {
-                SettingsRepository.unlockDiagnostics(this)
+                SettingsRepository.unlockDiagnostics(hostContext)
                 binding.btnOpenDiagnostics.visibility = TextView.VISIBLE
-                Toast.makeText(this, "已解锁隐藏诊断中心", Toast.LENGTH_SHORT).show()
+                Toast.makeText(hostContext, "已解锁隐藏诊断中心", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     /** 大肥鱼助手：填 API Key（直连官方接口）或切到官方免费版网页。 */
     private fun setupFishAssistant() {
-        binding.etDeepSeekKey.setText(SettingsRepository.deepSeekApiKey(this))
+        binding.etDeepSeekKey.setText(SettingsRepository.deepSeekApiKey(hostContext))
         binding.btnSaveDeepSeekKey.setOnClickListener {
             Anim.pressFeedback(it)
-            SettingsRepository.setDeepSeekApiKey(this, binding.etDeepSeekKey.text?.toString().orEmpty())
-            Toast.makeText(this, "已保存 DeepSeek API Key", Toast.LENGTH_SHORT).show()
+            SettingsRepository.setDeepSeekApiKey(hostContext, binding.etDeepSeekKey.text?.toString().orEmpty())
+            Toast.makeText(hostContext, "已保存 DeepSeek API Key", Toast.LENGTH_SHORT).show()
             updateAiModeUi()
         }
         binding.chipAiModeApi.setOnClickListener {
-            SettingsRepository.setAiMode(this, "api")
+            SettingsRepository.setAiMode(hostContext, "api")
             updateAiModeUi()
         }
         binding.chipAiModeWeb.setOnClickListener {
-            SettingsRepository.setAiMode(this, "web")
+            SettingsRepository.setAiMode(hostContext, "web")
             updateAiModeUi()
         }
         updateAiModeUi()
     }
 
     private fun updateAiModeUi() {
-        val api = SettingsRepository.aiMode(this) == "api"
-        val keySet = SettingsRepository.deepSeekApiKey(this).isNotBlank()
+        val api = SettingsRepository.aiMode(hostContext) == "api"
+        val keySet = SettingsRepository.deepSeekApiKey(hostContext).isNotBlank()
         listOf(binding.chipAiModeApi to api, binding.chipAiModeWeb to !api).forEach { (chip, selected) ->
             chip.isSelected = selected
             chip.setTextColor(
                 ContextCompat.getColor(
-                    this,
+                    hostContext,
                     if (selected) R.color.accent else R.color.text_secondary
                 )
             )
@@ -397,5 +424,21 @@ class SettingsActivity : AppCompatActivity() {
             api && !keySet -> "当前：API Key 直连，但还没填 Key —— 请在上面的输入框里填入并保存"
             else -> "当前：官方免费版（点「大肥鱼」标签里的按钮会打开 chat.deepseek.com，需要登录）"
         }
+    }
+}
+
+/** 兼容旧任务栈 / 外部入口：不再创建独立设置窗口，直接切到单 Activity 壳层的设置页。 */
+class SettingsActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        startActivity(
+            android.content.Intent(this, com.rjy.xyz.apps.xyzinfo.MainActivity::class.java)
+                .putExtra(
+                    com.rjy.xyz.apps.xyzinfo.MainActivity.EXTRA_INITIAL_TAB,
+                    GlassScaffold.TAB_SETTINGS
+                )
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        )
+        finish()
     }
 }

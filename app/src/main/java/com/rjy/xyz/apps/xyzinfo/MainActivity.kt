@@ -4,7 +4,11 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import com.rjy.xyz.apps.xyzinfo.data.DeviceOverviewProvider
 import com.rjy.xyz.apps.xyzinfo.data.BrandLogoCatalog
 import com.rjy.xyz.apps.xyzinfo.data.DeviceFormDetector
@@ -15,7 +19,9 @@ import android.view.View
 import com.rjy.xyz.apps.xyzinfo.model.DeviceOverview
 import com.rjy.xyz.apps.xyzinfo.ui.battery.BatteryInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkActivity
+import com.rjy.xyz.apps.xyzinfo.ui.benchmark.BenchmarkTabFragment
 import com.rjy.xyz.apps.xyzinfo.ui.benchmark.RankingActivity
+import com.rjy.xyz.apps.xyzinfo.ui.benchmark.RankingTabFragment
 import com.rjy.xyz.apps.xyzinfo.ui.gps.GpsInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.hardware.ScreenTestActivity
 import com.rjy.xyz.apps.xyzinfo.ui.hardware.HardwareMoreActivity
@@ -23,6 +29,8 @@ import com.rjy.xyz.apps.xyzinfo.ui.misc.MiscActivity
 import com.rjy.xyz.apps.xyzinfo.ui.env.EnvironmentCheckActivity
 import com.rjy.xyz.apps.xyzinfo.ui.inspect.DeviceInspectActivity
 import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
+import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsTabFragment
+import com.rjy.xyz.apps.xyzinfo.ui.fish.FishAiTabFragment
 import com.rjy.xyz.apps.xyzinfo.ui.ram.RamInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.screen.ScreenInfoActivity
 import com.rjy.xyz.apps.xyzinfo.ui.sensor.SensorInfoActivity
@@ -36,6 +44,8 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import com.rjy.xyz.apps.xyzinfo.ui.common.UpdateControls
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
 import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
+import com.rjy.xyz.apps.xyzinfo.ui.common.TabPage
+import com.rjy.xyz.apps.xyzinfo.ui.common.smoothScrollToTop
 import com.rjy.xyz.apps.xyzinfo.util.Labels
 import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
@@ -46,6 +56,11 @@ import com.rjy.xyz.apps.xyzinfo.R
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var pageHost: FrameLayout
+    private lateinit var fragmentHost: FrameLayout
+    private var tabBar: com.rjy.xyz.apps.xyzinfo.ui.common.GlassBottomBar? = null
+    private val tabFragments = mutableMapOf<Int, Fragment>()
+    private var selectedTab = GlassScaffold.TAB_HOME
     private var firstResume = true
     @Volatile private var deviceNameLookupInFlight = false
     private var lastDeviceNameLookupAt = 0L
@@ -56,9 +71,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        binding.root.applySystemBarPadding()
-        GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_HOME)
+        setupShell()
 
         renderOverview(DeviceOverviewProvider.load())
         setupNavigation()
@@ -74,6 +87,147 @@ class MainActivity : AppCompatActivity() {
                 android.content.Intent(this, com.rjy.xyz.apps.xyzinfo.ui.share.ShareCardActivity::class.java)
             )
         }
+        setupTabBack()
+        val initialTab = savedInstanceState?.getInt(KEY_SELECTED_TAB, GlassScaffold.TAB_HOME)
+            ?: intent.getIntExtra(EXTRA_INITIAL_TAB, GlassScaffold.TAB_HOME)
+        initialTab
+            .takeIf { it in GlassScaffold.TAB_HOME..GlassScaffold.TAB_SETTINGS && it != GlassScaffold.TAB_HOME }
+            ?.let { showTab(it, animated = false) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getIntExtra(EXTRA_INITIAL_TAB, GlassScaffold.TAB_HOME)
+            .takeIf { it in GlassScaffold.TAB_HOME..GlassScaffold.TAB_SETTINGS }
+            ?.let { showTab(it, animated = true) }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt(KEY_SELECTED_TAB, selectedTab)
+        super.onSaveInstanceState(outState)
+    }
+
+    /**
+     * 单一壳层：所有顶部标签共用一个窗口、一条底栏和一个页面容器。
+     * 页面视图只创建一次，切换时 hide/show 而不是销毁重建。
+     */
+    private fun setupShell() {
+        pageHost = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+        pageHost.addView(
+            binding.root,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
+        fragmentHost = FrameLayout(this).apply {
+            id = R.id.tab_fragment_host
+            visibility = android.view.View.GONE
+        }
+        pageHost.addView(
+            fragmentHost,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
+        tabBar = GlassScaffold.attachShell(this, pageHost, GlassScaffold.TAB_HOME) { tab, reselected ->
+            if (tab == selectedTab) {
+                if (reselected) scrollCurrentPageToTop()
+            } else {
+                showTab(tab, animated = true)
+            }
+        }
+    }
+
+    private fun setupTabBack() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (selectedTab == GlassScaffold.TAB_HOME) {
+                    moveTaskToBack(true)
+                } else {
+                    showTab(GlassScaffold.TAB_HOME, animated = true)
+                }
+            }
+        })
+    }
+
+    private fun showTab(target: Int, animated: Boolean) {
+        if (target !in GlassScaffold.TAB_HOME..GlassScaffold.TAB_SETTINGS || target == selectedTab) return
+        val previous = selectedTab
+        val leaving = tabFragments[previous]
+        val transaction = supportFragmentManager.beginTransaction().setReorderingAllowed(true)
+        leaving?.let(transaction::hide)
+
+        if (target == GlassScaffold.TAB_HOME) {
+            fragmentHost.visibility = android.view.View.GONE
+            binding.root.visibility = android.view.View.VISIBLE
+        } else {
+            val entering = tabFragments[target]
+                ?: (supportFragmentManager.findFragmentByTag("tab-$target") as? Fragment)
+                ?: fragmentFor(target).also {
+                    tabFragments[target] = it
+                    transaction.add(fragmentHost.id, it, "tab-$target")
+                }
+            tabFragments[target] = entering
+            transaction.show(entering)
+            binding.root.visibility = android.view.View.GONE
+            fragmentHost.visibility = android.view.View.VISIBLE
+        }
+        transaction.commitNow()
+        selectedTab = target
+        tabBar?.setSelectedTab(target, animated)
+
+        if (animated && SettingsRepository.animationsEnabled(this)) {
+            val direction = if (target > previous) 1f else -1f
+            val density = resources.displayMetrics.density
+            pageHost.animate().cancel()
+            pageHost.alpha = 0.88f
+            pageHost.translationX = direction * 8f * density
+            pageHost.animate()
+                .alpha(1f)
+                .translationX(0f)
+                .setDuration(150L)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
+        } else {
+            pageHost.alpha = 1f
+            pageHost.translationX = 0f
+        }
+    }
+
+    private fun fragmentFor(tab: Int): Fragment = when (tab) {
+        GlassScaffold.TAB_BENCHMARK -> BenchmarkTabFragment()
+        GlassScaffold.TAB_FISH -> FishAiTabFragment()
+        GlassScaffold.TAB_RANKING -> RankingTabFragment()
+        GlassScaffold.TAB_SETTINGS -> SettingsTabFragment()
+        else -> error("Unknown tab $tab")
+    }
+
+    private fun scrollCurrentPageToTop() {
+        if (selectedTab == GlassScaffold.TAB_HOME) {
+            binding.root.smoothScrollToTop()
+        } else {
+            (tabFragments[selectedTab] as? TabPage)?.scrollToTop()
+        }
+    }
+
+    fun setTabBarVisible(visible: Boolean) {
+        tabBar?.visibility = if (visible) android.view.View.VISIBLE else android.view.View.GONE
+    }
+
+    fun setTabBarBackdropEnabled(enabled: Boolean) {
+        tabBar?.setBackdropEnabled(enabled)
+    }
+
+    fun switchTab(target: Int) {
+        showTab(target, animated = true)
     }
 
     /** 从其它页面返回时重新查一次机型名（机型库可能刚更新过）。 */
@@ -157,7 +311,9 @@ class MainActivity : AppCompatActivity() {
         return color ?: ContextCompat.getColor(this, R.color.text_primary)
     }
 
-    private companion object {
+    companion object {
+        const val EXTRA_INITIAL_TAB = "xyzinfo_initial_tab"
+        private const val KEY_SELECTED_TAB = "xyzinfo_selected_tab"
         val BRAND_COLORS = mapOf(
             // 中文品牌名（机型库本地化后的写法）
             "小米" to 0xFFFF6900.toInt(), "红米" to 0xFFFF6900.toInt(),

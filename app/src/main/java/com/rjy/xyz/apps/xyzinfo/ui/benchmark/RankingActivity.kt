@@ -4,12 +4,16 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import com.rjy.xyz.apps.xyzinfo.MainActivity
 import com.rjy.xyz.apps.xyzinfo.R
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import com.rjy.xyz.apps.xyzinfo.data.SocInfoProvider
@@ -21,8 +25,8 @@ import com.rjy.xyz.apps.xyzinfo.databinding.ItemRankingRowBinding
 import com.rjy.xyz.apps.xyzinfo.model.ChipScore
 import com.rjy.xyz.apps.xyzinfo.model.RankingMetric
 import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
-import com.rjy.xyz.apps.xyzinfo.ui.common.GlassBottomBar
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
+import com.rjy.xyz.apps.xyzinfo.ui.common.TabPage
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.growBar
 import com.rjy.xyz.apps.xyzinfo.ui.common.setInfoRow
@@ -38,11 +42,11 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
  * - **结果缓存**：数据放在 companion 里，退出再进来直接复用上一次的榜单；
  *   想更新点「刷新榜单」即可。
  */
-class RankingActivity : AppCompatActivity() {
+class RankingTabFragment : Fragment(), TabPage {
 
-    private lateinit var binding: ActivityRankingBinding
+    private var _binding: ActivityRankingBinding? = null
+    private val binding get() = requireNotNull(_binding)
     private val handler = Handler(Looper.getMainLooper())
-    private var glassBar: GlassBottomBar? = null
 
     private var metric = RankingMetric.COMPOSITE
     private var brand: String? = null
@@ -71,15 +75,26 @@ class RankingActivity : AppCompatActivity() {
         val summary: String
     )
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivityRankingBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        binding.root.applySystemBarPadding()
-        glassBar = GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_RANKING)
+    private val hostContext get() = requireContext()
+    private val isFinishing get() = !isAdded || _binding == null
+
+    private fun runOnUiThread(action: () -> Unit) {
+        activity?.runOnUiThread(action)
+    }
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View = ActivityRankingBinding.inflate(inflater, container, false).also {
+        _binding = it
+    }.root
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         binding.btnRunBenchmark.setOnClickListener {
-            GlassScaffold.navigateToTab(this, GlassScaffold.TAB_BENCHMARK)
+            (activity as? MainActivity)?.switchTab(GlassScaffold.TAB_BENCHMARK)
         }
         binding.tvRankingNote.setInfoRow(
             "数据来源：极客湾（Geekerwan）公开榜单，快照 ${GeekerwanScores.SNAPSHOT}"
@@ -117,16 +132,21 @@ class RankingActivity : AppCompatActivity() {
         checkRankingUpdate()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    override fun onDestroyView() {
         handler.removeCallbacksAndMessages(null)
         renderToken++
+        _binding = null
+        super.onDestroyView()
+    }
+
+    override fun scrollToTop() {
+        (_binding?.root as? android.widget.ScrollView)?.smoothScrollTo(0, 0)
     }
 
     private fun loadDeviceChip() {
         Thread({
             // 先把下载过的榜单数据集读进内存（没有就用内置的），再识别芯片
-            runCatching { RankingUpdater.loadCached(this) }
+            runCatching { RankingUpdater.loadCached(hostContext.applicationContext) }
             val spec = runCatching { SocInfoProvider.findSpec() }.getOrNull()
             deviceChipName = spec?.displayName
             matched = GeekerwanScores.match(deviceChipName)
@@ -141,7 +161,7 @@ class RankingActivity : AppCompatActivity() {
             }
             // 内存里没有，再试磁盘缓存（进程刚起来时走这条）
             if (cache == null) {
-                val disk = runCatching { RankingCache.load(this) }.getOrNull()
+                val disk = runCatching { RankingCache.load(hostContext.applicationContext) }.getOrNull()
                 runOnUiThread {
                     if (isFinishing || disk == null) return@runOnUiThread
                     if (disk.key == currentKey()) {
@@ -176,7 +196,7 @@ class RankingActivity : AppCompatActivity() {
      */
     private fun checkRankingUpdate() {
         Thread({
-            val result = runCatching { RankingUpdater.check(this) }.getOrNull() ?: return@Thread
+            val result = runCatching { RankingUpdater.check(hostContext.applicationContext) }.getOrNull() ?: return@Thread
             if (!result.hasUpdate) return@Thread
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
@@ -193,7 +213,7 @@ class RankingActivity : AppCompatActivity() {
         binding.btnApplyRankingUpdate.isEnabled = false
         binding.tvRankingUpdate.text = "正在下载榜单数据…"
         Thread({
-            val result = runCatching { RankingUpdater.update(this) }
+            val result = runCatching { RankingUpdater.update(hostContext.applicationContext) }
                 .getOrElse { RankingUpdater.UpdateResult(false, it.javaClass.simpleName) }
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
@@ -202,8 +222,8 @@ class RankingActivity : AppCompatActivity() {
                     binding.cardRankingUpdate.visibility = View.GONE
                     // 数据换了，缓存与内存缓存一起作废，重新整理并逐条显示
                     cache = null
-                    RankingCache.clear(this)
-                    Toast.makeText(this, result.message, Toast.LENGTH_SHORT).show()
+                    RankingCache.clear(hostContext.applicationContext)
+                    Toast.makeText(hostContext, result.message, Toast.LENGTH_SHORT).show()
                     startLoading()
                 } else {
                     binding.tvRankingUpdate.text = "更新失败：${result.message}"
@@ -213,7 +233,7 @@ class RankingActivity : AppCompatActivity() {
     }
 
     private fun currentKey(): String {
-        val measured = SettingsRepository.lastBenchmark(this)
+        val measured = SettingsRepository.lastBenchmark(hostContext.applicationContext)
         // 带上榜单数据版本：在线更新过数据之后，旧缓存自动失效
         return "$metric|$brand|$deviceChipName|${measured?.single}|${measured?.multi}|${measured?.gpu}" +
             "|${GeekerwanScores.datasetVersion}"
@@ -270,7 +290,7 @@ class RankingActivity : AppCompatActivity() {
         // 落盘：下次进页面直接读缓存，不用再筛选 / 排序 / 拼概览
         runCatching {
             RankingCache.save(
-                this,
+                hostContext.applicationContext,
                 RankingCache.Snapshot(
                     key = prepared.key,
                     summary = prepared.summary,
@@ -293,7 +313,7 @@ class RankingActivity : AppCompatActivity() {
     }
 
     private fun deviceSummary(): String {
-        val measured = SettingsRepository.lastBenchmark(this)
+        val measured = SettingsRepository.lastBenchmark(hostContext.applicationContext)
         return buildString {
             append("本机芯片：")
             append(deviceChipName ?: "未识别")
@@ -326,7 +346,7 @@ class RankingActivity : AppCompatActivity() {
         state = State.READY
         renderToken++
         val token = renderToken
-        glassBar?.setBackdropEnabled(false)
+        (activity as? MainActivity)?.setTabBarBackdropEnabled(false)
 
         binding.tvDeviceSummary.setInfoRow(prepared.summary)
         binding.tvRankingHint.text = "共 ${prepared.rows.size} 条（已缓存，下次进来直接显示）"
@@ -336,11 +356,11 @@ class RankingActivity : AppCompatActivity() {
         binding.btnRefreshRanking.isEnabled = true
         binding.layoutRanking.removeAllViews()
 
-        val deviceColor = ThemeColors.accent(this)
-        val warningColor = ContextCompat.getColor(this, R.color.status_warning)
-        val idleColor = ContextCompat.getColor(this, R.color.text_primary)
-        val deviceBar = ContextCompat.getDrawable(this, R.drawable.bg_rank_bar_device)
-        val normalBar = ContextCompat.getDrawable(this, R.drawable.bg_rank_bar)
+        val deviceColor = ThemeColors.accent(hostContext)
+        val warningColor = ContextCompat.getColor(hostContext, R.color.status_warning)
+        val idleColor = ContextCompat.getColor(hostContext, R.color.text_primary)
+        val deviceBar = ContextCompat.getDrawable(hostContext, R.drawable.bg_rank_bar_device)
+        val normalBar = ContextCompat.getDrawable(hostContext, R.drawable.bg_rank_bar)
 
         var index = 0
         var deviceRowIndex = -1
@@ -361,7 +381,7 @@ class RankingActivity : AppCompatActivity() {
                 if (index >= prepared.rows.size) {
                     binding.tvRankingHint.text = "共 ${prepared.rows.size} 条（已缓存，下次进来直接显示）"
                     // 铺完了再把玻璃取样打开，让底栏恢复实时模糊
-                    glassBar?.setBackdropEnabled(true)
+                    (activity as? MainActivity)?.setTabBarBackdropEnabled(true)
                     if (deviceRowIndex >= 0) {
                         val target = binding.layoutRanking.getChildAt(deviceRowIndex)
                         if (target != null) {
@@ -468,15 +488,15 @@ class RankingActivity : AppCompatActivity() {
     }
 
     private fun createChip(text: String, selected: Boolean, onClick: () -> Unit): TextView {
-        val chip = TextView(this).apply {
+        val chip = TextView(hostContext).apply {
             this.text = text
             textSize = 12.5f
             gravity = Gravity.CENTER
             setPadding(dp(14f), dp(7f), dp(14f), dp(7f))
             setTextColor(
-                if (selected) ThemeColors.accent(this@RankingActivity) else ContextCompat.getColor(this@RankingActivity, R.color.text_secondary)
+                if (selected) ThemeColors.accent(hostContext) else ContextCompat.getColor(hostContext, R.color.text_secondary)
             )
-            background = ContextCompat.getDrawable(this@RankingActivity, R.drawable.bg_chip_filter)
+            background = ContextCompat.getDrawable(hostContext, R.drawable.bg_chip_filter)
             isSelected = selected
             isClickable = true
             setOnClickListener { Anim.pressFeedback(this); onClick() }
@@ -502,5 +522,17 @@ class RankingActivity : AppCompatActivity() {
          * 不用重新排序、重新渲染。
          */
         private var cache: PreparedRanking? = null
+    }
+}
+
+class RankingActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        startActivity(
+            android.content.Intent(this, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_INITIAL_TAB, GlassScaffold.TAB_RANKING)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        )
+        finish()
     }
 }

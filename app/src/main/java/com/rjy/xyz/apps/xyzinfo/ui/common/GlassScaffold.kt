@@ -8,8 +8,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.app.ActivityOptionsCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.ViewCompat
 import androidx.core.content.ContextCompat
@@ -39,6 +37,7 @@ object GlassScaffold {
 
     /** 子页面（芯片 / 内存 / 屏幕 / 电池 / 传感器 / 系统 / 通信 / GPS）：不属于任何标签。 */
     const val TAB_NONE = -1
+    const val EXTRA_TAB_SWITCH = "xyzinfo_tab_switch"
 
     /** 防止快速连点同时创建多个标签页。 */
     @Volatile
@@ -73,23 +72,17 @@ object GlassScaffold {
         if (now < navigationLockedUntil) return
         navigationLockedUntil = now + 220L
 
-        val intent = tabIntent(activity, target)
-        if (SettingsRepository.animationsEnabled(activity)) {
-            val options = ActivityOptionsCompat.makeCustomAnimation(
-                activity,
-                R.anim.tab_enter,
-                R.anim.tab_exit
-            )
-            ActivityCompat.startActivity(activity, intent, options.toBundle())
-        } else {
-            activity.startActivity(intent)
-        }
+        activity.startActivity(tabIntent(activity, target))
     }
 
     internal fun tabIntent(activity: Activity, target: Int): Intent =
-        Intent(activity, activityFor(target)).addFlags(
-            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        )
+        Intent(activity, activityFor(target))
+            .putExtra(EXTRA_TAB_SWITCH, true)
+            .addFlags(
+                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_ACTIVITY_NO_ANIMATION
+            )
 
     /**
      * 标签页复用后，系统返回键仍保持“回首页 / 再按退到桌面”的层级，
@@ -118,6 +111,26 @@ object GlassScaffold {
      * @return 底栏实例；设置里关掉底栏时返回 null，此时不改动布局。
      */
     fun attach(activity: AppCompatActivity, content: View, currentTab: Int): GlassBottomBar? {
+        return attachInternal(activity, content, currentTab, null)
+    }
+
+    /**
+     * 单 Activity 壳层：底栏只创建一次，页面内容由 [onTabSelected] 在同一个窗口里切换。
+     * 这是标签页无缝切换的主路径，不再创建或重建标签 Activity。
+     */
+    fun attachShell(
+        activity: AppCompatActivity,
+        content: View,
+        currentTab: Int,
+        onTabSelected: (index: Int, reselected: Boolean) -> Unit
+    ): GlassBottomBar? = attachInternal(activity, content, currentTab, onTabSelected)
+
+    private fun attachInternal(
+        activity: AppCompatActivity,
+        content: View,
+        currentTab: Int,
+        shellTabListener: ((index: Int, reselected: Boolean) -> Unit)?
+    ): GlassBottomBar? {
         // 底栏固定开启：设置里的开关已经去掉。
         // 注意不能再读旧版本存下来的开关值——有些用户之前把它关过，
         // 继续读就会导致「没有开关、底栏也永远不出现」。
@@ -426,7 +439,21 @@ object GlassScaffold {
         }
 
         // 给内容留出底栏高度，避免最后一段内容被玻璃挡住
-        reserveBottomSpace(content, reserved)
+        if (shellTabListener != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
+                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                view.setPadding(
+                    view.paddingLeft,
+                    bars.top,
+                    view.paddingRight,
+                    bars.bottom + reserved
+                )
+                insets
+            }
+            ViewCompat.requestApplyInsets(content)
+        } else {
+            reserveBottomSpace(content, reserved)
+        }
 
         if (SettingsRepository.lightweightMode(activity)) {
             // 轻量稳定模式不创建实时模糊采样，避免低内存设备在滚动时反复分配位图。
@@ -434,7 +461,7 @@ object GlassScaffold {
         } else {
             // 玻璃要真的糊东西：把内容视图交给底栏当取样源
             bar.attachBackdrop(content)
-            bar.autoAnimateOnSelect = false
+            bar.autoAnimateOnSelect = true
             // 滚动时按 110ms 节流刷新模糊层（≈9fps），所以底下的内容在玻璃里是"活的"；
             // 另外停止滚动 260ms 后再补一次全质量刷新，避免停下来时还留着低帧的画面。
             val blurRefresh = Runnable { bar.requestBackdropRefresh(immediate = true) }
@@ -453,7 +480,9 @@ object GlassScaffold {
         }
 
         bar.bind(tabs(), currentTab) { index, reselected ->
-            if (index == currentTab) {
+            if (shellTabListener != null) {
+                shellTabListener(index, reselected)
+            } else if (index == currentTab) {
                 if (reselected) content.smoothScrollToTop()
             } else {
                 navigateToTab(activity, index)
@@ -485,10 +514,13 @@ object GlassScaffold {
             )
         }
 
-        installTabBackBehavior(activity, currentTab)
+        if (shellTabListener == null) installTabBackBehavior(activity, currentTab)
         activity.setContentView(container)
         ViewCompat.requestApplyInsets(container)
-        animateEntrance(content)
+        // 标签页切换已经是预加载页面之间的即时复用；整页入场会让人误以为页面重新加载。
+        if (shellTabListener == null && !activity.intent.getBooleanExtra(EXTRA_TAB_SWITCH, false)) {
+            animateEntrance(content)
+        }
         return bar
     }
 

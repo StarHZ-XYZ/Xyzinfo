@@ -2,9 +2,10 @@ package com.rjy.xyz.apps.xyzinfo.ui
 
 import android.view.MotionEvent
 import android.view.View
+import com.rjy.xyz.apps.xyzinfo.MainActivity
 import com.rjy.xyz.apps.xyzinfo.R
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassBottomBar
-import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
+import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,7 +26,8 @@ class SettingsBottomBarPreviewTest {
 
     @Test
     fun tappingAnotherTabMovesTheWholeSelection() {
-        val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        activity.switchTab(GlassScaffold.TAB_SETTINGS)
         val bar = activity.findViewById<GlassBottomBar>(R.id.glassBarPreview)
         assertEquals("预览初始选中「设置」", 4, bar.currentTab)
 

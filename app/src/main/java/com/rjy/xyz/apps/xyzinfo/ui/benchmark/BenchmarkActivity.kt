@@ -3,13 +3,17 @@ package com.rjy.xyz.apps.xyzinfo.ui.benchmark
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
 import com.rjy.xyz.apps.xyzinfo.R
+import com.rjy.xyz.apps.xyzinfo.MainActivity
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import com.rjy.xyz.apps.xyzinfo.data.SocInfoProvider
 import com.rjy.xyz.apps.xyzinfo.data.benchmark.CpuBenchmark
@@ -20,8 +24,8 @@ import com.rjy.xyz.apps.xyzinfo.model.BenchmarkResult
 import com.rjy.xyz.apps.xyzinfo.model.BenchmarkStage
 import com.rjy.xyz.apps.xyzinfo.model.GpuResult
 import com.rjy.xyz.apps.xyzinfo.ui.common.Anim
-import com.rjy.xyz.apps.xyzinfo.ui.common.GlassBottomBar
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
+import com.rjy.xyz.apps.xyzinfo.ui.common.TabPage
 import com.rjy.xyz.apps.xyzinfo.ui.common.animateTo
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 import com.rjy.xyz.apps.xyzinfo.ui.common.countUpWith
@@ -42,10 +46,10 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
  * - GPU 阶段把压力视图**全屏**铺开，20 秒 / 4 种场景轮换，同时给出 1% low 与填充率；
  * - 本机结果保存为独立的 XYZ Index；不再插入外部 Geekbench 参考榜。
  */
-class BenchmarkActivity : AppCompatActivity() {
+class BenchmarkTabFragment : Fragment(), TabPage {
 
-    private lateinit var binding: ActivityBenchmarkBinding
-    private var glassBar: GlassBottomBar? = null
+    private var _binding: ActivityBenchmarkBinding? = null
+    private val binding get() = requireNotNull(_binding)
 
     private var running = false
     private var deviceChipName: String? = null
@@ -69,24 +73,44 @@ class BenchmarkActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { /* 结果从文件读，这里不处理 */ }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivityBenchmarkBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        binding.root.applySystemBarPadding()
-        glassBar = GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_BENCHMARK)
+    private val hostContext get() = requireContext()
+    private val isFinishing get() = !isAdded || _binding == null
+
+    private fun runOnUiThread(action: () -> Unit) {
+        activity?.runOnUiThread(action)
+    }
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View = ActivityBenchmarkBinding.inflate(inflater, container, false).also {
+        _binding = it
+    }.root
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         // 跑分期间别让屏幕熄灭
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         binding.btnStartBenchmark.setOnClickListener { startBenchmark() }
         binding.btnOpenRanking.setOnClickListener {
-            GlassScaffold.navigateToTab(this, GlassScaffold.TAB_RANKING)
+            (activity as? MainActivity)?.switchTab(GlassScaffold.TAB_RANKING)
         }
         Anim.pressFeedback(binding.btnOpenRanking)
 
         showChipContext()
         showSavedResult()
+    }
+
+    override fun onDestroyView() {
+        _binding = null
+        super.onDestroyView()
+    }
+
+    override fun scrollToTop() {
+        (_binding?.root as? android.widget.ScrollView)?.smoothScrollTo(0, 0)
     }
 
     /** 先显示本机芯片与它在极客湾榜单里的参考水平，让用户知道对比基准。 */
@@ -117,7 +141,7 @@ class BenchmarkActivity : AppCompatActivity() {
 
     /** 进入页面时把上次的成绩也显示出来，方便对比这次是不是更稳。 */
     private fun showSavedResult() {
-        val saved = SettingsRepository.lastBenchmark(this) ?: return
+        val saved = SettingsRepository.lastBenchmark(hostContext.applicationContext) ?: return
         binding.tvCpuSingleScore.setInfoRow("XYZ 单核指数：${saved.single}")
         binding.tvCpuMultiScore.setInfoRow("XYZ 多核指数：${saved.multi}")
         binding.tvGpuScore.setInfoRow("GPU：${saved.gpu ?: "未测"}")
@@ -152,10 +176,10 @@ class BenchmarkActivity : AppCompatActivity() {
          * 任何布局变化（跑分每 250ms 刷一次状态文字）都会立刻触发一次重建。实测主线程
          * 因此被占满，连 `startActivity` 都被推迟了 44 秒才执行 —— 3D 跑分就是这么被拖超时的。
          */
-        glassBar?.setBackdropEnabled(false)
-        glassBar?.visibility = View.GONE
+        (activity as? MainActivity)?.setTabBarBackdropEnabled(false)
+        (activity as? MainActivity)?.setTabBarVisible(false)
 
-        val deep = SettingsRepository.deepBenchmarkEnabled(this)
+        val deep = SettingsRepository.deepBenchmarkEnabled(hostContext)
         val cpuSeconds = CpuBenchmark.totalSeconds(deep)
         val memSeconds = if (deep) 30.0 else 18.0
         val gpuSeconds = if (deep) 30.0 else 20.0
@@ -191,7 +215,7 @@ class BenchmarkActivity : AppCompatActivity() {
                 stages = cpu.stages
             )
             SettingsRepository.saveBenchmark(
-                context = this,
+                context = hostContext.applicationContext,
                 single = result.cpuSingleScore,
                 multi = result.cpuMultiScore,
                 gpu = result.gpuScore,
@@ -232,9 +256,9 @@ class BenchmarkActivity : AppCompatActivity() {
                 gpu3dFailure = "跑分页面已结束"
                 return@runOnUiThread
             }
-            glassBar?.visibility = View.GONE
-            Gpu3dActivity.deleteStaleResult(this)
-            gpu3dLauncher.launch(Gpu3dActivity.intent(this, seconds))
+            (activity as? MainActivity)?.setTabBarVisible(false)
+            Gpu3dActivity.deleteStaleResult(hostContext)
+            activity?.let { gpu3dLauncher.launch(Gpu3dActivity.intent(it, seconds)) }
         }
 
         /*
@@ -247,7 +271,7 @@ class BenchmarkActivity : AppCompatActivity() {
         var result: Gpu3dResult? = null
         var readNote = "等待超时（子进程可能被显卡驱动带崩）"
         while (System.currentTimeMillis() < deadline) {
-            val (candidate, note) = Gpu3dActivity.readResultWithReason(this, launchedAt)
+            val (candidate, note) = Gpu3dActivity.readResultWithReason(hostContext, launchedAt)
             readNote = note
             if (candidate != null) {
                 result = candidate
@@ -268,7 +292,7 @@ class BenchmarkActivity : AppCompatActivity() {
          * 2D 填充测试就会"跑了个寂寞"（结果直接是未测）。
          */
         waitUntilVisible(10_000L)
-        runOnUiThread { if (!isFinishing) glassBar?.visibility = View.VISIBLE }
+        runOnUiThread { if (!isFinishing) (activity as? MainActivity)?.setTabBarVisible(true) }
 
         if (result == null) {
             gpu3dFailure = "3D 测试没有返回结果（$readNote）"
@@ -298,7 +322,7 @@ class BenchmarkActivity : AppCompatActivity() {
             val visible = CountDownLatch(1)
             var hasFocus = false
             runOnUiThread {
-                hasFocus = !isFinishing && window.decorView.hasWindowFocus()
+                hasFocus = !isFinishing && activity?.window?.decorView?.hasWindowFocus() == true
                 visible.countDown()
             }
             visible.await(2, TimeUnit.SECONDS)
@@ -323,7 +347,7 @@ class BenchmarkActivity : AppCompatActivity() {
 
         runOnUiThread {
             if (isFinishing) return@runOnUiThread
-            glassBar?.visibility = View.GONE
+            (activity as? MainActivity)?.setTabBarVisible(false)
             binding.viewGpuOverlay.visibility = View.VISIBLE
             binding.viewGpuOverlay.alpha = 0f
             binding.viewGpuOverlay.animate()
@@ -356,7 +380,7 @@ class BenchmarkActivity : AppCompatActivity() {
             if (isFinishing) return@runOnUiThread
             binding.gpuStressView.stopMeasure()
             binding.viewGpuOverlay.visibility = View.GONE
-            glassBar?.visibility = View.VISIBLE
+            (activity as? MainActivity)?.setTabBarVisible(true)
         }
 
         val value = raw ?: return null
@@ -404,8 +428,8 @@ class BenchmarkActivity : AppCompatActivity() {
         runInProgress = false
         binding.btnStartBenchmark.isEnabled = true
         binding.btnStartBenchmark.animate().alpha(1f).setDuration(Anim.DURATION_SHORT).start()
-        glassBar?.visibility = View.VISIBLE
-        glassBar?.setBackdropEnabled(true)
+        (activity as? MainActivity)?.setTabBarVisible(true)
+        (activity as? MainActivity)?.setTabBarBackdropEnabled(true)
         binding.progressBenchmark.animateTo(100)
         binding.tvBenchmarkStatus.setInfoRow("测试完成：总耗时 ${result.totalSeconds.roundToInt()} 秒")
         binding.tvBenchmarkStage.text = "可再点一次看稳定性差异（连续跑分时分数通常会略降）"
@@ -444,23 +468,23 @@ class BenchmarkActivity : AppCompatActivity() {
     /** 阶段明细：每行「阶段名 + 原始指标」配一个指数分。 */
     private fun renderStages(stages: List<BenchmarkStage>) {
         binding.layoutStages.removeAllViews()
-        val nameColor = ContextCompat.getColor(this, R.color.text_primary)
-        val detailColor = ContextCompat.getColor(this, R.color.text_secondary)
-        val scoreColor = ThemeColors.accent(this)
+        val nameColor = ContextCompat.getColor(hostContext, R.color.text_primary)
+        val detailColor = ContextCompat.getColor(hostContext, R.color.text_secondary)
+        val scoreColor = ThemeColors.accent(hostContext)
 
         stages.forEach { stage ->
-            val row = LinearLayout(this).apply {
+            val row = LinearLayout(hostContext).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = android.view.Gravity.CENTER_VERTICAL
                 setPadding(0, dp(7f), 0, dp(7f))
             }
-            val left = TextView(this).apply {
+            val left = TextView(hostContext).apply {
                 text = "${stage.name}\n${stage.detail}"
                 textSize = 12.5f
                 setTextColor(nameColor)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
-            val value = TextView(this).apply {
+            val value = TextView(hostContext).apply {
                 text = stage.score.toString()
                 textSize = 13f
                 setTextColor(scoreColor)
@@ -523,5 +547,17 @@ class BenchmarkActivity : AppCompatActivity() {
 
         /** 状态文字最快多久推一次界面（跑分期间主线程要留给测量本身）。 */
         const val STATUS_THROTTLE_MS = 600L
+    }
+}
+
+class BenchmarkActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        startActivity(
+            android.content.Intent(this, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_INITIAL_TAB, GlassScaffold.TAB_BENCHMARK)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        )
+        finish()
     }
 }

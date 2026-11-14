@@ -2,8 +2,9 @@ package com.rjy.xyz.apps.xyzinfo.ui
 
 import android.content.Context
 import android.view.View
+import com.rjy.xyz.apps.xyzinfo.MainActivity
 import com.rjy.xyz.apps.xyzinfo.R
-import com.rjy.xyz.apps.xyzinfo.ui.settings.SettingsActivity
+import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,7 +24,8 @@ class SettingsHiddenFeatureTest {
             .edit()
             .putBoolean("diagnostics_unlocked", false)
             .commit()
-        val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        activity.switchTab(GlassScaffold.TAB_SETTINGS)
         val about = activity.findViewById<View>(R.id.tvAbout)
         val button = activity.findViewById<View>(R.id.btnOpenDiagnostics)
         assertEquals(View.GONE, button.visibility)
