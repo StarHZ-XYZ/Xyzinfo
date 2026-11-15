@@ -82,10 +82,12 @@ object DeviceCatalog {
 
     fun count(context: Context): Int = load(context).size
 
-    fun search(context: Context, query: String): List<Device> {
+    fun brands(context: Context): List<String> =
+        load(context).map { it.brand }.distinct().sortedBy { it.lowercase() }
+
+    fun search(context: Context, query: String, brand: String? = null): List<Device> {
         val q = query.trim()
-        val all = load(context)
-        if (q.isEmpty()) return all
+        val all = load(context).filter { brand == null || it.brand == brand }
         var mapped = q
         listOf(
             "骁龙" to "Snapdragon",
@@ -108,7 +110,9 @@ object DeviceCatalog {
         return all.filter {
             val searchable = "${it.name} ${it.brand} ${it.processor}"
             tokens.all { token -> searchable.contains(token, ignoreCase = true) }
-        }
+        }.sortedWith(
+            compareBy<Device> { it.brand.lowercase() }.thenBy { it.name.lowercase() }
+        )
     }
 
     private fun read(context: Context): List<Device> = runCatching {

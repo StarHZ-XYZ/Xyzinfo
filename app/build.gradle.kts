@@ -17,7 +17,7 @@ android {
         applicationId = "com.rjy.xyz.apps.xyzinfo"
         minSdk = 24
         targetSdk = 36
-        versionCode = 22
+        versionCode = 23
         versionName = "1.1.2"
 
         // 构建号：形如 20260930.0412（每次构建都不同，便于区分同一版本的不同构建）

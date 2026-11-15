@@ -1,18 +1,25 @@
 package com.rjy.xyz.apps.xyzinfo.ui.compare
 
 import android.content.ClipboardManager
+import android.content.ClipData
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.ListView
-import android.widget.ArrayAdapter
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import android.text.Editable
 import android.text.TextWatcher
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.rjy.xyz.apps.xyzinfo.R
 import com.rjy.xyz.apps.xyzinfo.data.DeviceSnapshot
 import com.rjy.xyz.apps.xyzinfo.data.DeviceCatalog
@@ -20,7 +27,9 @@ import com.rjy.xyz.apps.xyzinfo.data.DeviceSnapshotCollector
 import com.rjy.xyz.apps.xyzinfo.data.DeviceSnapshotStore
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityDeviceCompareBinding
 import com.rjy.xyz.apps.xyzinfo.ui.common.GlassScaffold
+import com.rjy.xyz.apps.xyzinfo.ui.common.ThemeColors
 import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
+import kotlin.math.roundToInt
 
 /**
  * 设备横向对比（1.1.x 新增）。
@@ -58,6 +67,8 @@ class DeviceCompareActivity : AppCompatActivity() {
         binding.btnPasteText.setOnClickListener { pasteFromClipboardOrInput() }
         binding.btnBuiltInB.text = "从内置机型库选择（${DeviceCatalog.count(this)} 款）"
         binding.btnBuiltInB.setOnClickListener { showBuiltInPicker() }
+        binding.btnCopyComparison.setOnClickListener { copyComparison() }
+        binding.btnShareComparison.setOnClickListener { shareComparison() }
 
         adapter = CompareAdapter()
         binding.rvCompare.layoutManager = LinearLayoutManager(this)
@@ -69,7 +80,9 @@ class DeviceCompareActivity : AppCompatActivity() {
         adapter.submit(deviceA, deviceB)
         binding.tvDeviceB.text = deviceB?.deviceName ?: "未导入"
         binding.tvEmptyHint.visibility =
-            if (deviceB != null) android.view.View.GONE else android.view.View.VISIBLE
+            if (deviceB != null) View.GONE else View.VISIBLE
+        binding.btnCopyComparison.isEnabled = deviceB != null
+        binding.btnShareComparison.isEnabled = deviceB != null
     }
 
     private fun appVersion(): String = runCatching {
@@ -88,39 +101,136 @@ class DeviceCompareActivity : AppCompatActivity() {
         }
     }
 
-    /** 新功能：本地搜索 160+ 款设备规格，选中即成为 B 机。 */
+    /** 本地搜索 160+ 款设备规格，选中即成为 B 机。 */
     private fun showBuiltInPicker() {
         val view = layoutInflater.inflate(R.layout.dialog_device_picker, null)
         val search = view.findViewById<EditText>(R.id.etDeviceSearch)
-        val list = view.findViewById<ListView>(R.id.listDevices)
-        val count = view.findViewById<android.widget.TextView>(R.id.tvDeviceCount)
+        val list = view.findViewById<RecyclerView>(R.id.rvDeviceCatalog)
+        val count = view.findViewById<TextView>(R.id.tvDeviceCount)
+        val empty = view.findViewById<TextView>(R.id.tvNoDevices)
+        val brandRow = view.findViewById<LinearLayout>(R.id.layoutCatalogBrands)
         val dialog = AlertDialog.Builder(this)
-            .setTitle("选择内置对比机型")
+            .setTitle("机型规格库")
             .setView(view)
             .setNegativeButton("取消", null)
             .create()
 
-        fun refresh() {
-            val devices = DeviceCatalog.search(this, search.text?.toString().orEmpty())
-            val labels = devices.map { "${it.name}\n${it.processor} · ${it.batteryMah} mAh" }
-            list.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, labels)
-            count.text = "共 ${devices.size} 款 · ${DeviceCatalog.sourceLabel}"
-            list.setOnItemClickListener { _, _, position, _ ->
-                val selected = devices.getOrNull(position) ?: return@setOnItemClickListener
-                deviceB = selected.toSnapshot(appVersion())
-                refresh()
-                dialog.dismiss()
-                Toast.makeText(this, "已选择：${selected.name}", Toast.LENGTH_SHORT).show()
+        var selectedBrand: String? = null
+        val catalogAdapter = DeviceCatalogAdapter { selected ->
+            selectBuiltInDevice(selected)
+            dialog.dismiss()
+            Toast.makeText(this, "已选择：${selected.name}", Toast.LENGTH_SHORT).show()
+        }
+        list.layoutManager = LinearLayoutManager(this)
+        list.adapter = catalogAdapter
+
+        fun refreshList() {
+            val devices = DeviceCatalog.search(
+                this,
+                search.text?.toString().orEmpty(),
+                selectedBrand
+            )
+            catalogAdapter.submit(devices)
+            list.scrollToPosition(0)
+            empty.visibility = if (devices.isEmpty()) View.VISIBLE else View.GONE
+            count.text = "共 ${devices.size} 款 · 按品牌和名称排序\n" +
+                "数据来源：${DeviceCatalog.sourceLabel}"
+        }
+
+        fun buildBrandChips() {
+            brandRow.removeAllViews()
+            (listOf<String?>(null) + DeviceCatalog.brands(this)).forEach { brand ->
+                val chip = TextView(this).apply {
+                    text = brand ?: "全部"
+                    textSize = 12f
+                    gravity = Gravity.CENTER
+                    setPadding(dp(13f), dp(6f), dp(13f), dp(6f))
+                    setTextColor(
+                        if (selectedBrand == brand) ThemeColors.accent(this@DeviceCompareActivity)
+                        else ContextCompat.getColor(this@DeviceCompareActivity, R.color.text_secondary)
+                    )
+                    background = ContextCompat.getDrawable(
+                        this@DeviceCompareActivity,
+                        R.drawable.bg_chip_filter
+                    )
+                    isSelected = selectedBrand == brand
+                    isClickable = true
+                    setOnClickListener {
+                        if (selectedBrand != brand) {
+                            selectedBrand = brand
+                            buildBrandChips()
+                            refreshList()
+                        }
+                    }
+                }
+                chip.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginEnd = dp(8f) }
+                brandRow.addView(chip)
             }
         }
+
         search.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = refresh()
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                refreshList()
+            }
             override fun afterTextChanged(s: Editable?) = Unit
         })
-        refresh()
+        buildBrandChips()
+        refreshList()
+        dialog.setOnShowListener {
+            val targetWidth = (resources.displayMetrics.widthPixels * 0.94f)
+                .toInt()
+                .coerceAtMost((560 * resources.displayMetrics.density).toInt())
+            dialog.window?.setLayout(targetWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
         dialog.show()
     }
+
+    internal fun selectBuiltInDevice(device: DeviceCatalog.Device) {
+        deviceB = device.toSnapshot(appVersion())
+        refresh()
+    }
+
+    private fun copyComparison() {
+        val text = comparisonText() ?: return
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        if (clipboard == null) {
+            Toast.makeText(this, "系统剪贴板不可用", Toast.LENGTH_SHORT).show()
+            return
+        }
+        clipboard.setPrimaryClip(ClipData.newPlainText("XYZ-Devinfo 设备对比", text))
+        Toast.makeText(this, "对比结果已复制", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun shareComparison() {
+        val text = comparisonText() ?: return
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "XYZ-Devinfo 设备对比")
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        runCatching {
+            startActivity(Intent.createChooser(send, "分享设备对比"))
+        }.onFailure {
+            Toast.makeText(this, "没有可用的分享目标", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun comparisonText(): String? {
+        val a = deviceA
+        val b = deviceB
+        if (a == null || b == null) {
+            Toast.makeText(this, "请先选择对比机", Toast.LENGTH_SHORT).show()
+            return null
+        }
+        return ComparisonReport.build(a, b)
+    }
+
+    private fun dp(value: Float): Int =
+        (value * resources.displayMetrics.density).roundToInt()
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)

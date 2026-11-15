@@ -4,9 +4,13 @@ import android.graphics.drawable.LayerDrawable
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.rjy.xyz.apps.xyzinfo.R
+import com.rjy.xyz.apps.xyzinfo.data.DeviceCatalog
+import com.rjy.xyz.apps.xyzinfo.ui.compare.DeviceCatalogAdapter
 import com.rjy.xyz.apps.xyzinfo.ui.compare.DeviceCompareActivity
 import com.rjy.xyz.apps.xyzinfo.ui.share.ShareCardActivity
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,6 +19,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import org.robolectric.shadows.ShadowDialog
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -74,6 +79,47 @@ class ReleaseLayoutRegressionTest {
             button.paint.measureText(button.text.toString()) <=
                 button.width - button.totalPaddingLeft - button.totalPaddingRight
         )
+        activity.finish()
+    }
+
+    @Test
+    fun `选择内置机型后右侧对比表立即刷新`() {
+        val activity = Robolectric.buildActivity(DeviceCompareActivity::class.java).setup().get()
+        val selected = DeviceCatalog.load(activity).first()
+        activity.selectBuiltInDevice(selected)
+        assertEquals(selected.name, activity.findViewById<android.widget.TextView>(R.id.tvDeviceB).text)
+        val list = activity.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.rvCompare)
+        assertTrue("选择机型后对比表为空", (list.adapter?.itemCount ?: 0) > 1)
+        assertTrue(activity.findViewById<View>(R.id.btnCopyComparison).isEnabled)
+        assertTrue(activity.findViewById<View>(R.id.btnShareComparison).isEnabled)
+        activity.finish()
+    }
+
+    @Test
+    fun `机型库弹窗按品牌和关键词筛选`() {
+        val activity = Robolectric.buildActivity(DeviceCompareActivity::class.java).setup().get()
+        activity.findViewById<View>(R.id.btnBuiltInB).performClick()
+        val dialog = ShadowDialog.getLatestDialog()
+        assertNotNull("机型库弹窗没有显示", dialog)
+        val list = dialog.findViewById<androidx.recyclerview.widget.RecyclerView>(
+            R.id.rvDeviceCatalog
+        )
+        assertEquals(DeviceCatalog.count(activity), list.adapter?.itemCount)
+        val brandRow = dialog.findViewById<android.widget.LinearLayout>(R.id.layoutCatalogBrands)
+        assertEquals(DeviceCatalog.brands(activity).size + 1, brandRow.childCount)
+
+        dialog.findViewById<android.widget.EditText>(R.id.etDeviceSearch).setText("荣耀")
+        val honor = DeviceCatalog.search(activity, "荣耀")
+        assertEquals(honor.size, list.adapter?.itemCount)
+        val catalogAdapter = list.adapter as DeviceCatalogAdapter
+        val holder = catalogAdapter.onCreateViewHolder(list, 0)
+        catalogAdapter.onBindViewHolder(holder, 0)
+        holder.itemView.performClick()
+        assertEquals(
+            honor.first().name,
+            activity.findViewById<android.widget.TextView>(R.id.tvDeviceB).text
+        )
+        assertFalse("选中机型后弹窗应关闭", dialog.isShowing)
         activity.finish()
     }
 
