@@ -124,11 +124,18 @@
                 android:textSize="13sp"
                 app:cornerRadius="12dp" />
 
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCopyCard"
                 android:layout_width="0dp"
                 android:layout_height="46dp"
-                android:layout_marginStart="12dp"
                 android:layout_weight="1"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"

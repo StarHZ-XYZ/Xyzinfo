@@ -19,7 +19,7 @@ import com.rjy.xyz.apps.xyzinfo.data.DeviceSnapshot
  */
 sealed class CompareItem {
     data class Group(val name: String) : CompareItem()
-    data class Row(val a: CompareRow, val b: CompareRow?) : CompareItem()
+    data class Row(val a: CompareRow?, val b: CompareRow?) : CompareItem()
 }
 
 class CompareAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -28,20 +28,32 @@ class CompareAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     fun submit(a: DeviceSnapshot?, b: DeviceSnapshot?) {
         items.clear()
-        if (a == null) {
-            notifyDataSetChanged()
-            return
-        }
-        val bMap = b?.rows?.associateBy { it.group to it.label } ?: emptyMap()
-        var lastGroup = ""
-        a.rows.forEach { ra ->
-            if (ra.group != lastGroup) {
-                items.add(CompareItem.Group(ra.group))
-                lastGroup = ra.group
-            }
-            items.add(CompareItem.Row(ra, bMap[ra.group to ra.label]))
-        }
+        items.addAll(buildCompareItems(a, b))
         notifyDataSetChanged()
+    }
+
+    internal fun buildCompareItems(a: DeviceSnapshot?, b: DeviceSnapshot?): List<CompareItem> {
+        if (a == null) return emptyList()
+        val result = mutableListOf<CompareItem>()
+        val aRows = a.rows
+        val bRows = b?.rows.orEmpty()
+        val aMap = aRows.associateBy { it.group to it.label }
+        val bMap = bRows.associateBy { it.group to it.label }
+        val groups = LinkedHashSet<String>().apply {
+            addAll(aRows.map { it.group })
+            addAll(bRows.map { it.group })
+        }
+        groups.forEach { group ->
+            result.add(CompareItem.Group(group))
+            val labels = LinkedHashSet<String>().apply {
+                addAll(aRows.filter { it.group == group }.map { it.label })
+                addAll(bRows.filter { it.group == group }.map { it.label })
+            }
+            labels.forEach { label ->
+                result.add(CompareItem.Row(aMap[group to label], bMap[group to label]))
+            }
+        }
+        return result
     }
 
     override fun getItemViewType(position: Int): Int =
@@ -78,16 +90,16 @@ class CompareAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         private val tvB: TextView = view.findViewById(R.id.tvB)
         private val ctx = view.context
 
-        fun bind(a: CompareRow, b: CompareRow?) {
-            tvLabel.text = a.label
-            tvA.text = a.value
+        fun bind(a: CompareRow?, b: CompareRow?) {
+            tvLabel.text = a?.label ?: b?.label.orEmpty()
+            tvA.text = a?.value ?: "—"
             tvB.text = b?.value ?: "—"
 
             val defaultColor = ContextCompat.getColor(ctx, R.color.text_primary)
             tvA.setTextColor(defaultColor)
             tvB.setTextColor(defaultColor)
 
-            if (b == null) return
+            if (a == null || b == null) return
 
             if (a.numeric != null && b.numeric != null && a.numeric != b.numeric) {
                 val aBetter = if (a.betterWhenHigher) a.numeric > b.numeric else a.numeric < b.numeric

@@ -5,11 +5,17 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.widget.EditText
+import android.widget.ListView
+import android.widget.ArrayAdapter
 import android.widget.Toast
+import android.text.Editable
+import android.text.TextWatcher
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.rjy.xyz.apps.xyzinfo.R
 import com.rjy.xyz.apps.xyzinfo.data.DeviceSnapshot
+import com.rjy.xyz.apps.xyzinfo.data.DeviceCatalog
 import com.rjy.xyz.apps.xyzinfo.data.DeviceSnapshotCollector
 import com.rjy.xyz.apps.xyzinfo.data.DeviceSnapshotStore
 import com.rjy.xyz.apps.xyzinfo.databinding.ActivityDeviceCompareBinding
@@ -19,9 +25,8 @@ import com.rjy.xyz.apps.xyzinfo.ui.common.applySystemBarPadding
 /**
  * 设备横向对比（1.1.x 新增）。
  *
- * A 机 = 本机实时采集；B 机 = 从另一台设备导出的快照（文件导入或文本粘贴）。
- * 第二台设备的数据来源走「本机导出 JSON → 另一台导入 / 粘贴」的路线，
- * 复用项目已有的 FileProvider 分享与 org.json 解析，不新增任何依赖。
+ * A 机 = 本机实时采集；B 机 = 内置规格库，或另一台设备导出的快照。
+ * 快照路线复用项目已有的 FileProvider 分享与 org.json 解析，不新增依赖。
  */
 class DeviceCompareActivity : AppCompatActivity() {
 
@@ -38,8 +43,8 @@ class DeviceCompareActivity : AppCompatActivity() {
         GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_NONE)
 
         val appVersion = runCatching {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.0"
-        }.getOrDefault("1.1.0")
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.2"
+        }.getOrDefault("1.1.2")
         deviceA = DeviceSnapshotCollector.collect(this, appVersion)
 
         binding.tvDeviceA.text = deviceA?.deviceName ?: "本机"
@@ -51,6 +56,8 @@ class DeviceCompareActivity : AppCompatActivity() {
         }
         binding.btnImportFile.setOnClickListener { importFromFile() }
         binding.btnPasteText.setOnClickListener { pasteFromClipboardOrInput() }
+        binding.btnBuiltInB.text = "从内置机型库选择（${DeviceCatalog.count(this)} 款）"
+        binding.btnBuiltInB.setOnClickListener { showBuiltInPicker() }
 
         adapter = CompareAdapter()
         binding.rvCompare.layoutManager = LinearLayoutManager(this)
@@ -65,6 +72,10 @@ class DeviceCompareActivity : AppCompatActivity() {
             if (deviceB != null) android.view.View.GONE else android.view.View.VISIBLE
     }
 
+    private fun appVersion(): String = runCatching {
+        packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.2"
+    }.getOrDefault("1.1.2")
+
     private fun importFromFile() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -75,6 +86,40 @@ class DeviceCompareActivity : AppCompatActivity() {
         }.onFailure {
             Toast.makeText(this, "没有可用的文件选择器", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    /** 新功能：本地搜索 160+ 款设备规格，选中即成为 B 机。 */
+    private fun showBuiltInPicker() {
+        val view = layoutInflater.inflate(R.layout.dialog_device_picker, null)
+        val search = view.findViewById<EditText>(R.id.etDeviceSearch)
+        val list = view.findViewById<ListView>(R.id.listDevices)
+        val count = view.findViewById<android.widget.TextView>(R.id.tvDeviceCount)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("选择内置对比机型")
+            .setView(view)
+            .setNegativeButton("取消", null)
+            .create()
+
+        fun refresh() {
+            val devices = DeviceCatalog.search(this, search.text?.toString().orEmpty())
+            val labels = devices.map { "${it.name}\n${it.processor} · ${it.batteryMah} mAh" }
+            list.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, labels)
+            count.text = "共 ${devices.size} 款 · ${DeviceCatalog.sourceLabel}"
+            list.setOnItemClickListener { _, _, position, _ ->
+                val selected = devices.getOrNull(position) ?: return@setOnItemClickListener
+                deviceB = selected.toSnapshot(appVersion())
+                refresh()
+                dialog.dismiss()
+                Toast.makeText(this, "已选择：${selected.name}", Toast.LENGTH_SHORT).show()
+            }
+        }
+        search.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = refresh()
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+        refresh()
+        dialog.show()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

@@ -22,6 +22,7 @@ import com.rjy.xyz.apps.xyzinfo.ui.thermal.ThermalActivity
 import com.rjy.xyz.apps.xyzinfo.ui.inspect.DeviceInspectActivity
 import com.rjy.xyz.apps.xyzinfo.ui.network.NetworkSpeedActivity
 import com.rjy.xyz.apps.xyzinfo.ui.share.ShareCardActivity
+import com.rjy.xyz.apps.xyzinfo.ui.compare.DeviceCompareActivity
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -62,7 +63,8 @@ class LayoutRenderTest {
         "17-inspect" to DeviceInspectActivity::class.java,
         "19-thermal" to ThermalActivity::class.java,
         "20-network-speed" to NetworkSpeedActivity::class.java,
-        "21-share-card" to ShareCardActivity::class.java
+        "21-share-card" to ShareCardActivity::class.java,
+        "22-device-compare" to DeviceCompareActivity::class.java
     )
 
     @Test

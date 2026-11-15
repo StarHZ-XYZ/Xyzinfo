@@ -147,8 +147,8 @@ class ShareCardActivity : AppCompatActivity() {
         brand?.color?.toInt() ?: ThemeColors.accent(this)
 
     private fun appVersion(): String = runCatching {
-        packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0.5"
-    }.getOrDefault("1.0.5")
+        packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.2"
+    }.getOrDefault("1.1.2")
 
     // ---------- 保存 ----------
 
