@@ -1,6 +1,9 @@
 package com.rjy.xyz.apps.xyzinfo
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -11,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.rjy.xyz.apps.xyzinfo.data.DeviceOverviewProvider
 import com.rjy.xyz.apps.xyzinfo.data.BrandLogoCatalog
+import com.rjy.xyz.apps.xyzinfo.data.DeviceSummaryFormatter
 import com.rjy.xyz.apps.xyzinfo.data.DeviceFormDetector
 import com.rjy.xyz.apps.xyzinfo.data.SettingsRepository
 import com.rjy.xyz.apps.xyzinfo.data.DeviceNameRepository
@@ -64,6 +68,8 @@ class MainActivity : AppCompatActivity() {
     private var firstResume = true
     @Volatile private var deviceNameLookupInFlight = false
     private var lastDeviceNameLookupAt = 0L
+    private var currentOverview: DeviceOverview? = null
+    private var currentFormLabel = ""
     /** 代码生成的硬件测试入口卡片，宫格排版时要一起排。 */
     /** 代码生成的入口卡片列表（硬件测试、杂项），宫格排版要一起排。 */
     private val extraCards = mutableListOf<android.view.View>()
@@ -86,6 +92,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(
                 android.content.Intent(this, com.rjy.xyz.apps.xyzinfo.ui.share.ShareCardActivity::class.java)
             )
+        }
+        binding.btnCopySummary.setOnClickListener {
+            Anim.pressFeedback(it)
+            copyDeviceSummary()
         }
         setupTabBack()
         val initialTab = savedInstanceState?.getInt(KEY_SELECTED_TAB, GlassScaffold.TAB_HOME)
@@ -341,6 +351,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderOverview(overview: DeviceOverview) = with(binding) {
+        currentOverview = overview
         tvDeviceName.text = overview.displayName
         tvDeviceRawModel.text =
             "原始型号：${overview.rawModel} ｜ 设备代号：${overview.deviceCode}"
@@ -350,8 +361,10 @@ class MainActivity : AppCompatActivity() {
         )
         // 一并显示设备形态：手机 / 平板 / 折叠屏（含展开折叠状态）
         val form = DeviceFormDetector.detect(this@MainActivity)
+        currentFormLabel = form.form.label
         tvRomName.setInfoRow(
-            "系统 UI：${overview.romName ?: Labels.NOT_PUBLIC} ｜ 形态：${form.form.label}"
+            "系统界面：${overview.romName ?: Labels.NOT_PUBLIC} ｜ " +
+                "设备形态：${form.form.label}"
         )
         tvKernelVersion.setInfoRow(
             "内核：${overview.kernelRelease} ｜ 架构：${overview.abiLabel}",
@@ -393,45 +406,45 @@ class MainActivity : AppCompatActivity() {
         // 硬件测试合并成一个入口：屏幕 + 音频 + 传感器，都在同一个页面里
         addEntryCard(
             "硬件测试",
-            "屏幕坏点 / 触摸 / 扬声器 / 麦克风 / 振动 / 摄像头 / NFC",
+            "屏幕、音频、振动、相机与 NFC",
             R.drawable.ic_module_hardware
         ) {
             open(HardwareMoreActivity::class.java)
         }
-        addEntryCard("杂项工具", "反应力测试、随机密码、手电筒", R.drawable.ic_module_benchmark) {
+        addEntryCard("杂项工具", "反应力、密码与手电筒", R.drawable.ic_module_benchmark) {
             open(MiscActivity::class.java)
         }
         addEntryCard(
             "环境检测",
-            "root 与风险环境痕迹（分级 + 证据）",
+            "Root 与风险环境证据",
             R.drawable.ic_module_env
         ) {
             open(EnvironmentCheckActivity::class.java)
         }
         addEntryCard(
             "大肥鱼验机",
-            "汇总全部检测项，一条结论 + 逐条证据",
+            "汇总检测项并生成验机结论",
             R.drawable.ic_deepseek_fish
         ) {
             open(DeviceInspectActivity::class.java)
         }
         addEntryCard(
             "温度监控",
-            "各热区实时温度 + 长期记录与导出",
+            "实时温度与长期记录",
             R.drawable.ic_module_thermal
         ) {
             open(com.rjy.xyz.apps.xyzinfo.ui.thermal.ThermalActivity::class.java)
         }
         addEntryCard(
             "网络测速",
-            "多台公共节点，自动就近 + 并行多线程，单位可切 Mbps / MB/s",
+            "就近节点与并行多线程测速",
             R.drawable.ic_module_network
         ) {
             open(com.rjy.xyz.apps.xyzinfo.ui.network.NetworkSpeedActivity::class.java)
         }
         addEntryCard(
             "设备对比",
-            "两台设备参数并排比一比：本机导出快照，另一台导入对比",
+            "163 款机型规格与快照对比",
             R.drawable.ic_module_compare
         ) {
             open(DeviceCompareActivity::class.java)
@@ -455,19 +468,26 @@ class MainActivity : AppCompatActivity() {
             setTextColor(
                 androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.text_primary)
             )
-            textSize = 15f
+            textSize = 15.5f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
+            includeFontPadding = false
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
         }
         val subtitle = android.widget.TextView(this).apply {
             text = cardSubtitle
             setTextColor(
                 androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.text_secondary)
             )
-            textSize = 12f
+            textSize = 12.5f
+            includeFontPadding = false
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setLineSpacing((2 * density), 1f)
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = (3 * density).toInt() }
+            ).apply { topMargin = (4 * density).toInt() }
         }
         val texts = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
@@ -529,7 +549,7 @@ class MainActivity : AppCompatActivity() {
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = (12 * density).toInt() }
+            ).apply { topMargin = (10 * density).toInt() }
             radius = 18f * density
             setCardBackgroundColor(
                 androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.surface)
@@ -542,8 +562,11 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { onClick() }
         }
         Anim.pressFeedback(card)
+        val insertAfter = extraCards.lastOrNull() ?: binding.cardGps
+        val insertIndex = (parent.indexOfChild(insertAfter) + 1)
+            .coerceIn(0, parent.childCount)
         extraCards += card
-        parent.addView(card, (parent.indexOfChild(binding.cardGps) + 1).coerceAtMost(parent.childCount))
+        parent.addView(card, insertIndex)
     }
 
     /**
@@ -575,6 +598,7 @@ class MainActivity : AppCompatActivity() {
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT
             )
         }
+        val lastRow = (cards.size - 1) / 2
         cards.forEachIndexed { index, card ->
             val row = index / 2
             val column = index % 2
@@ -584,7 +608,7 @@ class MainActivity : AppCompatActivity() {
                  * 行：**不能**给权重！GridLayout 在 WRAP_CONTENT 高度的容器里
                  * 无法分配加权行，会把行高算成 0，整块宫格直接消失。
                  * 这里改成 FILL 对齐 + MATCH_PARENT：同一行的卡片自动拉伸到该行最高的一张，
-                 * 8 张卡片结构一样，行与行的高度自然也就一致了。
+                 * 卡片结构一样，行与行的高度自然也就一致了。
                  */
                 width = 0
                 height = android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -595,15 +619,15 @@ class MainActivity : AppCompatActivity() {
                     if (column == 0) 0 else gap / 2,
                     if (row == 0) 0 else gap / 2,
                     if (column == 1) 0 else gap / 2,
-                    if (row == 3) 0 else gap / 2
+                    if (row == lastRow) 0 else gap / 2
                 )
             }
-            // 统一最小高度：8 张卡片内容差不多，加上这个下限后每一行的高度完全一致
+            // 统一最小高度，保证两列宫格的每一行视觉高度一致。
             card.minimumHeight = (112 * density).toInt()
             grid.addView(card)
         }
         /*
-         * 注意：插入下标必须是「搬走 8 张卡片之后」的合法值。
+         * 注意：插入下标必须是「搬走全部卡片之后」的合法值。
          * 之前直接用搬走之前记下的 anchorIndex，容器已经变短，下标越界 →
          * 一开启宫格就抛 IndexOutOfBoundsException，整个应用直接退出。
          */
@@ -612,5 +636,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun open(screen: Class<out Activity>) {
         startActivity(Intent(this, screen))
+    }
+
+    private fun copyDeviceSummary() {
+        val overview = currentOverview ?: DeviceOverviewProvider.load()
+        val formLabel = currentFormLabel.ifBlank {
+            DeviceFormDetector.detect(this).form.label
+        }
+        val text = DeviceSummaryFormatter.build(
+            binding.tvDeviceName.text?.toString().orEmpty(),
+            overview,
+            formLabel
+        )
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        if (clipboard == null) {
+            android.widget.Toast.makeText(this, "系统剪贴板不可用", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        clipboard.setPrimaryClip(ClipData.newPlainText("XYZ-Devinfo 设备摘要", text))
+        android.widget.Toast.makeText(this, "设备摘要已复制", android.widget.Toast.LENGTH_SHORT).show()
     }
 }

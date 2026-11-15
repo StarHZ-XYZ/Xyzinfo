@@ -52,8 +52,8 @@ class DeviceCompareActivity : AppCompatActivity() {
         GlassScaffold.attach(this, binding.root, GlassScaffold.TAB_NONE)
 
         val appVersion = runCatching {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.2"
-        }.getOrDefault("1.1.2")
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.3"
+        }.getOrDefault("1.1.3")
         deviceA = DeviceSnapshotCollector.collect(this, appVersion)
 
         binding.tvDeviceA.text = deviceA?.deviceName ?: "本机"
@@ -86,8 +86,8 @@ class DeviceCompareActivity : AppCompatActivity() {
     }
 
     private fun appVersion(): String = runCatching {
-        packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.2"
-    }.getOrDefault("1.1.2")
+        packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.3"
+    }.getOrDefault("1.1.3")
 
     private fun importFromFile() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {

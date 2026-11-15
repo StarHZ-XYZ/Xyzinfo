@@ -26,15 +26,15 @@
             style="@style/Text.PageTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="XYZ-Devinfo 设备检测" />
+            android:text="设备检测" />
 
         <TextView
             android:id="@+id/tvSubTitle"
             style="@style/Text.PageSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="作者：星幻终（RJYZ）" />
+            android:layout_marginTop="6dp"
+            android:text="XYZ-Devinfo · 星幻终（RJYZ）" />
 
         <!-- 当前设备 -->
         <com.google.android.material.card.MaterialCardView
@@ -62,9 +62,9 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="当前设备"
+                        android:text="设备概览"
                         android:textColor="@color/text_tertiary"
-                        android:textSize="12sp" />
+                        android:textSize="11.5sp" />
 
                     <View
                         android:layout_width="0dp"
@@ -83,15 +83,26 @@
                         android:textColor="?attr/colorPrimary"
                         android:textSize="11sp" />
 
+                    <ImageView
+                        android:id="@+id/btnCopySummary"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_chip"
+                        android:contentDescription="复制设备摘要"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_copy"
+                        app:tint="?attr/colorPrimary" />
+
                     <!-- 1.0.5：一键把本机参数画成分享卡片 -->
                     <ImageView
                         android:id="@+id/btnShareCard"
-                        android:layout_width="30dp"
-                        android:layout_height="30dp"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_chip"
                         android:contentDescription="分享设备卡片"
-                        android:padding="7dp"
+                        android:padding="8dp"
                         android:src="@drawable/ic_share"
                         app:tint="?attr/colorPrimary" />
                 </LinearLayout>
@@ -102,9 +113,12 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:includeFontPadding="false"
+                    android:lineSpacingExtra="2dp"
+                    android:maxLines="2"
                     android:text="未知设备"
                     android:textColor="@color/text_primary"
-                    android:textSize="21sp"
+                    android:textSize="22sp"
+                    android:ellipsize="end"
                     android:textStyle="bold" />
 
                 <TextView
@@ -117,12 +131,11 @@
 
                 <TextView
                     android:id="@+id/tvDeviceRawModel"
+                    style="@style/Text.Meta"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="原始型号：— ｜ 设备代号：—"
-                    android:textColor="@color/text_tertiary"
-                    android:textSize="11sp" />
+                    android:layout_marginTop="5dp"
+                    android:text="原始型号：— ｜ 设备代号：—" />
 
                 <TextView
                     android:id="@+id/tvRomName"
@@ -202,7 +215,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="26dp"
-            android:text="功能模块" />
+            android:text="设备信息" />
+
+        <TextView
+            style="@style/Text.SectionSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="常用硬件参数与系统状态入口" />
 
         <!-- CPU / SoC -->
         <com.google.android.material.card.MaterialCardView
@@ -242,20 +262,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Text.CardTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="CPU / SoC"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:text="CPU / SoC" />
 
                     <TextView
+                        style="@style/Text.CardSubtitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:text="处理器型号、GPU 与图形接口"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:layout_marginTop="4dp"
+                        android:text="芯片型号、GPU 与图形接口" />
                 </LinearLayout>
 
                 <ImageView
@@ -304,20 +321,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Text.CardTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="RAM"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:text="RAM" />
 
                     <TextView
+                        style="@style/Text.CardSubtitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:text="容量、类型与内存频率"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:layout_marginTop="4dp"
+                        android:text="容量、内存类型与频率" />
                 </LinearLayout>
 
                 <ImageView
@@ -366,20 +380,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Text.CardTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="屏幕"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:text="屏幕" />
 
                     <TextView
+                        style="@style/Text.CardSubtitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:text="分辨率、刷新率与触控"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:layout_marginTop="4dp"
+                        android:text="分辨率、刷新率与触控" />
                 </LinearLayout>
 
                 <ImageView
@@ -428,20 +439,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Text.CardTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="电池"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:text="电池" />
 
                     <TextView
+                        style="@style/Text.CardSubtitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:text="电量、电流与健康状态"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:layout_marginTop="4dp"
+                        android:text="电量、电流与健康度" />
                 </LinearLayout>
 
                 <ImageView
@@ -490,20 +498,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Text.CardTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="传感器与热区"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:text="传感器与热区" />
 
                     <TextView
+                        style="@style/Text.CardSubtitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:text="热区温度与硬件传感器"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:layout_marginTop="4dp"
+                        android:text="热区温度与传感器清单" />
                 </LinearLayout>
 
                 <ImageView
@@ -552,20 +557,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Text.CardTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="通信参数"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:text="通信参数" />
 
                     <TextView
+                        style="@style/Text.CardSubtitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:text="基带、信号强度与小区信息"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:layout_marginTop="4dp"
+                        android:text="基带、信号与小区信息" />
                 </LinearLayout>
 
                 <ImageView
@@ -614,20 +616,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Text.CardTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="系统"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:text="系统" />
 
                     <TextView
+                        style="@style/Text.CardSubtitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:text="系统版本、存储与环境"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:layout_marginTop="4dp"
+                        android:text="版本、存储与系统环境" />
                 </LinearLayout>
 
                 <ImageView
@@ -643,7 +642,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="26dp"
-            android:text="工具" />
+            android:text="检测工具" />
+
+        <TextView
+            style="@style/Text.SectionSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="硬件测试、环境、网络与设备对比" />
 
         <!-- GPS 定位（性能测试移到液态玻璃底栏的「跑分」标签，首页不再重复） -->
         <com.google.android.material.card.MaterialCardView
@@ -683,20 +689,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Text.CardTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="GPS 定位"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:text="GPS 定位" />
 
                     <TextView
+                        style="@style/Text.CardSubtitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:text="位置、卫星、内置地图与收音机"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:layout_marginTop="4dp"
+                        android:text="位置、卫星与内置地图" />
                 </LinearLayout>
 
                 <ImageView
@@ -725,12 +728,10 @@
                 android:padding="16dp">
 
                 <TextView
+                    style="@style/Text.CardTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="机型库更新"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:text="机型库更新" />
 
                 <TextView
                     android:id="@+id/tvUpdateStatus"
